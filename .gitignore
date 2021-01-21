@@ -1,0 +1,9 @@
+#mr ignores
+.vagrant
+local-dev.*
+!local-dev.example.*
+#OS/IDE ignores
+DS_Store
+Thumbs.db
+.idea/
+.htaccess
