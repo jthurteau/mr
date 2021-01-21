@@ -1,5 +1,6 @@
 #mr ignores
 .vagrant
+.gitattributes
 local-dev.*
 !local-dev.example.*
 #OS/IDE ignores
