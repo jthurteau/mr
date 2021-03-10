@@ -2,9 +2,7 @@
 # Builds Puppet Manifests for Mr
 #
 
-#TODO split our facts vs manifest building...
-#TODO move the stack into puppeteer
-module PuppetManifests
+module Manifests
   extend self
 
   @manifest = nil
@@ -12,16 +10,15 @@ module PuppetManifests
   @build_token = 'mr made this'
 
   def self.init()
-    path = Mr::active_path()
-    @output_path = path if @output_path.nil?
+    @output_path = Mr::active_path if @output_path.nil?
     @manifest = "#{FileManager::localize_token}.pp" if @manifest.nil?
-    FileManager::path_ensure(path + '/manifests', FileManager::allow_dir_creation?)
-    FileManager::path_ensure(@output_path, FileManager::allow_dir_creation?) if @output_path != path
+    FileManager::path_ensure("#{Mr::active_path}/manifests", FileManager::allow_dir_creation?)
+    FileManager::path_ensure(@output_path, FileManager::allow_dir_creation?) if @output_path != Mr::active_path
   end
 
   def self.set_output_file(file)
     abs_path = File.absolute_path(file)
-    Vuppeteer::shutdown("Invalid path for PuppetManifests, outside of writable path", -3) if !FilePaths::may_write?(abs_path)
+    Vuppeteer::shutdown('Invalid path for PuppetManifests, outside of writable path', -3) if !FileManager::may?(:write, abs_path)
     @manifest = File.basename(file)
     @manifest += ".pp" if !@manifest.end_with?('.pp')
     @output_path = File.dirname(file)
@@ -30,10 +27,10 @@ module PuppetManifests
   def self.generate()
     ldm_file = FileManager::tokened_file("#{@output_path}/#{@manifest}", [@build_token])
     if (ldm_file) #TODO more edge case testing around missing/unwritable ldm target
-      Puppeteer::say("building #{@manifest}", 'prep')
+      Vuppeteer::say("building #{@manifest}", 'prep')
       ldm_file.truncate(ldm_file.pos + 1)
-      ppp_final = PuppetStack::get() + ["#{FileManager::localize_token()}.instance"]
-      required_modules = PuppetHiera::required_modules()
+      ppp_final = Stack::get() + ["#{FileManager::localize_token()}.instance"]
+      required_modules = Hiera::required_modules()
       needed_modules = []     
       ppp_final.each do |pp|
         needed_modules = needed_modules + self._manifest(pp)
@@ -49,7 +46,7 @@ module PuppetManifests
       #self._appendix()
       ldm_file.close
     else
-        Puppeteer::say("Notice: Proceeding with manually written #{@manifest} !!!", 'prep')
+        Vuppeteer::say("Notice: Proceeding with manually written #{@manifest} !!!", 'prep')
     end
   end
 
@@ -118,7 +115,7 @@ module PuppetManifests
       defer_to_hiera = self._defer_to_hiera(s)
       if (!defer_to_hiera)
         report_label = self._label(manifest_source)
-        Puppeteer::report('manifest', s, label)
+        Vuppeteer::report('manifest', s, label)
         ldm_file.write(source)
         source = File.read(manifest_source)
         needed_modules = self.scan_modules(manifest_source)
@@ -126,16 +123,16 @@ module PuppetManifests
       end
     end
     if (defer_to_hiera)
-      Puppeteer::report('manifest', s, 'hiera')
+      Vuppeteer::report('manifest', s, 'hiera')
       ldm_file.write("\n\r# #{s} handled in hiera \n\r")
-      modules = PuppetHiera::scan_modules(s)
+      modules = Hiera::scan_modules(s)
       modules.each do |m|
         needed_modules.push(m)
       end
-      PuppetHiera::handle(s)
+      Hiera::handle(s)
       return needed_modules
     end
-    Puppeteer::report('manifest', s, 'absent')
+    Vuppeteer::report('manifest', s, 'absent')
     return []
   end
 
@@ -152,10 +149,10 @@ module PuppetManifests
     p = self.project(s)
     g = self.global(s)
     e = self.exernal(s) 
-    return PuppetHiera::local_override?(s) if File.exist?(l)
-    return PuppetHiera::project_override?(s) if File.exist?(p)
-    return PuppetHiera::global_override?(s) if !Vuppeteer::external? && File.exist?(g)
-    return PuppetHiera::external_override?(s) if !Vuppeteer::external? && File.exist?(e)
+    return Hiera::local_override?(s) if File.exist?(l)
+    return Hiera::project_override?(s) if File.exist?(p)
+    return Hiera::global_override?(s) if !Vuppeteer::external? && File.exist?(g)
+    return Hiera::external_override?(s) if !Vuppeteer::external? && File.exist?(e)
     return false
   end
 

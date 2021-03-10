@@ -2,7 +2,7 @@
 # Manages the Stack of recipes for Mr and Puppet to build
 #
 
-module PuppetStack
+module Stack
   extend self
 
   @ppp = []

@@ -144,7 +144,7 @@ module Network
     # #TODO scan the etc file, warn if no localhost mapping
     # end
     # if (!ip4_entry || !ip6_entry) {
-    #   print("#{Puppeteer::Tabs}No localhost map your applicaiton #{etc_path}\n\r")
+    #   Vuppeteer::say("No localhost map your applicaiton #{etc_path}")
     # }
     if (etc_file_writable) 
       Puppeteer::say('The etc host file is writable')

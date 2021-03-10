@@ -58,73 +58,49 @@ module Facts
     'rhsm_user','rhsm_pass','rhsm_org', 'rhsm_key', 'rhsm_host',
   ]
 
-  @features = {
-    local: true,
-    global: true,
-    developer: false,
-    stack: true,
-  }  
-
   @generate = {}
-
-  #@derived = {}
 
   ##
   # load the inital facts file, remove invalid keys, and merge it in with root_facts
   def self.init()
-    @facts = {} if !@facts
-    path = Mr::active_path()
-    project_fact_file = Mr::facts()
-    FileManager::path_ensure(path + '/facts', FileManager::allow_dir_creation?)
-    source_file = "#{path}/#{project_fact_file}.yaml"
-    file_facts = FileManager::load_fact_yaml(source_file, false)
-    Vuppeteer::report('facts', '_main', 'hard') if @facts
-    if (file_facts && file_facts.class.include?(Enumerable)) 
-      Vuppeteer::report('facts', '_main', 'internal')
+    if (@facts)
+      Vuppeteer::report('facts', '_main', 'root')
+    else
+      @facts = {}
+    end
+    FileManager::path_ensure("#{Mr::active_path}/facts", FileManager::allow_dir_creation?)
+    file_facts = FileManager::load_fact_yaml("#{Mr::active_path}/#{Mr::project}.yaml", false)
+    if (file_facts) 
+      Vuppeteer::report('facts', '_main', 'project')
       (@local_only_facts + @local_developer_facts + @option_only_facts).each do |f|
         if file_facts&.has_key?(f)
           why = @option_only_facts.include?(f) ? 'option_only_fact' : 'local_only_fact'  
           skipped = "Warning: fact #{f} skipped because it is a #{why}"
           solution = "pass this value from the Vagrantfile"
-          can_be_in_dev_file = @local_developer_facts.include?(f) ? ' either developer facts or' : ''
-          local_fact_options = " , or move it to#{can_be_in_dev_file} #{FileManager::localize_token}.yaml..."
+          dev_fact = @local_developer_facts.include?(f) ? ' either developer facts or' : ''
+          local_fact_options = " , or move it to#{dev_fact} #{FileManager::localize_token}.yaml..."
           solution = "#{solution}#{local_fact_options}" if !@option_only_facts.include?(f)
           Puppeteer::say("#{skipped}, #{solution}", 'prep')
           self::_set_as(:rdtd, f, file_facts[f])
           file_facts.delete(f) 
         end
       end
-      file_facts.each do |k,v|
-        self._set_fact(k,v)
+      file_facts.each do |f,v|
+        self._set_fact(f,v)
       end
     end
-    self._supplemental_facts() if @features[:local]
-    self._developer_facts() if @features[:developer]
+    self._local_facts() if Vuppeteer::enabled?(:local)
+    self._developer_facts() if Vuppeteer::enabled?(:developer)
   end
 
   def self.post_stack()
-    self._stack_facts() if @features[:stack]
-    # Puppeteer::say('','prep') #NOTE this adds a formatted line
-    # self._instance_facts()
-    # Puppeteer::say('','prep')
-    ##TODO these are probably deprecated
-    # @overrides.each do |k,v| 
-    #   Puppeteer::say("Override: #{k} set to #{v.to_s}", 'prep')
-    #   self._set_fact(k, v)
-    # end  
-    ## TODO these are probably kept
-    # if (self.fact?('required_facts'))
-    #   self.add_requirements(self.get('required_facts'))
-    # end
-    # self._derived_facts()
-    # self.ensure_facts(@generate)
-    # #required = Puppeteer::enforce_enumerable(self.get('required_facts'))
-    # @requirements.each do |r| #TODO add info about what requires it
-    #   r_string = (r.is_a? Array) ? r.join(':') : r
-    #   Puppeteer::shutdown("Error: Missing required fact #{r_string}") if !self.fact?(r)
-    # end
-
-    #self._validate()
+    self._stack_facts() if Vuppeteer::enabled?(:stack)
+    Puppeteer::say('','prep') #NOTE this adds a formatted line
+    self._instance_facts() if Vuppeteer::enabled?(:instance)
+    #TODO
+    self.ensure_facts(@generate)
+    Puppeteer::say('','prep')
+    self._validate_requirements()
   end
 
   def self.facts()
@@ -148,21 +124,21 @@ module Facts
     return !result.nil? ? result : default
   end
 
-  def self.set_root_facts(f)
+  def self.roots(f)
     Puppeteer::shutdown('Error: Cannot define root facts once any are set.', -1) if !@facts.nil?
     Puppeteer::shutdown('Error: Non-hash passed as root facts.' -1) if !f.respond_to?(:to_h)
     @facts = f.to_h
     @root_facts = @facts.keys()
   end
 
-  def self.set_asserts(f) #TODO support additional types of asserts (like in/include, not_nil, class etc.)
+  def self.asserts(f) #TODO support additional types of asserts (like in/include, not_nil, class etc.)
     Puppeteer::shutdown('Error: Non-hash passed as asserts.', -1) if !f&.respond_to?(:to_h)
     f.each do |k, v|
       @requirements.push({k => v}) 
     end
   end
 
-  def self.add_requirements(r)
+  def self.requirements(r)
     if (r.class.is_a?(Hash))
       r.each do |k, v| 
         @requirements += [[k] + MrUtils::enforce_enumerable(v)]
@@ -217,7 +193,7 @@ module Facts
     @generate = @generate.merge(f)
   end
 
-  def self.ensure_facts(f)
+  def self.ensure_facts(f) #TODO in general
     missing = {}
     f.each do |k,c|
       if (!self.fact?(k))
@@ -227,16 +203,15 @@ module Facts
         Puppeteer.say("testing fact #{k}...provided", 'prep')
       end
     end
-    new_facts = Puppeteer::generate(:random, missing)
+    new_facts = VuppeteerUtils::generate(:random, missing)
     self.set(new_facts, :new)
-    path = Mr::active_path()
     localize_token = FileManager::localize_token()
-    instance_file = "#{path}/#{localize_token}.instance.yaml"
+    instance_file = "#{Mr::active_path}/#{localize_token}.instance.yaml"
     facts = FileManager::load_fact_yaml(instance_file, false) || {}
     any = false
     new_facts.each do |k,v|
       if (!facts.has_key?(v))
-        facts[k] = v
+        facts[k] = v #TODO don't store derived
         any = true
       else
         Puppeteer::say("Not setting generated fact #{k}, already present in instance facts...", 'prep')
@@ -246,10 +221,6 @@ module Facts
       FileManager::save_yaml(instance_file, facts)
     end
   end
-
-  # def self.set_derived(facts)
-  #   @derived = facts
-  # end
 
 #################################################################
   private
@@ -269,14 +240,12 @@ module Facts
     @facts[@meta_facets[type][0]][source.nil? ? key : source] = source.nil? ? value : {key => value}
   end
 
-  def self._supplemental_facts()
-    localize_token = FileManager::localize_token()
-    path = Mr::active_path()
-    supplemental_file = "#{path}/#{localize_token}.yaml"
-    return nil if !File.exist?(supplemental_file)
+  def self._local_facts()
+    path = "#{Mr::active_path}/#{FileManager::localize_token}.yaml"
+    return nil if !File.exist?(path) #NOTE this file is always optional, so don't even warn if it is missing
     Puppeteer::report('facts', '_main', 'local')
-    supplemental_facts = FileManager::load_fact_yaml(supplemental_file, false)
-    if (supplemental_facts.class.include?(Enumerable))
+    supplemental_facts = FileManager::load_fact_yaml(path, false)
+    if (supplemental_facts)
       self.set(supplemental_facts, true)
     else
       Puppeteer::say('Notice: supplemental (local) facts file present, but invalid', 'prep')
@@ -285,10 +254,10 @@ module Facts
 
   def self._developer_facts()
     path = File.expand_path(@user_facts_file)
-    return nil if !File.exist?(path)
-    Vuppeteer::report('facts', '~user', 'present')
+    Vuppeteer::shutdown("Invalid path for developer_facts, outside of writable path") if !FileManager::may?(:read, path)
+    Vuppeteer::report('facts', '_main', '~developer')
     user_facts = FileManager::load_fact_yaml(path, false)
-    if (user_facts.class.include?(Enumerable))
+    if (user_facts)
       self.set(user_facts, true)
     else
       Vuppeteer::say('Notice: developer facts file present, but invalid', 'prep')
@@ -297,12 +266,17 @@ module Facts
 
   def self._stack_facts()
     Vuppeteer::say("Loading stack puppet facts:", 'prep')
-    fact_sources = PuppetStack::get()
+    fact_sources = PuppetManager::get_stack()
     fact_sources.each do |f|
-      next if f.include?('.') && !f.end_with?('.yaml')
-      y = f.end_with?('.yaml') ? f[0..-6] : f
-      if y.end_with?('.hiera')
-        PuppetHiera::handle(y[0..-7])
+      next if f.include?('.') && !f.end_with?('.yaml') #NOTE old
+      next if f.include?('/') && !f.start_with?('facts/') #NOTE new
+      if (f.start_with?('facts/'))
+        y = f[6..-1]
+      else
+        y = f.end_with?('.yaml') ? f[0..-6] : f
+      end
+      if y.end_with?('.hiera') #NOTE this is moving to /hiera
+        PuppetManager::inform_hiera(y[0..-7])
         next
       else
         self._handle(y)
@@ -310,33 +284,17 @@ module Facts
     end
   end
 
-  # def self._instance_facts()
-  #   path = Mr::active_path()
-  #   localize_token = FileManager::localize_token()
-  #   instance_file = "#{path}/#{localize_token}.instance.yaml"
-  #   return Puppeteer::report('facts', 'instance', 'absent') if !File.exist?(instance_file)
-  #   Puppeteer::report('facts', 'instance', 'present')
-  #   i_facts = FileManager::load_fact_yaml(instance_file, false)
-  #   if (i_facts.class.include?(Enumerable))
-  #     @facts = {} if !@facts
-  #     self.set(i_facts, true)
-  #   else
-  #     Puppeteer::say('Notice: no instance facts loaded (file was empty or invalid)', 'prep')
-  #   end
-  # end
-
-  # def self._derived_facts()
-  #   @derived.each() do |d,f|
-  #     if (self.fact?(f) && !self.fact?(d))
-  #       @facts[d] = @facts[f]
-  #       Puppeteer::say("Setting derived fact #{d} from #{f}", 'prep')
-  #     elsif (!self.fact?(f))
-  #       Puppeteer::say("Cannot set derived fact #{d}, #{f} not set", 'prep')
-  #     else
-  #       Puppeteer::say("Skipping derived fact #{d}, already set", 'prep')
-  #     end
-  #   end
-  # end
+  def self._instance_facts()
+    instance_file = "#{Mr::active_path}/#{FileManager::localize_token}.instance.yaml"
+    return if !File.exist?(instance_file)
+    Puppeteer::report('facts', '_main', 'instance')
+    i_facts = FileManager::load_fact_yaml(instance_file, false)
+    if (i_facts)
+      self.set(i_facts, true)
+    else
+      Puppeteer::say('Notice: no instance facts loaded (file was empty or invalid)', 'prep')
+    end
+  end
 
   def self._validate_requirements()
     existing = {}
@@ -357,17 +315,18 @@ module Facts
   def self._handle(s)
     blocked_facts = @option_only_facts + @local_only_facts + @local_developer_facts 
     path = Mr::active_path()
-    fact_path = FilePaths::fact("#{s}.yaml")
+    fact_path = FileManager::path(:fact, "#{s}.yaml")
     fact_file = "#{fact_path}/#{s}.yaml"
-    #NOTE this is still from a time when the concept of external and global were muddled.
-    #for now it will report "external" for both cases  
-    external = Vuppeteer::external? && fact_file == FilePaths::external("#{s}.yaml",'facts')
-    global = fact_file == FilePaths::global("#{s}.yaml",'facts')
-    local = fact_file == FilePaths::local("#{s}.yaml",'facts')
-    type = nil
+    external = Vuppeteer::external? && fact_file == FileManager::path(:external, 'facts', "#{s}.yaml")
+    global = fact_file == FileManager::path(:global, 'facts', "#{s}.yaml")
+    local = fact_file == FileManager::path(:local, 'facts', "#{s}.yaml")
+    type = external ? 'external' : (global ? 'global' : (local ? 'local' : 'project'))
     if (File.file?(fact_file) && File.readable?(fact_file))
       new_facts = FileManager::load_fact_yaml(fact_file, false)
-      #TODO type nil if not Enumerable
+      if new_facts.nil?
+        Vuppeteer::report('facts', s, "invlid.#{type}")
+        return
+      end
       new_facts.each do |k,v|
         if blocked_facts.include?(k)
           self._set_as(:block, k, v, "#{s}.yaml")
@@ -376,9 +335,6 @@ module Facts
         else
           self._set_fact(k, v)
         end
-      end
-      if (!new_facts.nil?) 
-        type = external ? 'external' : (global ? 'global' : (local ? 'local' : 'project'))
       end
     end
     Vuppeteer::report('facts', s, type)

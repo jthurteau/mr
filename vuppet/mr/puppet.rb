@@ -24,8 +24,8 @@ module PuppetManager
 
   def self.init()
     self._init()
-    PuppetStack::init()
-    PuppetManifests::init()
+    Stack::init()
+    Manifests::init()
   end
 
   def self.disabled?(what = :puppet)
@@ -44,10 +44,10 @@ module PuppetManager
     #CollectionManager::provision(VagrantManager::config()) #TODO why is this called twice? (also in _register)
     VagrantManager::host_pre_puppet_triggers()
 
-    PuppetModules::processCommands(@version)
-    prep_commands = PuppetModules::get_commands(['status', 'install', 'additional'])
-    reset_commands = PuppetModules::get_commands(['remove'])
-    sync_commands = PuppetModules::get_commands(['dev_sync'])
+    Modules::processCommands(@version)
+    prep_commands = Modules::get_commands(['status', 'install', 'additional'])
+    reset_commands = Modules::get_commands(['remove'])
+    sync_commands = Modules::get_commands(['dev_sync'])
     prep_command_string = Vuppeteer::translate_guest_commands(prep_commands)
     sync_command_string = Vuppeteer::translate_guest_commands(sync_commands)
     reset_command_string = Vuppeteer::translate_guest_commands(reset_commands)
@@ -74,21 +74,25 @@ module PuppetManager
       Puppeteer::say("Notice: Bypassing main Puppet provisioning", 'prep')
     else
       VagrantManager::config().vm.provision 'puppet' do |puppet|
-        puppet.manifests_path = PuppetManifests::path()
-        puppet.manifest_file = PuppetManifests::file()
+        puppet.manifests_path = Manifests::path()
+        puppet.manifest_file = Manifests::file()
         puppet.options = "#{run_options['out_options']} --logdest #{run_options['log_to']}"
         puppet.facter = Vuppeteer::facts() #TODO make a facter filter method?
-        puppet.hiera_config_path = PuppetHiera::config_path() if !self.disabled?(:hiera)
+        puppet.hiera_config_path = Hiera::config_path() if !self.disabled?(:hiera)
       end
     end
 
     VagrantManager::config().vm.provision 'puppet-debug', type: :puppet, run: 'never' do |puppet|
-      puppet.manifests_path = PuppetManifests::path()
-      puppet.manifest_file = PuppetManifests::file()
+      puppet.manifests_path = Manifests::path()
+      puppet.manifest_file = Manifests::file()
       puppet.options = "--verbose --debug --write-catalog-summary --logdest #{run_options['log_to']}"
       puppet.facter = Vuppeteer::facts() #TODO make a facter filter method?
-      puppet.hiera_config_path = PuppetHiera::config_path() if !self.disabled?(:hiera)
+      puppet.hiera_config_path = Hiera::config_path() if !self.disabled?(:hiera)
     end
+  end
+
+  def self.get_stack(o)
+    return Stack::get(o)
   end
 
   def self.guest_puppet_path()
@@ -96,7 +100,20 @@ module PuppetManager
   end
 
   def self.set_manifest(v)
-    PuppetManifests::set_output_file(v)
+    Manifests::set_output_file(v)
+  end
+
+  def self.inform_hiera(s)
+    Hiera::handle(s)
+  end
+
+  def self.pre_puppet()
+    Manifests::generate()
+    Hiera::generate()
+  end
+
+  def self.get_host_commands()
+    Modules.get_commands(['local_install'])
   end
 
 #################################################################
@@ -104,11 +121,7 @@ module PuppetManager
 #################################################################
 
   def self._init()
-    if (@conf_source.start_with?('::'))
-      @conf = Vuppeteer::get_fact(@conf_source[2..-1], {})
-    else
-      @conf = FileManager::load_fact_yaml(@conf_source, 'Puppet')
-    end
+    @conf = Vuppeteer::load_facts(@conf_source)
     if @conf
       @file_path = @conf['files'] if @conf['files']
       @version = @conf['version'] if @conf['version']
@@ -116,20 +129,23 @@ module PuppetManager
         @opt[o] = @conf[o] if @conf.has_key?(o)
       end
       m = @conf.has_key?['module_versions'] && @conf['module_versions'].class == Hash
-      PuppetModules::set_versions(@conf['module_versions']) if m
-      Vuppeteer::set_derived(@conf['derived_facts']) if @conf['derived_facts']
+      Modules::set_versions(@conf['module_versions']) if m
+      #TODO
+      #Vuppeteer::set_derived(@conf['derived_facts']) if @conf['derived_facts']
+      #Vuppeteer::register_generated()
     else
+      @conf = {}
       Vuppeteer::say("Notice: No puppet config provided (default version/options etc. are in place)", 'prep')
     end
     Vuppeteer::set_facts({'puppet_files' => @file_path}, true)
-    PuppetModules::init(Vuppeteer::get_fact('puppet_modules'))
-    PuppetHiera::init(@file_path) if (!self.disabled?(:hiera))
+    Modules::init(Vuppeteer::get_fact('puppet_modules'))
+    Hiera::init(@file_path) if (!self.disabled?(:hiera))
     local_stack = []
     local_stack.push('project_' + Vuppeteer::get_fact('project').to_s) if Vuppeteer::fact?('project') 
     local_stack.push('app_' + Vuppeteer::get_fact('app').to_s) if Vuppeteer::fact?('app') 
     local_stack.push('developer_' + Vuppeteer::get_fact('developer')) if Vuppeteer::fact?('developer')
     self.disable() if Vuppeteer::fact?('bypass_puppet')
-    PuppetStack::add(local_stack, false)
+    Stack::add(local_stack, false)
     ElManager::init() #setup() used to be here (in mr.rb anyway)
   end
 

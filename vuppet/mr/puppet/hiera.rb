@@ -2,7 +2,7 @@
 # Manages Puppet Hiera for Mr
 #
 
-module PuppetHiera
+module Hiera
   extend self
 
   @conf_source = ['puppet.yaml::hiera','::hiera'][1]
@@ -24,8 +24,8 @@ module PuppetHiera
     else
       @conf = FileManager::load_fact_yaml(@conf_source, 'Puppet')
     end
-    @local_path = "#{Mr::active_path()}/#{FilePaths::temp_path()}hiera"
-    @remote_path = "#{remote_puppet}/#{FilePaths::temp_path()}hiera"
+    @local_path = "#{Mr::active_path()}/#{FileManager::path(:temp)}hiera"
+    @remote_path = "#{remote_puppet}/#{FileManager::path(:temp)}hiera"
     hiera = Vuppeteer::get_fact('hiera', {})
     requires = MrUtils::dig(hiera, 'requires')
     @required_modules = MrUtils::enforce_enumerable(requires) if requires

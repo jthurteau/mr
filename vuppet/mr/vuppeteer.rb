@@ -7,10 +7,9 @@ module Vuppeteer
 
     require_relative 'vuppeteer/utils'
     require_relative 'vuppeteer/facts'
+    require_relative 'vuppeteer/host'
     require_relative 'vuppeteer/installer'
     require_relative 'vuppeteer/report'
-  
-    Tabs = '    '.freeze
   
     ##
     # indicates ::init has alread been called
@@ -42,17 +41,38 @@ module Vuppeteer
     # indicates something changed the instance during this session
     @instance_changed = false
  
+    @features = {
+      local: true,
+      global: true,
+      developer: false,
+      stack: true,
+      instance: true,
+      installer: false,
+    }
+
     def self.init(path = nil)
       return if @initialized
       @external_path = path
       @initialized = true
       if (self.external?)
         self.say("External Mr #{external_path} managing build.", 'prep')
-        Installer::enable()
+        @features[:installer] = true
       end
       Facts::init()
     end
-  
+
+    def self.disable(o)
+      @features[o] = false
+    end
+    
+    def self.enable(o)
+      @features[o] = true
+    end
+
+    def self.enabled?(o)
+      @features[o]
+    end
+
     def self.external?
       return !@external_path.nil?
     end
@@ -64,7 +84,7 @@ module Vuppeteer
     def self.start()
       self.expose_facts() if Facts::get('verbose_facts') || Facts::get('verbose')
       if (self.external?)
-        Installer::prep()
+        Installer::prep() if @features[:installer]
       end
     end
 
@@ -82,7 +102,7 @@ module Vuppeteer
         suppress_linetab = formatting && (formatting.class == FalseClass || formatting == :no_indent)
         tab_multi = formatting && formatting.class == Integer ? formatting : 1
         end_line = supress_endline ? '' : "\n\r"
-        line_tab = suppress_linetab ? '' : (Vuppeteer::Tabs * tab_multi)
+        line_tab = suppress_linetab ? '' : (VuppeteerUtils::Tabs * tab_multi)
         full_output = "#{line_tab}#{output}#{end_line}"
         trigger = [trigger] if !trigger.is_a? Array
         trigger.each do |t|
@@ -159,6 +179,8 @@ module Vuppeteer
       exit e.is_a?(Integer) ? e.abs : e
     end
 
+
+
     # def self.mark_sensitive(s)
     #   @sensitive.push(s)
     # end
@@ -167,26 +189,9 @@ module Vuppeteer
     #   return @sensitive
     # end
   
-    # def self.generate(method, hash)
-    #   generated_hash = {}
-    #   hash.each do |k,v|
-    #     generated_hash[k] = self._generate(method, v)
-    #   end
-    #   generated_hash
-    # end
-  
-    # def self.filter_sensitive(s)
-    #   return self._filter_sentitive_string(s) if s.class = String
-    #   r = s.class.new
-    #   s.each do |k,v| 
-    #     if(v.class == String)
-    #       r[k] = self._filter_sentitive_string(v)
-    #     else
-    #       r[k] = v.class.include?(Enumerable) ? self.filter_sensitive(v) : v
-    #     end
-    #   end
-    #   r
-    # end
+    def self.filter_sensitive(s)
+      return VuppeteerUtils::filter_sensitive(s)
+    end
   
     def self.report(facet, field = nil, prop = nil)
       Report::push(facet, field, prop) if !field.nil? && !prop.nil?
@@ -202,7 +207,9 @@ module Vuppeteer
       )
     end
   
-
+    def self.load_facts(source)
+      source.start_with?('::') ? Facts::get(source[2..-1]) : FileManager::load_fact_yaml(source, false)
+    end
     # def self.update_instance(m, v)
     #   @instance = {} if @instance.nil? && !v.nil?
     #   if (!v.nil?)
@@ -220,11 +227,11 @@ module Vuppeteer
     # end
 
     def self.install_files()
-      return Installer::install_files()
+      return Installer::install_files() if @features[:installer]
     end
   
     def self.global_install_files()
-      return Installer::global_install_files()
+      return Installer::global_install_files() if @features[:installer]
     end
 
     def self.import_files()
@@ -252,29 +259,21 @@ module Vuppeteer
     def self.sync()
       RepoManager::init() if (Facts::fact?('project_repos'))
     end
-
-    def self.register_generated(v)
-      Facts::register_generated(v)
-    end
   
-    def self.set_asserts(v)
-      Facts::set_asserts(v)
+    def self.set_root_facts(f)
+      Facts::roots(f)
+    end
+
+    def self.add_asserts(v)
+      Facts::asserts(v)
     end
   
     def self.add_requirements(v)
-      Facts::add_requirements(v)
+      Facts::requirements(v)
     end
-  
-    def self.disable(o)
-      Facts::disable(o)
-    end
-  
-    def self.set_asserts(a)
-      Facts::set_asserts(a)
-    end
-  
-    def self.set_root_facts(f)
-      Facts::set_root_facts(f)
+
+    def self.register_generated(v)
+      Facts::register_generated(v)
     end
   
     def self.get_fact(f, d = nil)
@@ -293,10 +292,6 @@ module Vuppeteer
       Facts::fact?(f)
     end
 
-    def self.set_derived(d)
-      Facts::set_derived(d)
-    end
-
     def self.post_stack()
       Facts::post_stack()
     end
@@ -305,24 +300,5 @@ module Vuppeteer
   private
   #################################################################
   
-    # def self._filter_sentitive_string(s)
-    #   r = s.clone
-    #   @sensitive.each do |f|
-    #     r = r.gsub(f, '__REDACTED_AS_SENSITIVE__')
-    #   end
-    #   r
-    # end
-  
-    # def self._load_milestones()
-    #   @milestones = FileManager::load_fact_yaml("#{Mr::active_path()}/#{@milstone_file}", false)
-    #   @milstones_changed = false
-    # end
-  
-    # def self._generate(method, config)
-    #   case method
-    #   when :random, 'random'
-    #     VuppeteerUtils::rand(config)
-    #   end
-    # end
   
   end

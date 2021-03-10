@@ -2,7 +2,7 @@
 # Manages Puppet Modules for Mr
 #
 
-module PuppetModules #TODO move this into Vuppeteer?
+module Modules
   extend self
 
   @module_table = {}

@@ -5,6 +5,8 @@
 module VuppeteerUtils
   extend self
 
+  Tabs = '    '.freeze
+
   @char_sets = {
     'lal' => 'abcdefghijklmnopqrstuvwxyz',
     'ual' => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -59,4 +61,55 @@ module VuppeteerUtils
   def self.sensitive_facts()
     ['*_pat','*_pass', '*_password', '*_key', '*_secret']
   end
+
+  def self.generate(method, hash)
+    generated_hash = {}
+    hash.each do |k,v|
+      generated_hash[k] = self._generate(method, v)
+    end
+    generated_hash
+  #   @derived.each() do |d,f|
+  #     if (self.fact?(f) && !self.fact?(d))
+  #       @facts[d] = @facts[f]
+  #       Puppeteer::say("Setting derived fact #{d} from #{f}", 'prep')
+  #     elsif (!self.fact?(f))
+  #       Puppeteer::say("Cannot set derived fact #{d}, #{f} not set", 'prep')
+  #     else
+  #       Puppeteer::say("Skipping derived fact #{d}, already set", 'prep')
+  #     end
+  #   end
+  end
+
+  def self.filter_sensitive(s)
+    return self.filter_sentitive_string(s) if s.class = String
+    r = s.class.new
+    s.each do |k,v| 
+      if(v.class == String)
+        r[k] = self.filter_sentitive_string(v)
+      else
+        r[k] = v.class.include?(Enumerable) ? self.filter_sensitive(v) : v
+      end
+    end
+    r
+  end
+
+  def self.filter_sentitive_string(s)
+    r = s.clone
+    @sensitive.each do |f|
+      r = r.gsub(f, '__REDACTED_AS_SENSITIVE__')
+    end
+    r
+  end
+
+  #################################################################
+  private
+  #################################################################
+  
+    def self._generate(method, config)
+      case method
+      when :random, 'random'
+        self.rand(config)
+      end
+    end
+
 end

@@ -47,6 +47,47 @@ module FileManager
     FilePaths::ensure(path, create, verbose)
   end
 
+  def self.path(w, p = nil, f = nil)
+    case w
+    when :temp
+      return FilePaths::temp()
+    when :fact
+      return FilePaths::x_path('facts', p)
+      def self.manifest(manifest)
+        self._x_path(manifest, 'manifests')
+      end
+    
+      def self.bash(script)
+        self._x_path(script, 'bash')
+      end
+    
+      def self.template(script)
+        self._x_path(script, 'templates')
+      end
+    
+      def self.hiera(script)
+        self._x_path(script, 'hiera')
+      end
+    when :hiera
+      return p.nil? ? false : FilePaths::hiera(p)
+    when :manifest
+      return p.nil? ? false : FilePaths::manifest(p)
+    when :bash
+      return p.nil? ? false : FilePaths::bash(p)
+    when :template
+      return p.nil? ? false : FilePaths::template(p)
+    when :global
+      return p.nil? ? false : FilePaths::global(p, f)
+    when :local
+      return p.nil? ? false : FilePaths::local(p, f)
+    when :project
+      return p.nil? ? false : FilePaths::project(p, f)
+    when :external
+      return p.nil? ? false : FilePaths::external(p, f)
+    end
+    false
+  end
+
   def self.first_match(files)
     files.each() do |f|
       return f if File.exist?(f)
@@ -101,16 +142,16 @@ module FileManager
       fact = nil 
     end
     if (!File.exist?(path))
-      MrUtils::meditate("facts \"#{path}\" not available", critical)
+      MrUtils::meditate("facts \"#{path}\" not available", critical, 'prep')
       return nil
     end
     begin
       y = YAML.load_file(path)
     rescue SystemCallError => e #TODO handle yaml parse errors
-      MrUtils::meditate("unable to load facts in \"#{path}\"", critical)
+      MrUtils::meditate("unable to load facts in \"#{path}\"", critical, 'prep')
     end
-    MrUtils::meditate("empty facts in \"#{path}\"", critical) if (y.nil?)
-    MrUtils::meditate("invalid facts in \"#{path}\"", critical) if (!y.nil? && y.class != Hash)
+    MrUtils::meditate("empty facts in \"#{path}\"", critical, 'prep') if (y.nil?)
+    MrUtils::meditate("invalid facts in \"#{path}\"", critical, 'prep') if (!y.nil? && y.class != Hash)
     y.class == Hash ? (fact.nil? ? y : (y.has_key?(fact) ? y[fact] : nil) ) : nil
   end
 
@@ -170,6 +211,16 @@ module FileManager
       return false
     end
     return true
+  end
+
+  def self.may?(operation, path)
+    case operation
+    when :write
+      return FilePaths::may_write?(path)
+    when :read
+      return FilePaths::may_read?(path)
+    end
+    false
   end
 
   def fs_view()

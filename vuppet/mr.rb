@@ -119,7 +119,7 @@ module Mr
     return @active_path
   end
 
-  def self.facts
+  def self.project
     return @project_facts_file
   end
 
@@ -170,8 +170,6 @@ module Mr
           roots['host_allowed_read_path'] = v
         when :allowed_write_path
           roots['host_allowed_write_path'] = v
-        when :target_manifest
-          PuppetManager::set_manifest(v)
         when :facts
           if (v.class == String)
             @project_facts_file = (y.end_with?('.yaml') ? v[0..-4] : v)
@@ -183,7 +181,7 @@ module Mr
         when :generated
           Vuppeteer::register_generated(v)
         when :assert
-          Vuppeteer::set_asserts(v)
+          Vuppeteer::add_asserts(v)
         when :require
           Vuppeteer::add_requirements(v)
         when :load_stack_facts
@@ -195,6 +193,8 @@ module Mr
           if (v.class == String)
             @developer_facts_file = v
           end
+        when :target_manifest
+          PuppetManager::set_manifest(v)
         when :stack
           roots['stack'] = v
         when :disable_hiera
@@ -205,7 +205,7 @@ module Mr
         end
       end   
     elsif(!config.nil?)
-      Vuppeteer::set_asserts({'project' => config.to_s})
+      Vuppeteer::add_asserts({'project' => config.to_s})
     end
     option_roots.each do |r, v|
       roots[r] = v if !roots.has_key?(r)
@@ -216,11 +216,10 @@ module Mr
 
   def self._init(v, vagrant_file)
     return if !@prepped.nil?
-    vagrant_path = File.dirname(vagrant_file)
-    FileManager::init(vagrant_path)
-    Vuppeteer::init(@active_path != @my_path ? @my_path : nil)
-    PuppetManager::init()
+    FileManager::init(File.dirname(vagrant_file))
+    Vuppeteer::init(@active_path == @my_path ? nil : @my_path)
     @disabled = Vuppeteer::get_fact('disabled', false)
+    PuppetManager::init()
     VagrantManager::init(v)
     @prepped = false
   end

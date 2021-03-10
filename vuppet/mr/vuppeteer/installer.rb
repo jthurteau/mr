@@ -7,8 +7,6 @@ module Installer
 #  require_relative 'file/mirror'
   extend self
 
-  @enabled = false
-
   @install_files = [
     'mr_rogers.rb', 
     'mr_rogers',
@@ -33,14 +31,9 @@ module Installer
     'templates/hiera.erb',
   ]
 
-  def self.enable()
-    @enabled = true
-  end
-
   def self.prep()
-    temp_path = FilePaths::temp_path()
-    mirror_path = "#{Mr::active_path()}/#{temp_path}ext/"
-    import_path = "#{Mr::active_path()}/#{temp_path}imp/"
+    mirror_path = "#{Mr::active_path()}/#{FileManager::path(:temp)}ext/"
+    import_path = "#{Mr::active_path()}/#{FileManager::path(:temp)}imp/"
     FileUtils.rm_r(mirror_path, {:force => true}) if (File.directory?(mirror_path))
     FileManager::path_ensure(mirror_path, FileManager::allow_dir_creation?) #"Building puppeteer mirror...")
     FileManager::path_ensure("#{Mr::active_path()}/import", Vuppeteer::allow_dir_creation?)

@@ -76,10 +76,9 @@ module VagrantManager
   def self.host_pre_puppet_triggers()
     @vagrant.trigger.before [:up, :provision, :reload, :resume] do |trigger|
       trigger.info = 'Checking, are Strings Attached?'
-      trigger.ruby do |env, machine| #TODO this is where we handle multiple boxes?
-        PuppetManifests::generate()
-        PuppetHiera::generate()
-        Vuppeteer::perform_host_commands(PuppetModules::get_commands(['local_install']))
+      trigger.ruby do |env, machine|
+        PuppetManager::pre_puppet()
+        Vuppeteer::perform_host_commands(PuppetManager::get_host_commands())
       end
     end
   end

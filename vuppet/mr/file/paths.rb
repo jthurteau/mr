@@ -46,8 +46,14 @@ module FilePaths
   end
 
   def self.may_write?(path)
-    #(Vuppeteer::external? || !FilePaths::in?(path, Mr::path)) && FilePaths::in?(path, Mr::active_path)
     @paths[:write][:match].each do |p|
+      return true if self.in?(path, p)
+    end
+    false
+  end
+
+  def self.may_read?(path)
+    @paths[:read][:match].each do |p|
       return true if self.in?(path, p)
     end
     false
@@ -67,12 +73,11 @@ module FilePaths
     if (!path.start_with?(Mr::active_path()))
       Puppeteer::say("Warning: Unable to clear path #{path}, not in active path.", 'prep')
       return false
+    elsif (!self.writable?(path))
+      Puppeteer::say("Warning: Unable to clear path #{path}, not in write path.", 'prep')
+      return false
     end
     FileUtils.rm_r(Dir.glob("#{path}/*"))
-  end
-
-  def self.temp_path()
-    "#{FileManager::localize_token}.tmp/"
   end
 
   def self.absolute?(path)
@@ -115,36 +120,41 @@ module FilePaths
     return confirmed_path
   end
 
-  def self.fact(fact)
-    self._x_path(fact, 'facts')
+  def self.temp()
+    "#{FileManager::localize_token}.tmp/"
   end
 
-  def self.manifest(manifest)
-    self._x_path(manifest, 'manifests')
+  def self.x_path(type, file = nil)
+    file = file ? "/#{file}" : ''
+    l = self.local(type)
+    p = self.project(type)
+    g = self.global(type) #TODO make this prefix non-staticly defined
+    e = self.external(type)
+    return l if File.readable?("#{l}#{file}")
+    return p if File.readable?("#{p}#{file}")
+    return g if !Vuppeteer::external? && File.readable?("#{g}#{file}")
+    return e if Vuppeteer::external? && File.readable?("#{e}#{file}")
+    nil
   end
 
-  def self.bash(script)
-    self._x_path(script, 'bash')
+  def self.local(type, file = nil)
+    file = file ? "/#{file}" : ''
+    "#{Mr::active_path()}/#{FileManager::localize_token}.#{type}#{file}"
   end
 
-  def self.template(script)
-    self._x_path(script, 'templates')
+  def self.project(type, file = nil)
+    file = file ? "/#{file}" : ''
+    "#{Mr::active_path()}/#{type}#{file}"
   end
 
-  def self.local(file, type)
-    "#{Mr::active_path()}/#{FileManager::localize_token}.#{type}/#{file}"
+  def self.global(type, file = nil)
+    file = file ? "/#{file}" : ''
+    "#{Mr::active_path()}/global.#{type}#{file}"
   end
 
-  def self.project(file, type)
-    "#{Mr::active_path()}/#{type}/#{file}"
-  end
-
-  def self.global(file, type)
-    "#{Mr::active_path()}/global.#{type}/#{file}"
-  end
-
-  def self.external(file, type)
-    Vuppeteer::external? ? "#{Vuppeteer::external_path}/#{type}/#{file}" : nil
+  def self.external(type, file = nil)
+    file = file ? "/#{file}" : ''
+    Vuppeteer::external? ? "#{Vuppeteer::external_path}/#{type}#{file}" : nil
   end
 
 #################################################################
@@ -157,17 +167,6 @@ module FilePaths
     raise @paths[p][:label] + ' can only be set once.' if @paths[p][:set]
     @paths[p][:match] = MrUtils::enforce_enumerable(v)
     @paths[p][:set] = true
-  end
-
-  def self._x_path(file, type)
-    e = "#{Vuppeteer::external_path()}/#{type}"
-    l = "#{Mr::active_path()}/#{FileManager::localize_token}.#{type}"
-    p = "#{Mr::active_path()}/#{type}"
-    g = "#{Mr::active_path()}/global.#{type}" #TODO make this prefix non-staticly defined
-    return l if File.readable?("#{l}/#{file}")
-    return g if !Vuppeteer::external? && File.readable?("#{g}/#{file}") && !File.readable?("#{p}/#{file}")
-    return e if Vuppeteer::external? && File.readable?("#{e}/#{file}") && !File.readable?("#{p}/#{file}")
-    p
   end
 
 end
