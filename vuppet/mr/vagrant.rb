@@ -117,6 +117,10 @@ module VagrantManager
 
   end
 
+  def self.post_puppet()
+    HelperManager::post_puppet()
+  end
+
   #################################################################
     private
   #################################################################

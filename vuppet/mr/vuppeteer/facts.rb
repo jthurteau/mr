@@ -2,7 +2,7 @@
 # Manages Puppet Facts for Mr
 #
 
-module PuppetFacts
+module Facts
   extend self
 
   @facts = nil
@@ -180,7 +180,7 @@ module PuppetFacts
     return @requirements
   end
 
-  def self.set_facts(f, merge = false)
+  def self.set(f, merge = false)
     e = f.class.include?(Enumerable)
     Puppeteer::shutdown('Error: Cannot redefine facts once set') if !@facts.nil? && !merge
     Puppeteer::shutdown('Error: Initial facts must be a hash') if !e && !merge
@@ -228,7 +228,7 @@ module PuppetFacts
       end
     end
     new_facts = Puppeteer::generate(:random, missing)
-    self.set_facts(new_facts, :new)
+    self.set(new_facts, :new)
     path = Mr::active_path()
     localize_token = FileManager::localize_token()
     instance_file = "#{path}/#{localize_token}.instance.yaml"
@@ -277,7 +277,7 @@ module PuppetFacts
     Puppeteer::report('facts', '_main', 'local')
     supplemental_facts = FileManager::load_fact_yaml(supplemental_file, false)
     if (supplemental_facts.class.include?(Enumerable))
-      self.set_facts(supplemental_facts, true)
+      self.set(supplemental_facts, true)
     else
       Puppeteer::say('Notice: supplemental (local) facts file present, but invalid', 'prep')
     end
@@ -289,7 +289,7 @@ module PuppetFacts
     Vuppeteer::report('facts', '~user', 'present')
     user_facts = FileManager::load_fact_yaml(path, false)
     if (user_facts.class.include?(Enumerable))
-      self.set_facts(user_facts, true)
+      self.set(user_facts, true)
     else
       Vuppeteer::say('Notice: developer facts file present, but invalid', 'prep')
     end
@@ -319,7 +319,7 @@ module PuppetFacts
   #   i_facts = FileManager::load_fact_yaml(instance_file, false)
   #   if (i_facts.class.include?(Enumerable))
   #     @facts = {} if !@facts
-  #     self.set_facts(i_facts, true)
+  #     self.set(i_facts, true)
   #   else
   #     Puppeteer::say('Notice: no instance facts loaded (file was empty or invalid)', 'prep')
   #   end

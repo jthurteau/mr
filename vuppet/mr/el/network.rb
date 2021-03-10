@@ -3,7 +3,7 @@
 # 1) inject host network identity in the guest to resolve various "containery" issues
 # 2) setup the host so it can get around CORS when appropriate
 
-module NetworkManager
+module Network
   extend self
   
   require 'resolv'
@@ -173,8 +173,8 @@ module NetworkManager
   def self.register(cors = false, app = nil, developer = nil)
     ## came from Mr
   #     NetworkManager::cors_set(cors) if cors
-  #     app = PuppetFacts::get('app', nil)
-  #     developer = PuppetFacts::get('developer', nil)
+  #     app = Vuppeteer::get_fact('app', nil)
+  #     developer = Vuppeteer::get_fact('developer', nil)
   #     unavailable_script = 'echo Unavailable in nomad mode'
   #     self._passthrough_host(app, developer) if (!NetworkManager::passed?) 
   #           s.inline = RhelManager::setup()

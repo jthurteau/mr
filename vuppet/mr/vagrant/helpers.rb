@@ -147,10 +147,10 @@ module Helpers
     #       result_files = ['classes.txt', 'last_run_report.yaml', 'last_run_summary.yaml', 'resources.txt', 'state.yaml']
     #       FileManager::mirror_provisioner(remote, local, result_files, 'puppet-report')
     #     end
-    helpers = PuppetFacts::get('helpers')
+    helpers = Vuppeteer::get_fact('helpers')
     helpers = [helpers] if helpers && !helpers.class.include?(Enumerable)
-    if (helpers || !PuppetFacts::get('disable_default_hepers', false)) 
-      self.add_helpers(vm, helpers, !PuppetFacts::get('disable_default_hepers', false))
+    if (helpers || !Vuppeteer::get_fact('disable_default_hepers', false)) 
+      self.add_helpers(vm, helpers, !PuppVuppeteeretFacts::get('disable_default_hepers', false))
     end
   end
 end

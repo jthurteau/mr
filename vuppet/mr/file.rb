@@ -5,6 +5,11 @@
 module FileManager
   extend self
 
+  require_relative 'file/paths'
+  require_relative 'file/mirror'
+  require_relative 'file/erbash'
+  require_relative 'file/repos'
+
   @initialized = false
   @localize_token = 'local-dev'
   @override_token = 'example'
@@ -15,11 +20,11 @@ module FileManager
 
   def self.init(root = nil)
     return if @initialized
-    self.localize_token(PuppetFacts::get('localize_token'))
-    self.override_token(PuppetFacts::get('override_token'))
-    FilePaths::project_root(PuppetFacts::get('host_root_path')) 
-    FilePaths::read_path(PuppetFacts::get('host_allowed_read_path')) 
-    FilePaths::write_path(PuppetFacts::get('host_allowed_write_path'))
+    self.localize_token(Vuppeteer::get_fact('localize_token'))
+    self.override_token(Vuppeteer::get_fact('override_token'))
+    FilePaths::project_root(Vuppeteer::get_fact('host_root_path')) 
+    FilePaths::read_path(Vuppeteer::get_fact('host_allowed_read_path')) 
+    FilePaths::write_path(Vuppeteer::get_fact('host_allowed_write_path'))
     FilePaths::init(root)
     @initialized = true
   end

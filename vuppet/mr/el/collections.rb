@@ -3,7 +3,7 @@
 # NOTE: SCL seems to be deprecated with RHEL8? so this module may be replaces with one more focuses on Yum Modules?
 #
 
-module CollectionManager
+module Collections
   extend self
 
   @collections_requested = false
@@ -68,7 +68,7 @@ module CollectionManager
   end
 
   def self.sc_repos()
-    Puppeteer::enforce_enumerable(PuppetFacts::get('sc_repos', []))    
+    Puppeteer::enforce_enumerable(Vuppeteer::get_fact('sc_repos', []))    
   end
 
   def self.enabled_sc_repos()

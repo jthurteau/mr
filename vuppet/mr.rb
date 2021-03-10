@@ -19,28 +19,11 @@ module Mr
   # https://www.vagrantup.com/docs/synced-folders/virtualbox
 
   require_relative 'mr/utils'
+  require_relative 'mr/file'
   require_relative 'mr/vuppeteer'
   require_relative 'mr/vagrant'
-
-  #TODO these still need encapsulation work
-  require_relative 'mr/puppet/manager'
-  require_relative 'mr/puppet/manifests'
-  require_relative 'mr/puppet/modules'
-  require_relative 'mr/puppet/facts'
-  require_relative 'mr/puppet/hiera'
-  require_relative 'mr/puppet/stack'
-  require_relative 'mr/file/manager' #TODO abstract all file functions into MrUtil?
-  require_relative 'mr/file/paths'
-  require_relative 'mr/file/mirror'
-  require_relative 'mr/file/erbash'
-  require_relative 'mr/file/repos'
-  require_relative 'mr/el/manager'
-  require_relative 'mr/network/manager'
-
-  ##
-  # these may be deprecated
-  require_relative 'mr/el/collections'
-  require_relative 'mr/vuppeteer/helpers'
+  require_relative 'mr/el'
+  require_relative 'mr/puppet'
 
   ##
   # where mr runs from and aquires global(for intneral)/external recipies
@@ -83,7 +66,7 @@ module Mr
     Vuppeteer::verify()
     Vuppeteer::shutdown('End of the Line for now', -1)
     if (!@disabled)
-      ElManager::setup()# CollectionManager::request(PuppetFacts::get('software_collection', RhelManager::sc))
+      ElManager::setup()# CollectionManager::request(Vuppeteer::get_fact('software_collection', RhelManager::sc))
       Vuppeteer::sync()
       VagrantManager::register_triggers!()
     else
@@ -188,7 +171,7 @@ module Mr
         when :allowed_write_path
           roots['host_allowed_write_path'] = v
         when :target_manifest
-          PuppetManifests::set_output_file(v)
+          PuppetManager::set_manifest(v)
         when :facts
           if (v.class == String)
             @project_facts_file = (y.end_with?('.yaml') ? v[0..-4] : v)
@@ -198,17 +181,17 @@ module Mr
             Vuppeteer::shutdown("Error: Invalid facts option passed in configuration", -3)
           end
         when :generated
-          PuppetFacts::register_generated(v)
+          Vuppeteer::register_generated(v)
         when :assert
-          PuppetFacts::set_asserts(v)
+          Vuppeteer::set_asserts(v)
         when :require
-          PuppetFacts::add_requirements(v)
+          Vuppeteer::add_requirements(v)
         when :load_stack_facts
-          PuppetFacts::disable(:stack) if !v
+          Vuppeteer::disable(:stack) if !v
         when :load_local_facts
-          PuppetFacts::disable(:local) if !v
+          Vuppeteer::disable(:local) if !v
         when :load_developer_facts
-          PuppetFacts::enable(:developer) if v
+          Vuppeteer::enable(:developer) if v
           if (v.class == String)
             @developer_facts_file = v
           end
@@ -222,12 +205,12 @@ module Mr
         end
       end   
     elsif(!config.nil?)
-      PuppetFacts::set_asserts({'project' => config.to_s})
+      Vuppeteer::set_asserts({'project' => config.to_s})
     end
     option_roots.each do |r, v|
       roots[r] = v if !roots.has_key?(r)
     end
-    PuppetFacts::set_root_facts(roots)
+    Vuppeteer::set_root_facts(roots)
     @active_path = File.absolute_path(configured_active_path)
   end
 
@@ -236,11 +219,8 @@ module Mr
     vagrant_path = File.dirname(vagrant_file)
     FileManager::init(vagrant_path)
     Vuppeteer::init(@active_path != @my_path ? @my_path : nil)
-    PuppetFacts::init()
-    @disabled = PuppetFacts::get('disabled', false)
     PuppetManager::init()
-    PuppetStack::init()
-    PuppetManifests::init()
+    @disabled = Vuppeteer::get_fact('disabled', false)
     VagrantManager::init(v)
     @prepped = false
   end
@@ -251,11 +231,9 @@ module Mr
     self._path_setup()
     FileManager::global_ensure()
     #TODO, these can be pushed down
-    PuppetFacts::set_facts({ 'vagrant_root': @guest_path}, true)
-    NetworkManager::resgister(cors)#app = nil, developer = nil #self._register(PuppetFacts::get('org_domain'))
+    Vuppeteer::set_facts({ 'vagrant_root': @guest_path}, true)
     ElManager::resgister(VagrantManager::config())
-    CollectionManager::provision(VagrantManager::config()) #TODO this may be deprecated since it is tied to RHEL7?
-    HelperManager::post_puppet()
+    VagrantManager::post_puppet()
     @prepped = true
   end
   

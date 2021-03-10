@@ -6,6 +6,9 @@
 
 module ElManager
   extend self
+
+  require_relative 'el/network'
+  require_relative 'el/collections'
   
   @singleton = nil
   @build = 'hobo'
@@ -24,7 +27,7 @@ module ElManager
 
   end
 
-  def self._OlDinit(hash_or_key = nil, source_box = nil)
+  def self._old_init(hash_or_key = nil, source_box = nil)
     @destroy_script = 'rhel_destroy' #TODO this whouldn't be set when in Centos/Nomad mode...
     @box = source_box if !source_box.nil?
     return self if !hash_or_key
@@ -52,7 +55,7 @@ module ElManager
       end
     else
       incomplete_config_text = "Warning: #{rc} for \"#{ident_key}\" is incomplete"
-      facts = PuppetFacts::facts()
+      facts = Vuppeteer::facts()
       complete_custom = reg_data.include?('custom_setup')
       @cred_type = self.ready_to_register()
       incomplete = !complete_custom && !@cred_type
@@ -65,7 +68,7 @@ module ElManager
   end
 
   def self.ready_to_register()
-    facts = PuppetFacts::facts()
+    facts = Vuppeteer::facts()
     complete_org = ['rhsm_org', 'rhsm_key'].all? {|k| facts.include?(k)}
     complete_user = ['rhsm_pass', 'rhsm_user'].all? {|k| facts.include?(k)}
     return 'org' if complete_org
@@ -96,7 +99,7 @@ module ElManager
       @destroy_script = ident_hash['custom_destroy']    
     end
     if ident_hash['software_collection'] #TODO make this more robusty
-      PuppetFacts::set_facts({'software_collection' => ident_hash['software_collection']}, true)
+      Vuppeteer::set_facts({'software_collection' => ident_hash['software_collection']}, true)
     end
     ident_hash['el_version'] = el_version
     @singleton = Realm.new(ident_hash)
@@ -160,20 +163,22 @@ module ElManager
 
   ## came from Vuppeteer
     # def self.name_gen()
-    #   return PuppetFacts::get('box_name') if PuppetFacts::fact?('box_name')
-    #   app = PuppetFacts::get('app', '')
-    #   developer = PuppetFacts::get('developer', '')
+    #   return Vuppeteer::get_fact('box_name') if Vuppeteer::fact?('box_name')
+    #   app = Vuppeteer::get_fact('app', '')
+    #   developer = Vuppeteer::get_fact('developer', '')
     #   fallback = [app, developer].all?{|v| v == ''} ? 'vagrant-puppet' : ''
     #   delim = [app, developer].none?{|v| v == ''} ? '-' : ''
     #   "#{developer}#{delim}#{app}#{fallback}"
     # end
   
     # def self.infra_gen()
-    #   return '' if PuppetFacts::fact?('standalone')  
+    #   return '' if Vuppeteer::fact?('standalone')  
     #   RhelManager::is_it? ? RhelManager::build() : 'nomad'
     # end
 
   def self.register()
+    
+    NetworkManager::resgister(cors)#app = nil, developer = nil #self._register(Vuppeteer::get_fact('org_domain'))
     ## came from Mr
   #     if (RhelManager::is_it?)
   #       RhelManager::box_destroy_prep()
@@ -205,22 +210,22 @@ module ElManager
   #     VagrantManager::config().vm.provision 'refresh', type: :shell, run: 'never' do |s|
   #       s.inline = ErBash::script('yum_refresh')
   #     end
-  
-  #     
+
+    CollectionManager::provision(VagrantManager::config()) #TODO this may be deprecated since it is tied to RHEL7?
   end
 
   def self._setup()
     ## came from Mr
-#     if PuppetFacts::fact?('box_source')
-  #       @box_source = PuppetFacts::get('box_source')
-  #     elsif PuppetFacts::get('default_to_rhel')
+#     if Vuppeteer::fact?('box_source')
+  #       @box_source = Vuppeteer::get_fact('box_source')
+  #     elsif Vuppeteer::get_fact('default_to_rhel')
   #       @box_source = RhelManager::box()
   #     end
-  #     license_important = PuppetFacts::get('license_important', false)
+  #     license_important = Vuppeteer::get_fact('license_important', false)
   #     if (license_important)
-  #       selected_license = PuppetFacts::get('license_ident', PuppetFacts::get('pref_license_ident', nil))
+  #       selected_license = Vuppeteer::get_fact('license_ident', Vuppeteer::get_fact('pref_license_ident', nil))
   #     else
-  #       selected_license = PuppetFacts::get('pref_license_ident', PuppetFacts::get('license_ident', nil))
+  #       selected_license = Vuppeteer::get_fact('pref_license_ident', Vuppeteer::get_fact('license_ident', nil))
   #     end
   #     RhelManager::init(selected_license, @box_source)
   #     #TODO software_collection = ''; #TODO! RhelManager::collection_manifest()
@@ -255,7 +260,7 @@ module ElManager
         @rhel_key = hash['rhsm_key'] if hash&.include?('rhsm_key')
         @key_repo = hash['key_repo'] if hash&.include?('key_repo')
         @rhel_server = hash['rhsm_server'] if hash&.include?('rhsm_server')
-        @dev_tools = PuppetFacts::get('dev_tools') if hash&.include?('dev_tools')
+        @dev_tools = Vuppeteer::get_fact('dev_tools') if hash&.include?('dev_tools')
         @man_attach = hash['manual_attach'] if hash&.include?('manual_attach')
         @el_version = hash['el_version'] if hash&.include?('el_version')
     end

@@ -9,7 +9,7 @@ module PuppetStack
 
 
   def self.init()
-    stack = PuppetFacts::get('stack')
+    stack = Vuppeteer::get_fact('stack')
     if stack.nil?
       Vuppeteer::shutdown('Error: No stack provided in facts')
     end
@@ -18,7 +18,7 @@ module PuppetStack
       next if !s || s.strip() == ''
       @ppp.push(s);
     end
-    PuppetFacts::post_stack()
+    Vuppeteer::post_stack()
   end
 
   def self.get(options = false)

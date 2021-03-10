@@ -34,11 +34,11 @@ module Plugin
   #   mode = RhelManager::ready_to_register()
   #   if Vagrant.has_plugin?('vagrant-registration')
   #     if 'user' == mode
-  #       v.registration.username = PuppetFacts::get('rhsm_user')
-  #       v.registration.password = PuppetFacts::get('rhsm_pass')
+  #       v.registration.username = Vuppeteer::get_fact('rhsm_user')
+  #       v.registration.password = Vuppeteer::get_fact('rhsm_pass')
   #     elsif 'org' == mode
-  #       v.registration.org = PuppetFacts::get('rhsm_org')
-  #       v.registration.activationkey = PuppetFacts::get('rhsm_key')
+  #       v.registration.org = Vuppeteer::get_fact('rhsm_org')
+  #       v.registration.activationkey = Vuppeteer::get_fact('rhsm_key')
   #     end
   #     v.registration.skip = false
   #   #config.registration.auto_attach = false # only do this on dev

@@ -15,18 +15,18 @@ module PuppetHiera
   @required_modules = []
 
   def self.init(remote_puppet)
-    if (PuppetFacts::get('hiera_disabled', false))
+    if (Vuppeteer::get_fact('hiera_disabled', false))
       PuppetManager::disable(:hiera)
       return 
     end
     if (@conf_source.start_with?('::')) #TODO fold this back into load_fact_yaml once loaded_files is implemented
-      @conf = PuppetFacts::get(@conf_source[2..-1], {})
+      @conf = Vuppeteer::get_fact(@conf_source[2..-1], {})
     else
       @conf = FileManager::load_fact_yaml(@conf_source, 'Puppet')
     end
     @local_path = "#{Mr::active_path()}/#{FilePaths::temp_path()}hiera"
     @remote_path = "#{remote_puppet}/#{FilePaths::temp_path()}hiera"
-    hiera = PuppetFacts::get('hiera', {})
+    hiera = Vuppeteer::get_fact('hiera', {})
     requires = MrUtils::dig(hiera, 'requires')
     @required_modules = MrUtils::enforce_enumerable(requires) if requires
   end
@@ -121,7 +121,7 @@ module PuppetHiera
       file = self.source(f)
       #Vuppeteer::say("Notice : Hiera #{file} #{self.local_override?(facet).to_s }for #{f}")
       Vuppeteer::say("Warning: unable to source Hiera data for #{f}") if !file
-      PuppetFacts::set({'hiera': {}}, true) if file && !PuppetFacts::fact?('hiera')
+      Vuppeteer::set_facts({'hiera': {}}, true) if file && !Vuppeteer::fact?('hiera')
       copied_files = FileMirror::copy_unique_files(file, "#{data_path}/#{f}")
       # print copied_files.to_s + "\n"
       copied_files.each() do |c|
@@ -171,7 +171,7 @@ module PuppetHiera
 #################################################################
 
   def self._generate()
-    hiera = PuppetFacts::get('hiera', {})
+    hiera = Vuppeteer::get_fact('hiera', {})
     files = [];
     data_path = "#{@local_path}/data"
     if (hiera['files'])
@@ -191,7 +191,7 @@ module PuppetHiera
     def initialize(remote, files)
         @data_path = "#{remote}/data"
         @files = files
-        @generated = PuppetFacts::get('hiera', {}).keys()
+        @generated = Vuppeteer::get_fact('hiera', {}).keys()
         
     end
 

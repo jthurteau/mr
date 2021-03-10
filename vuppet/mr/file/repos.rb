@@ -9,7 +9,7 @@ module RepoManager
   @host_repo_path = 'local-dev.repos'
 
   def self.init()
-    repos = PuppetFacts::fact?('project_repos') ? Puppeteer::enforce_enumerable(PuppetFacts::get('project_repos')) : []
+    repos = Vuppeteer::fact?('project_repos') ? Puppeteer::enforce_enumerable(Vuppeteer::get_fact('project_repos')) : []
     self._init() if !@init
     Puppeteer::say("Notice: Updating local project repos...", 'prep') if repos.length > 0
     repos.each() do |r|
@@ -93,11 +93,11 @@ module RepoManager
 
   def self.secure_repo_uri(repo_uri)
     repo_uri = repo_uri.split('#', 2)[0] if repo_uri.include?('#')
-    developer = PuppetFacts::get('developer')
-    enterprise_uri = PuppetFacts::get('ghe_host')
-    enterprise_pat = PuppetFacts::get('ghe_pat')
-    git_pat = PuppetFacts::get('git_pat')
-    git_developer = PuppetFacts::get('git_developer') || developer #TODO support ghc_developer and ghe_developer
+    developer = Vuppeteer::get_fact('developer')
+    enterprise_uri = Vuppeteer::get_fact('ghe_host')
+    enterprise_pat = Vuppeteer::get_fact('ghe_pat')
+    git_pat = Vuppeteer::get_fact('git_pat')
+    git_developer = Vuppeteer::get_fact('git_developer') || developer #TODO support ghc_developer and ghe_developer
     ent_secure_uri = developer && enterprise_uri && enterprise_pat && repo_uri.index("https://#{enterprise_uri}") == 0
     git_secure_uri = developer && git_pat && repo_uri.index("https://github.com") == 0
     return repo_uri.sub("https://","https://#{developer}:#{enterprise_pat}@") if ent_secure_uri

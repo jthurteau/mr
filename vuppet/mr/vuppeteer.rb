@@ -6,6 +6,7 @@ module Vuppeteer
     extend self
 
     require_relative 'vuppeteer/utils'
+    require_relative 'vuppeteer/facts'
     require_relative 'vuppeteer/installer'
     require_relative 'vuppeteer/report'
   
@@ -49,6 +50,7 @@ module Vuppeteer
         self.say("External Mr #{external_path} managing build.", 'prep')
         Installer::enable()
       end
+      Facts::init()
     end
   
     def self.external?
@@ -60,7 +62,7 @@ module Vuppeteer
     end
 
     def self.start()
-      self.expose_facts() if PuppetFacts::get('verbose_facts') || PuppetFacts::get('verbose')
+      self.expose_facts() if Facts::get('verbose_facts') || Facts::get('verbose')
       if (self.external?)
         Installer::prep()
       end
@@ -194,7 +196,7 @@ module Vuppeteer
       self.say(
         [
           'Processed Facts:',
-          MrUtils::inspect(PuppetFacts::facts()), 
+          MrUtils::inspect(Facts::facts()), 
           '----------------',
         ], 'prep'
       )
@@ -226,18 +228,18 @@ module Vuppeteer
     end
 
     def self.import_files()
-      return PuppetFacts::get('import', [])
+      return Facts::get('import', [])
     end
 
     def self.verify()
-      PuppetFacts::requirements().each do |r|
+      Facts::requirements().each do |r|
         if (r.class == Hash)
           r.each do |k, v|
-            self.shutdown("Error: fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if PuppetFacts::get(k) != v
+            self.shutdown("Error: fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if Facts::get(k) != v
           end
         elsif (r.class == Array)
           r.each do |k|
-            self.shutdown("Error: Missing assert fact: \"#{k}\" during boxing") if !PuppetFacts::fact?(k)
+            self.shutdown("Error: Missing assert fact: \"#{k}\" during boxing") if !Facts::fact?(k)
           end
         else
           r_string = r.to_s
@@ -248,7 +250,55 @@ module Vuppeteer
     end
 
     def self.sync()
-      RepoManager::init() if (PuppetFacts::fact?('project_repos'))
+      RepoManager::init() if (Facts::fact?('project_repos'))
+    end
+
+    def self.register_generated(v)
+      Facts::register_generated(v)
+    end
+  
+    def self.set_asserts(v)
+      Facts::set_asserts(v)
+    end
+  
+    def self.add_requirements(v)
+      Facts::add_requirements(v)
+    end
+  
+    def self.disable(o)
+      Facts::disable(o)
+    end
+  
+    def self.set_asserts(a)
+      Facts::set_asserts(a)
+    end
+  
+    def self.set_root_facts(f)
+      Facts::set_root_facts(f)
+    end
+  
+    def self.get_fact(f, d = nil)
+      Facts::get(f, d)
+    end
+  
+    def self.set_facts(f, m = false)
+      Facts::set(f, m)
+    end
+
+    def self.facts()
+      Facts::facts()
+    end
+
+    def self.fact?(f)
+      Facts::fact?(f)
+    end
+
+    def self.set_derived(d)
+      Facts::set_derived(d)
+    end
+
+    def self.post_stack()
+      Facts::post_stack()
     end
 
   #################################################################

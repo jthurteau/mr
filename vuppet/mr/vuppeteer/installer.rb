@@ -71,7 +71,7 @@ module Installer
   #   #TODO also support the same + mode as install_files? right now it looks like it is default behavior
   #   active = Mr::active_path()
   #   global = Puppeteer::external? ? Mr::path() : "#{active}/global."
-  #   list = Puppeteer::enforce_enumerable(PuppetFacts::get('global_files', []))
+  #   list = Puppeteer::enforce_enumerable(Vuppeteer::get_fact('global_files', []))
   #   list.each do |f|
   #     base_path = "#{active}/" + File.dirname(f)
   #     self.path_ensure(base_path, self.allow_dir_creation?)
