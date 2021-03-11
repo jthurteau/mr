@@ -7,6 +7,7 @@ module Vuppeteer
 
     require_relative 'vuppeteer/utils'
     require_relative 'vuppeteer/facts'
+    require_relative 'vuppeteer/stack'
     require_relative 'vuppeteer/host'
     require_relative 'vuppeteer/installer'
     require_relative 'vuppeteer/report'
@@ -64,6 +65,8 @@ module Vuppeteer
       @features[:instance] = "#{Mr::active_path}/#{FileManager::localize_token}.instance.yaml"
       @instance = Facts::instance()
       @features[:verbose] = Facts::get('verbose')
+      Stack::init()
+      Facts::post_stack_init()
     end
 
     def self.disable(o)
@@ -260,8 +263,8 @@ module Vuppeteer
   # gateways
   #################################################################
 
-    def self.post_stack()
-      Facts::post_stack()
+    def self.get_stack(options = nil)
+      return Stack::get(options)
     end
 
     def self.set_root_facts(f)

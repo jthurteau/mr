@@ -29,7 +29,7 @@ module Manifests
     if (ldm_file) #TODO more edge case testing around missing/unwritable ldm target
       Vuppeteer::say("building #{@manifest}", 'prep')
       ldm_file.truncate(ldm_file.pos + 1)
-      ppp_final = Stack::get() + ["#{FileManager::localize_token()}.instance"]
+      ppp_final = Vuppeteer::get_stack() + ["#{FileManager::localize_token()}.instance"]
       required_modules = Hiera::required_modules()
       needed_modules = []     
       ppp_final.each do |pp|

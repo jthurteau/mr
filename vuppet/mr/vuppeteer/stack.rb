@@ -18,7 +18,6 @@ module Stack
       next if !s || s.strip() == ''
       @ppp.push(s);
     end
-    Vuppeteer::post_stack()
   end
 
   def self.get(options = false)
@@ -29,7 +28,7 @@ module Stack
       extension_free = true
       mixin_optional = false
     end
-    search = mixin_optional ? (@ppp + PuppetFacts.get('stack_optional', [])) : (@ppp)
+    search = mixin_optional ? (@ppp + Vuppeteer.get_fact('stack_optional', [])) : (@ppp)
     if (extension_free)
       extension_free = []
       search.each do |p|

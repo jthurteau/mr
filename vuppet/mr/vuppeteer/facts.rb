@@ -80,7 +80,7 @@ module Facts
     self._developer_facts() if Vuppeteer::enabled?(:developer)
   end
 
-  def self.post_stack() #NOTE these are additional init steps that have to happen after stack init (currently entabled in PuppetManager)
+  def self.post_stack_init() #NOTE additional steps that have to happen after stack init
     self._stack_facts() if Vuppeteer::enabled?(:stack)
     Vuppeteer::say('','prep') #NOTE adds a formatted line
     self.ensure_facts(@generate)
@@ -181,7 +181,6 @@ module Facts
 
   def self.ensure_facts(f) #TODO in general
     Vuppeteer::trace('ensure facts', f)
-    print("\n")
     missing = {}
     storable = []
     f.each do |k, c|
@@ -247,7 +246,7 @@ module Facts
 
   def self._stack_facts()
     Vuppeteer::say("Loading stack puppet facts:", 'prep')
-    fact_sources = PuppetManager::get_stack()
+    fact_sources = Vuppeteer::get_stack()
     fact_sources.each do |f|
       next if f.include?('.') && !f.end_with?('.yaml') #NOTE old
       next if f.include?('/') && !f.start_with?('facts/') #NOTE new

@@ -8,7 +8,6 @@ module PuppetManager
   require_relative 'puppet/manifests'
   require_relative 'puppet/modules'
   require_relative 'puppet/hiera'
-  require_relative 'puppet/stack'
 
   @conf_source = ['puppet.yaml','::puppet'][0]
   @conf = nil
@@ -24,7 +23,6 @@ module PuppetManager
 
   def self.init()
     self._init()
-    Stack::init()
     Manifests::init()
   end
 
@@ -112,12 +110,6 @@ module PuppetManager
 # gateway methods
 #################################################################
 
-  def self.get_stack(options = nil)
-    return Stack::get(options)
-  end
-
-
-
   def self.set_manifest(v)
     Manifests::set_output_file(v)
   end
@@ -157,15 +149,10 @@ module PuppetManager
       @conf = {}
       Vuppeteer::say("Notice: No puppet config provided (default version/options etc. are in place)", 'prep')
     end
+    self.disable() if Vuppeteer::fact?('bypass_puppet')
     Vuppeteer::set_facts({'puppet_files' => @file_path}, true)
     Modules::init(Vuppeteer::get_fact('puppet_modules'))
     Hiera::init(@file_path) if (!self.disabled?(:hiera))
-    local_stack = []
-    local_stack.push('project_' + Vuppeteer::get_fact('project').to_s) if Vuppeteer::fact?('project') 
-    local_stack.push('app_' + Vuppeteer::get_fact('app').to_s) if Vuppeteer::fact?('app') 
-    local_stack.push('developer_' + Vuppeteer::get_fact('developer')) if Vuppeteer::fact?('developer')
-    self.disable() if Vuppeteer::fact?('bypass_puppet')
-    Stack::add(local_stack, false)
     ElManager::init() #setup() used to be here (in mr.rb anyway)
   end
 

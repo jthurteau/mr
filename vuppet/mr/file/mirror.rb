@@ -39,7 +39,7 @@ module FileMirror
                 #Vuppeteer::say("shallow file #{source}#{c} #{target}#{c}", 'prep')
                 FileUtils.cp("#{source}#{c}", "#{target}#{c}")
                 #Vuppeteer::shutdown("copy to #{target}#{c} failed") if !File.exist?("#{target}#{c}")
-              elsif (conditional && PuppetManager::get_stack('+optional-extensions').include?(condition))
+              elsif (conditional && Vuppeteer::get_stack('+optional-extensions').include?(condition))
                 c_dir_mode = File.directory?("#{source}#{c}")
                 #Vuppeteer::say("conditional #{condition} #{source}#{c} #{target}#{c}", 'prep') if !c_dir_mode
                 #Vuppeteer::say("conditional dir #{condition} #{source}#{c} #{target}", 'prep') if c_dir_mode
