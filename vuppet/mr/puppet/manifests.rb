@@ -105,7 +105,6 @@ module Manifests
 #################################################################
 
   def self._manifest(s, ldm_file)
-    #TODO rewrite this to use the Puppeteer::report mechanism 
     needed_modules = []
     return if s.include?('.') && !s.end_with?('.pp')
     s = s[0..-4] if s.end_with?('.pp')

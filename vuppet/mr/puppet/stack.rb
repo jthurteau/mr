@@ -13,7 +13,7 @@ module Stack
     if stack.nil?
       Vuppeteer::shutdown('Error: No stack provided in facts')
     end
-    #print([__FILE__,__LINE__,stack,stack.class].to_s)
+    #Vuppeteer::trace(stack,stack.class)
     stack.each do |s|
       next if !s || s.strip() == ''
       @ppp.push(s);

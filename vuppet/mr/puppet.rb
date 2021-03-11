@@ -45,12 +45,9 @@ module PuppetManager
     VagrantManager::host_pre_puppet_triggers()
 
     Modules::processCommands(@version)
-    prep_commands = Modules::get_commands(['status', 'install', 'additional'])
-    reset_commands = Modules::get_commands(['remove'])
-    sync_commands = Modules::get_commands(['dev_sync'])
-    prep_command_string = Vuppeteer::translate_guest_commands(prep_commands)
-    sync_command_string = Vuppeteer::translate_guest_commands(sync_commands)
-    reset_command_string = Vuppeteer::translate_guest_commands(reset_commands)
+    prep_command_string = self.translate_guest_commands(Modules::get_commands(['status', 'install', 'additional']))
+    sync_command_string = self.translate_guest_commands(Modules::get_commands(['dev_sync']))
+    reset_command_string = self.translate_guest_commands(Modules::get_commands(['remove']))
 
     VagrantManager::config().vm.provision 'puppet-reset', type: :shell, run: 'never' do |s|
       s.inline = "#{reset_command_string}"
@@ -68,10 +65,10 @@ module PuppetManager
       s.inline = sync_command_string
     end
 
-    Puppeteer::say("Notice: Puppet options \"#{run_options['out_options']} --logdest #{run_options['log_to']}\"", 'prep') if ('console' != run_options['log_to'])
+    Vuppeteer::say("Notice: Puppet options \"#{run_options['out_options']} --logdest #{run_options['log_to']}\"", 'prep') if ('console' != run_options['log_to'])
 
     if (self.disabled?)
-      Puppeteer::say("Notice: Bypassing main Puppet provisioning", 'prep')
+      Vuppeteer::say("Notice: Bypassing main Puppet provisioning", 'prep')
     else
       VagrantManager::config().vm.provision 'puppet' do |puppet|
         puppet.manifests_path = Manifests::path()
@@ -91,13 +88,35 @@ module PuppetManager
     end
   end
 
-  def self.get_stack(o)
-    return Stack::get(o)
-  end
-
   def self.guest_puppet_path()
     return @file_path
   end
+
+  def self.translate_guest_commands(commands)
+    command_string = ''
+    commands.each do |c|
+      if (c.is_a?(Hash)) 
+        command_string += "cd #{c.dig(:path)}" if c.has_key?(:path)
+        command = c.dig(:cmd)
+        command_string += "#{command}\n" if command
+        #TODO support :say directive
+        #TODO support returning to original :path
+      else
+        command_string += "#{c}\n"
+      end
+    end
+    command_string
+  end
+
+#################################################################
+# gateway methods
+#################################################################
+
+  def self.get_stack(options = nil)
+    return Stack::get(options)
+  end
+
+
 
   def self.set_manifest(v)
     Manifests::set_output_file(v)
@@ -112,8 +131,11 @@ module PuppetManager
     Hiera::generate()
   end
 
-  def self.get_host_commands()
-    Modules.get_commands(['local_install'])
+  def self.get_host_commands(which)
+    case which
+    when 'pre_puppet'
+      Modules::get_commands(['local_install'])
+    end
   end
 
 #################################################################
@@ -130,9 +152,7 @@ module PuppetManager
       end
       m = @conf.has_key?['module_versions'] && @conf['module_versions'].class == Hash
       Modules::set_versions(@conf['module_versions']) if m
-      #TODO
-      #Vuppeteer::set_derived(@conf['derived_facts']) if @conf['derived_facts']
-      #Vuppeteer::register_generated()
+      Vuppeteer::add_derived(@conf['derived_facts']) if @conf['derived_facts']
     else
       @conf = {}
       Vuppeteer::say("Notice: No puppet config provided (default version/options etc. are in place)", 'prep')

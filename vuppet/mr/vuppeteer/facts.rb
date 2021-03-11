@@ -7,26 +7,14 @@ module Facts
 
   @facts = nil
   @root_facts = []
+  @requirements = []
+  @generate = {}
+
   @meta_facets = {
     rdtd: ['__rdtd__', 'Redacted'],
     block: ['__hblk__', 'Locked'],
     alts: ['__alts__', 'Duplicate'],
   }
-  @requirements = []
-  @requirement_types = [
-    :boolean,
-    :integer,
-    :hash,
-    :array,
-    :enumerable,
-    :in,
-    :include,
-    :string,
-    :string_length,
-    :string_complexity,
-    :string_regex,
-    :members
-  ]
 
   ##
   # facts that can only be defined in Vagrantfile options
@@ -58,7 +46,6 @@ module Facts
     'rhsm_user','rhsm_pass','rhsm_org', 'rhsm_key', 'rhsm_host',
   ]
 
-  @generate = {}
 
   ##
   # load the inital facts file, remove invalid keys, and merge it in with root_facts
@@ -80,7 +67,7 @@ module Facts
           dev_fact = @local_developer_facts.include?(f) ? ' either developer facts or' : ''
           local_fact_options = " , or move it to#{dev_fact} #{FileManager::localize_token}.yaml..."
           solution = "#{solution}#{local_fact_options}" if !@option_only_facts.include?(f)
-          Puppeteer::say("#{skipped}, #{solution}", 'prep')
+          Vuppeteer::say("#{skipped}, #{solution}", 'prep')
           self::_set_as(:rdtd, f, file_facts[f])
           file_facts.delete(f) 
         end
@@ -93,13 +80,11 @@ module Facts
     self._developer_facts() if Vuppeteer::enabled?(:developer)
   end
 
-  def self.post_stack()
+  def self.post_stack() #NOTE these are additional init steps that have to happen after stack init (currently entabled in PuppetManager)
     self._stack_facts() if Vuppeteer::enabled?(:stack)
-    Puppeteer::say('','prep') #NOTE this adds a formatted line
-    self._instance_facts() if Vuppeteer::enabled?(:instance)
-    #TODO
+    Vuppeteer::say('','prep') #NOTE adds a formatted line
     self.ensure_facts(@generate)
-    Puppeteer::say('','prep')
+    Vuppeteer::say('','prep')
     self._validate_requirements()
   end
 
@@ -107,12 +92,16 @@ module Facts
     @facts.clone()
   end
 
+  def self.instance()
+    self._instance_facts() if Vuppeteer::enabled?(:instance)
+  end
+
   def self.fact?(match)
     return @facts&.has_key?(match) if !match.is_a?(Array) && !MrUtils::traversable(match)
     begin
       MrUtils::search(match, @facts, true)
     rescue => e
-      print(['fact? fail', __FILE__,__LINE__,match, @facts, e].to_e)
+      Vuppeteer::trace('fact? fail', __FILE__,__LINE__,match, @facts, e)
       return false
     end
     return true
@@ -120,25 +109,25 @@ module Facts
 
   def self.get(match, default = nil)
     result = MrUtils::search(match, @facts)
-    #print([__FILE__,__LINE__,result,@facts,match].to_s)
+    #Vuppeteer::trace(result,@facts,match)
     return !result.nil? ? result : default
   end
 
   def self.roots(f)
-    Puppeteer::shutdown('Error: Cannot define root facts once any are set.', -1) if !@facts.nil?
-    Puppeteer::shutdown('Error: Non-hash passed as root facts.' -1) if !f.respond_to?(:to_h)
+    Vuppeteer::shutdown('Error: Cannot define root facts once any are set.', -1) if !@facts.nil?
+    Vuppeteer::shutdown('Error: Non-hash passed as root facts.' -1) if !f.respond_to?(:to_h)
     @facts = f.to_h
     @root_facts = @facts.keys()
   end
 
   def self.asserts(f) #TODO support additional types of asserts (like in/include, not_nil, class etc.)
-    Puppeteer::shutdown('Error: Non-hash passed as asserts.', -1) if !f&.respond_to?(:to_h)
+    Vuppeteer::shutdown('Error: Non-hash passed as asserts.', -1) if !f&.respond_to?(:to_h)
     f.each do |k, v|
       @requirements.push({k => v}) 
     end
   end
 
-  def self.requirements(r)
+  def self.requirements(r = nil)
     if (r.class.is_a?(Hash))
       r.each do |k, v| 
         @requirements += [[k] + MrUtils::enforce_enumerable(v)]
@@ -147,23 +136,20 @@ module Facts
       r.each do |v|
         @requirements += [v]
       end
-    else
+    elsif !r.nil?
       @requirements += [r]
     end
-  end
-
-  def self.requirements()
-    return @requirements
+    @requirements
   end
 
   def self.set(f, merge = false)
     e = f.class.include?(Enumerable)
-    Puppeteer::shutdown('Error: Cannot redefine facts once set') if !@facts.nil? && !merge
-    Puppeteer::shutdown('Error: Initial facts must be a hash') if !e && !merge
+    Vuppeteer::shutdown('Error: Cannot redefine facts once set', -3) if !@facts.nil? && !merge
+    Vuppeteer::shutdown('Error: Initial facts must be a hash', -3) if !e && !merge
     if (merge) 
       @facts = {} if !@facts
       if (!e)
-        Puppeteer::say('Notice: Additional facts not a hash, skipping...', 'prep')
+        Vuppeteer::say('Notice: Additional facts not a hash, skipping...', 'prep')
       else
         f.each do |k, v|
           rooted = @root_facts.any? {|r| r == k }
@@ -173,10 +159,10 @@ module Facts
             @facts['__orig__'][k] = [] if @facts['__orig__'][k].nil?
             @facts['__orig__'][k].push(@facts[k])
           elsif (!rooted && has_fact)
-            Puppeteer::say("Notice: New fact #{k} not flagged for merge...", 'prep')
+            Vuppeteer::say("Notice: New fact #{k} not flagged for merge...", 'prep')
             next
           elsif (rooted && has_fact)
-            Puppeteer::say("Notice: New fact #{k} is already rooted and cannot be set...", 'prep')
+            Vuppeteer::say("Notice: New fact #{k} is already rooted and cannot be set...", 'prep')
             next
           end
           self._set_fact(k,v)
@@ -185,7 +171,7 @@ module Facts
     elsif (@facts.nil?)
       @facts = f
     else
-      Puppeteer::say("Warning: New facts rejected, merge not requested and initial facts set.", 'prep')
+      Vuppeteer::say("Warning: New facts rejected, merge not requested and initial facts set.", 'prep')
     end
   end
 
@@ -194,32 +180,26 @@ module Facts
   end
 
   def self.ensure_facts(f) #TODO in general
+    Vuppeteer::trace('ensure facts', f)
+    print("\n")
     missing = {}
-    f.each do |k,c|
+    storable = []
+    f.each do |k, c|
       if (!self.fact?(k))
         missing[k] = c
-        Puppeteer.say("generating fact #{k}", 'prep')
+        storable.push(k) if VuppeteerUtils::storable?(c)
+        Vuppeteer.say(["testing fact #{k}... missing"],["generating fact #{k}"], 'prep')
       else
-        Puppeteer.say("testing fact #{k}...provided", 'prep')
+        Vuppeteer.say("testing fact #{k}... provided", 'prep')
       end
     end
-    new_facts = VuppeteerUtils::generate(:random, missing)
+    new_facts = VuppeteerUtils::generate(missing)
     self.set(new_facts, :new)
-    localize_token = FileManager::localize_token()
-    instance_file = "#{Mr::active_path}/#{localize_token}.instance.yaml"
-    facts = FileManager::load_fact_yaml(instance_file, false) || {}
-    any = false
-    new_facts.each do |k,v|
-      if (!facts.has_key?(v))
-        facts[k] = v #TODO don't store derived
-        any = true
-      else
-        Puppeteer::say("Not setting generated fact #{k}, already present in instance facts...", 'prep')
-      end
+    storable_new_facts = {}
+    storable.each do |k|
+      storable_new_facts[k] = new_facts[k]
     end
-    if any
-      FileManager::save_yaml(instance_file, facts)
-    end
+    Vuppeteer::update_instance(storable_new_facts, true) if storable_new_facts.length > 0
   end
 
 #################################################################
@@ -243,18 +223,19 @@ module Facts
   def self._local_facts()
     path = "#{Mr::active_path}/#{FileManager::localize_token}.yaml"
     return nil if !File.exist?(path) #NOTE this file is always optional, so don't even warn if it is missing
-    Puppeteer::report('facts', '_main', 'local')
+    Vuppeteer::report('facts', '_main', 'local')
     supplemental_facts = FileManager::load_fact_yaml(path, false)
     if (supplemental_facts)
       self.set(supplemental_facts, true)
     else
-      Puppeteer::say('Notice: supplemental (local) facts file present, but invalid', 'prep')
+      Vuppeteer::say('Notice: supplemental (local) facts file present, but invalid', 'prep')
     end
   end
 
   def self._developer_facts()
-    path = File.expand_path(@user_facts_file)
-    Vuppeteer::shutdown("Invalid path for developer_facts, outside of writable path") if !FileManager::may?(:read, path)
+    path = File.expand_path(Mr::developer_facts)
+    extra = ": #{path}"
+    Vuppeteer::shutdown("Invalid path for developer_facts, outside of writable path#{extra}") if !FileManager::may?(:read, path)
     Vuppeteer::report('facts', '_main', '~developer')
     user_facts = FileManager::load_fact_yaml(path, false)
     if (user_facts)
@@ -285,31 +266,30 @@ module Facts
   end
 
   def self._instance_facts()
-    instance_file = "#{Mr::active_path}/#{FileManager::localize_token}.instance.yaml"
+    instance_file = Vuppeteer::instance()
     return if !File.exist?(instance_file)
-    Puppeteer::report('facts', '_main', 'instance')
+    Vuppeteer::report('facts', '_main', 'instance')
     i_facts = FileManager::load_fact_yaml(instance_file, false)
     if (i_facts)
       self.set(i_facts, true)
     else
-      Puppeteer::say('Notice: no instance facts loaded (file was empty or invalid)', 'prep')
+      Vuppeteer::say('Notice: no instance facts loaded (file was empty or invalid)', 'prep')
     end
+    return i_facts
   end
 
   def self._validate_requirements()
-    existing = {}
-    @requirements.each do |r|
-      if r.class.include?(Hash)
-        r.each do |k, v|
-          Puppeteer::shutdown("Error: duplicate conflicting assert for #{k}.") if existing.include?(k) and existing[k] != v
-          existing += {k => v}
-          Puppeteer::shutdown("Error: missing value for #{k}: required:#{v}.") if !@facts.include?(k)
-          Puppeteer::shutdown("Error: incorrect value for #{k}: required:#{v}, found:#{}.") if @facts[k] != v
-        end
-      else
-        Puppeteer::shutdown("Error: missing required value for #{r}.") if !@facts.include?(r) or @facts[r].nil?
-      end
+    Vuppeteer::trace(@requirements, @facts)
+    begin
+      errors = VuppeteerUtils::verify(@requirements, @facts)
+    rescue => e
+      Vuppeteer::shutdown(e.class == String ? e : e.to_s, e.class == String ? 3 : -3)
     end
+    Vuppeteer::trace(errors) if errors.length > 0
+    print("\n")
+    error_label = errors.length > 2 ? 'validation errors' : 'valication error'
+    additional = errors.length > 1 ? " (+#{errors.length - 1} more #{error_label})" : ''
+    Vuppeteer::shutdown(Vuppeteer::enabled?(:verbose) ? errors : (errors[0] + additional)) if errors.length > 0
   end
 
   def self._handle(s)

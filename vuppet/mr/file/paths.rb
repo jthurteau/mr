@@ -71,10 +71,10 @@ module FilePaths
 
   def self.clear(path)
     if (!path.start_with?(Mr::active_path()))
-      Puppeteer::say("Warning: Unable to clear path #{path}, not in active path.", 'prep')
+      Vuppeteer::say("Warning: Unable to clear path #{path}, not in active path.", 'prep')
       return false
     elsif (!self.writable?(path))
-      Puppeteer::say("Warning: Unable to clear path #{path}, not in write path.", 'prep')
+      Vuppeteer::say("Warning: Unable to clear path #{path}, not in write path.", 'prep')
       return false
     end
     FileUtils.rm_r(Dir.glob("#{path}/*"))
@@ -85,12 +85,17 @@ module FilePaths
   end
 
   def self.in?(child, parent, inclusive = true)
-    #print([__FILE__,__LINE__,child,parent,inclusive].to_s)
+    Vuppeteer::trace(child,parent,inclusive)
     c = File.absolute_path(child)
     c += c.end_with?('/') ? '' : '/'
-    p = File.absolute_path(parent)
+    p = File.absolute_path(self.expand(parent))
     p += p.end_with?('/') ? '' : '/'
     return c.start_with?(p) && (inclusive || c != p)
+  end
+
+  def self.expand(path)
+    return File.expand_path(path) if path.start_with?('~')
+    path
   end
 
   def self.ensure(path, create = false, verbose = true)

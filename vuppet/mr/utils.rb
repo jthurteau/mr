@@ -25,10 +25,16 @@ module MrUtils
     return trace_stack[0..trace_end]
   end
 
-  def self.caller_file(entries)
+  def self.caller_file(entries, options = nil)
     min = entries[0].index('/')
     max = entries[0].index(':', min)
-    entries[0].slice(0, max)
+    file = entries[0].slice(0, max)
+    case options
+    when :line
+      next_max = entries[0].index(':', max + 1) - 1
+      file += " #{entries[0].slice(max + 1, next_max - max)}"
+    end
+    file
   end
 
   def self.meditate(message, critical = false, trigger = 'prep')
@@ -42,7 +48,7 @@ module MrUtils
     matches = [matches] if !matches.is_a?(Array)
     while matches.length > 0
       m = matches.shift
-      #print([__FILE__,__LINE__,matches,search,m].to_s)
+      #Vuppeteer::trace(matches,search,m)
       t = self.traversable(m) ? self.traverse(m, search, throws) : nil 
       return t if !t.nil?
       h = search.is_a?(Hash) && search.has_key?(m)

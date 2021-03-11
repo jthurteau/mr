@@ -21,14 +21,14 @@ module Network
   #TODO, support network throttling https://www.virtualbox.org/manual/ch06.html#network_bandwidth_limit
 
   def self.pass(trigger, vm)
-    Puppeteer::say('Enabling NAT DNS Host Resolver for VirtualBox Guest Network 1','prep')
+    Vuppeteer::say('Enabling NAT DNS Host Resolver for VirtualBox Guest Network 1','prep')
     vm.provider :virtualbox do |vb|
       #NOTE this runs once for each master image
       vb.customize ['modifyvm', :id, '--natdnshostresolver1', 'on']
     end
 
     if (@throttle)
-      Puppeteer::say("Throttling VirtualBox Guest Network 1 to #{@throttle}",'prep')
+      Vuppeteer::say("Throttling VirtualBox Guest Network 1 to #{@throttle}",'prep')
       vm.provider :virtualbox do |vb|
         vb.customize ['bandwidthctl', :id, 'add', 'Limit', '--type', 'network', '--limit', "#{@throttle}"]
         vb.customize ['modifyvm', :id, '--nicbandwidthgroup1', 'Limit']
@@ -116,18 +116,18 @@ module Network
 
   def self.harvest_trigger()
     if (!@public_ip)
-      Puppeteer::say('Notice: No public IPv4 detected!')
-      #Socket.ip_address_list.map{ |i| Puppeteer::say(i.inspect) }
+      Vuppeteer::say('Notice: No public IPv4 detected!')
+      #Socket.ip_address_list.map{ |i| Vuppeteer::say(i.inspect) }
     end
     public_ip_info = @public_ip ? " (#{@public_ip})" : ''
-    Puppeteer::say("Host fqdn detected as #{@hostname} + #{@domain}#{public_ip_info}")
+    Vuppeteer::say("Host fqdn detected as #{@hostname} + #{@domain}#{public_ip_info}")
   end
 
   def self.etc_host(domain, host = 'local-dev', os = nil)
     #TODO set based on os
     etc_path = "C:\\Windows\\System32\\drivers\\etc\\hosts"
     if !File.file?(etc_path)
-      Puppeteer::say("No etc host file found #{etc_path}")
+      Vuppeteer::say("No etc host file found #{etc_path}")
     end
     etc_file_writable = false #File.writable_real?(etc_path)
     not_written = true
@@ -147,25 +147,25 @@ module Network
     #   Vuppeteer::say("No localhost map your applicaiton #{etc_path}")
     # }
     if (etc_file_writable) 
-      Puppeteer::say('The etc host file is writable')
+      Vuppeteer::say('The etc host file is writable')
       # FileUtils.cp etc_file, (etc_file + '.backup')
       # TODO add the #{@developer}-#{@app}.#{@domain} entry to the applicable lines if they are managed
-      Puppeteer::say('...but this is not implemented yet.')
+      Vuppeteer::say('...but this is not implemented yet.')
     else
       #TODO scan for unmanaged entries and append the #{@developer}-#{@app}.#{@domain} resolution
-      Puppeteer::remember("Cannot edit the etc host file: #{etc_path}")
+      Vuppeteer::remember("Cannot edit the etc host file: #{etc_path}")
     end
 
     if (not_written) #TODO i think this output has been orphaned...
-      Puppeteer::remember("You may add these entries manually:\n")
-      Puppeteer::remember("127.0.0.1 #{host}.#{domain}")
-      Puppeteer::remember("::1 #{host}.#{domain}\n")
-      Puppeteer::remember('Your Vagrant/Puppet is available at:')
-      Puppeteer::remember('localhost:8080')
+      Vuppeteer::remember("You may add these entries manually:\n")
+      Vuppeteer::remember("127.0.0.1 #{host}.#{domain}")
+      Vuppeteer::remember("::1 #{host}.#{domain}\n")
+      Vuppeteer::remember('Your Vagrant/Puppet is available at:')
+      Vuppeteer::remember('localhost:8080')
     else
-      Puppeteer::remember('Your Vagrant/Puppet is available at:')
-      Puppeteer::remember('localhost:8080')
-      Puppeteer::remember("#{host}.#{domain}:8080")
+      Vuppeteer::remember('Your Vagrant/Puppet is available at:')
+      Vuppeteer::remember('localhost:8080')
+      Vuppeteer::remember("#{host}.#{domain}:8080")
     end
 
   end

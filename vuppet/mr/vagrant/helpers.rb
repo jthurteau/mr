@@ -76,7 +76,7 @@ module Helpers
   #       when 'scl'
   #         self.scl_enable(vm, rest)
   #       else
-  #         Puppeteer::say("Unknown helper: #{a}")
+  #         Vuppeteer::say("Unknown helper: #{a}")
   #       end
   #     end
   #   end
@@ -122,11 +122,11 @@ module Helpers
   #     end
 
   #     #TODO pass in @puppet_file_path to merge changes to /vagrant/puppet
-  #     install_script = Puppeteer::external? ? ErBash::script('helper_install', FileManager::fs_view()) : "echo \"***Cannot install from an internal copy of MrRogers...\"\nexit 1" 
+  #     install_script = Vuppeteer::external? ? ErBash::script('helper_install', FileManager::fs_view()) : "echo \"***Cannot install from an internal copy of MrRogers...\"\nexit 1" 
   #     vm.provision "mr-install", type: :shell, run: 'never' do |s|
   #       s.inline = install_script
   #     end
-  #     uninstall_script = !Puppeteer::external? ? ErBash::script('helper_uninstall', FileManager::fs_view()) : "echo \"***MrRogers already uninstalled...\"\nexit 1" 
+  #     uninstall_script = !Vuppeteer::external? ? ErBash::script('helper_uninstall', FileManager::fs_view()) : "echo \"***MrRogers already uninstalled...\"\nexit 1" 
   #     vm.provision "mr-uninstall", type: :shell, run: 'never' do |s|
   #       s.inline = uninstall_script
   #     end
@@ -139,7 +139,7 @@ module Helpers
     ##NOTE this was from old Mr class::_post_puppet before calling this method, didn't seem to provide useful debugging
     ## this particular method needed to always come after puppet, so as coded it wouldn't work with --provision-with
     #     if !@puppet_opt['catalog'].nil? && @puppet_opt['catalog']
-    #       temp_path = Puppeteer::temp_path()
+    #       temp_path = FileManager::path(:temp)
     #       temp_state_path = "#{Mr::active_path()}/#{temp_path}state"
     #       FileManager::path_ensure(temp_state_path, true)
     #       remote = @state_path

@@ -47,11 +47,11 @@ module ElManager
     rc = 'RHEL registration configuration'
     if (!reg_data) 
       if (ident_key == 'nomad')
-        Puppeteer::say("Warning: No default #{rc} specified, using fallback setup", 'prep')
+        Vuppeteer::say("Warning: No default #{rc} specified, using fallback setup", 'prep')
       else
-        Puppeteer::say("Error: #{rc} for \"#{ident_key}\" is not available")
-        Puppeteer::say("  specify 'nomad' to attempt the default fallback configuration")
-        Puppeteer::shutdown("Error: Invalid #{rc} entry")
+        Vuppeteer::say("Error: #{rc} for \"#{ident_key}\" is not available")
+        Vuppeteer::say("  specify 'nomad' to attempt the default fallback configuration")
+        Vuppeteer::shutdown("Error: Invalid #{rc} entry")
       end
     else
       incomplete_config_text = "Warning: #{rc} for \"#{ident_key}\" is incomplete"
@@ -62,7 +62,7 @@ module ElManager
       if (@cred_type)
         @cred_keys.each {|k| reg_data["rhsm_#{k}"] = facts["rhsm_#{k}"] if facts.include?("rhsm_#{k}")}
       end
-      Puppeteer::say(incomplete_config_text, 'prep') if incomplete
+      Vuppeteer::say(incomplete_config_text, 'prep') if incomplete
     end
     self.init_hash(reg_data)
   end
@@ -83,19 +83,19 @@ module ElManager
       VagrantManager::halt_vb_guest() #TODO this should be in plugin-manager? right now it's vb middle ware, so not a "plugin"?
     end
     if ident_hash['custom_sc'] #TODO make this more robusty
-      #Puppeteer::say("binding custom sc: " + Mr::path("#{org_hash['custom_sc']}"))
+      #Vuppeteer::say("binding custom sc: " + Mr::path("#{org_hash['custom_sc']}"))
       @custom_sc = ident_hash['custom_sc']
     end
     if ident_hash['custom_setup'] #TODO make this more robusty
-      #Puppeteer::say("binding custom setup: " + Mr::path("#{org_hash['custom_setup']}"))
+      #Vuppeteer::say("binding custom setup: " + Mr::path("#{org_hash['custom_setup']}"))
       @custom_setup = ident_hash['custom_setup']
     end
     if ident_hash['custom_update'] #TODO make this more robusty
-      #Puppeteer::say("binding custom update: " + Mr::path("#{org_hash['custom_update']}"))
+      #Vuppeteer::say("binding custom update: " + Mr::path("#{org_hash['custom_update']}"))
       @custom_update = ident_hash['custom_update']
     end
     if ident_hash['custom_destroy'] #TODO make this more robusty
-      #Puppeteer::say("binding custom update: " + Mr::path("#{org_hash['custom_update']}"))
+      #Vuppeteer::say("binding custom update: " + Mr::path("#{org_hash['custom_update']}"))
       @destroy_script = ident_hash['custom_destroy']    
     end
     if ident_hash['software_collection'] #TODO make this more robusty

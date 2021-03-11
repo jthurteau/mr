@@ -34,6 +34,7 @@ module Vuppeteer
     ##
     # values from the instance_facts at session start
     @instance = nil
+
   # #   @timezone = 'America/New_York' #TODO   
   # #   @when_to_reregister = ['never', 'always'][0]
 
@@ -42,6 +43,7 @@ module Vuppeteer
     @instance_changed = false
  
     @features = {
+      verbose: false,
       local: true,
       global: true,
       developer: false,
@@ -59,6 +61,9 @@ module Vuppeteer
         @features[:installer] = true
       end
       Facts::init()
+      @features[:instance] = "#{Mr::active_path}/#{FileManager::localize_token}.instance.yaml"
+      @instance = Facts::instance()
+      @features[:verbose] = Facts::get('verbose')
     end
 
     def self.disable(o)
@@ -70,7 +75,7 @@ module Vuppeteer
     end
 
     def self.enabled?(o)
-      @features[o]
+      @features.has_key?(o) && @features[o]
     end
 
     def self.external?
@@ -82,8 +87,9 @@ module Vuppeteer
     end
 
     def self.start()
-      self.expose_facts() if Facts::get('verbose_facts') || Facts::get('verbose')
+      self.expose_facts() if Facts::get('verbose_facts') || @features[:verbose]
       if (self.external?)
+        Vuppeteer::shutdown('attempting install::prep')
         Installer::prep() if @features[:installer]
       end
     end
@@ -112,15 +118,13 @@ module Vuppeteer
       end
     end
   
-    #TODO see how this is used and if it should also be queued for input on trigger
-    # def self.tunnel(input, echo = false, output_trigger = :now)
-    #   i = input.end_with?("\n") ? input : "#{input}\n"
-    #   o = `#{i}`
-    #   self.say(input, output_trigger) if echo
-    #   self.say(o, output_trigger) if !o.empty?
-    # end
-  
     def self.remember(output)
+      if (output.class.include?(Enumerable)) 
+        output.each() do |o|
+          self.remember(o)
+        end
+        return
+      end
       @post_notices += "echo #{output}\n"
     end
   
@@ -130,48 +134,22 @@ module Vuppeteer
       return notices
     end
 
-    # def self.perform_host_commands(commands)
-    #   current_dir = Dir.pwd()
-    #   commands.each do |c|
-    #     if (c.is_a?(Hash)) 
-    #       Dir.chdir(c.dig(:path)) if c.has_key?(:path)
-    #       #NOTE default behavior is stderr > stdin to avoid leaking output prematurely
-    #       say_errors = !c.has_key?(:redirect_errors) || !c[:redirect_errors] 
-    #       command = c.dig(:cmd)
-    #       say_when = c.dig(:when) ? c.dig(:when) : :now
-    #       say_echo = c.dig(:echo) ? c.dig(:echo) : false
-    #       self.say(c.dig(:say), say_when) if c.has_key?(:say)
-    #       self.tunnel(command + (say_errors ? ' 2>&1' : ''), say_echo, say_when) if command
-    #     else
-    #       self.tunnel("#{c} 2>&1")
-    #     end
-    #     Dir.chdir(current_dir) if (!c.is_a?(Hash) || !c.has_key?(:hold_path) || !c[:hold_path])
-    #   end
-    #   Dir.chdir(current_dir)
-    # end
-  
-    # def self.translate_guest_commands(commands)
-    #   command_string = ''
-    #   commands.each do |c|
-    #     if (c.is_a?(Hash)) 
-    #       command_string += "cd #{commandc.dig(:path)}" if c.has_key?(:path)
-    #       command = c.dig(:cmd)
-    #       command_string += "#{command}\n" if command
-    #       #TODO support :say directive
-    #       #TODO support returning to original :path
-    #     else
-    #       command_string += "#{c}\n"
-    #     end
-    #   end
-    #   command_string
-    # end
+    def self.perform_host_commands(commands)
+      return if commands.nil?
+      current_dir = Dir.pwd()
+      commands.each do |c|
+        Host::command(c)
+      end
+      Dir.chdir(current_dir)
+    end
   
     ##
     # exits with an error message an optional status code
     # status code e defaults to 1
     # if e is negative, a stack trace is printed before exiting with the absolute value of e
     def self.shutdown(s, e = 1)
-      self.say(s + ', shutting Down.')
+      s[s.length() - 1] += ', shutting Down.' if s.class == Array
+      self.say(s.class == Array ? s : (s + ', shutting Down.'))
       if e < 0
         self.say('Mr Shutdown Trace:')
         self.say(MrUtils.trace(), :now, 2)
@@ -179,7 +157,33 @@ module Vuppeteer
       exit e.is_a?(Integer) ? e.abs : e
     end
 
+    def self.instance(key = nil)
+      return key.nil? ? @features[:instance] : (@instance && @instance.has_key?(key) ? @instance[key] : nil)
+    end
 
+    def self.update_instance(k, v = nil?)
+      @instance = {} if @instance.nil? && (k.class == Hash || !v.nil?)
+      if (k.class == Hash) 
+        k.each() do |hk, hv|
+          self.update_instance(hk, hv)
+        end
+        self.save_instance() if v
+        return
+      end
+      self.set_facts({k => v}, true)
+      if (!v.nil? && (!@instance.has_key?(k) || v != @instance[k]))
+        @instance[k] = v
+        @instance_changed = true
+      elsif (!@instance.nil? && @instance.has_key?(k))
+        @instance_changed = true
+        @instance.delete(k)
+      end
+    end
+  
+    def self.save_instance()
+      return if !@features[:instance] || @features[:instance].class != String
+      FileManager::save_yaml(@features[:instance], @instance)
+    end
 
     # def self.mark_sensitive(s)
     #   @sensitive.push(s)
@@ -206,60 +210,60 @@ module Vuppeteer
         ], 'prep'
       )
     end
-  
-    def self.load_facts(source)
-      source.start_with?('::') ? Facts::get(source[2..-1]) : FileManager::load_fact_yaml(source, false)
-    end
-    # def self.update_instance(m, v)
-    #   @instance = {} if @instance.nil? && !v.nil?
-    #   if (!v.nil?)
-    #     @instance[m] = v
-    #     @instance_changed = true
-    #   elsif (!@instance.nil?)
-    #     @instance_changed = true
-    #     @instance.delete(m)
-    #   end
-    # end
-  
-    # def self.save_instance()
-    #   localize_token = FileManager::localize_token()
-    #   FileManager::save_yaml("#{Mr::active_path()}/#{localize_token}.instance.yaml", @instance)
-    # end
-
-    def self.install_files()
-      return Installer::install_files() if @features[:installer]
-    end
-  
-    def self.global_install_files()
-      return Installer::global_install_files() if @features[:installer]
-    end
 
     def self.import_files()
       return Facts::get('import', [])
     end
 
-    def self.verify()
-      Facts::requirements().each do |r|
-        if (r.class == Hash)
-          r.each do |k, v|
-            self.shutdown("Error: fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if Facts::get(k) != v
-          end
-        elsif (r.class == Array)
-          r.each do |k|
-            self.shutdown("Error: Missing assert fact: \"#{k}\" during boxing") if !Facts::fact?(k)
-          end
-        else
-          r_string = r.to_s
-          self.shutdown("Error: Misconfigured requirement: #{r_string}")
-        end
-      end
-      self.shutdown("Notice: Passed Verification", -1)
-    end
-
     def self.sync()
       RepoManager::init() if (Facts::fact?('project_repos'))
     end
+
+    def self.trace(*s)
+      c = MrUtils::caller_file(caller, :line)
+      self.say("TRACE #{c} #{s.to_s}") if @features[:verbose]
+    end
+
+  #################################################################
+  # delegations
+  #################################################################
+
+    def self.get_fact(f, default = nil)
+      Facts::get(f, default)
+    end
   
+    def self.set_facts(f, m = false)
+      Facts::set(f, m)
+    end
+
+    def self.facts(list = nil)
+      Facts::facts()
+    end
+
+    def self.fact?(f)
+      Facts::fact?(f)
+    end
+
+    def self.load_facts(source)
+      source.start_with?('::') ? Facts::get(source[2..-1]) : FileManager::load_fact_yaml(source, false)
+    end
+
+    def self.add_derived(d)
+      if () 
+        self.say("Warning: invalid derived facts sent during Puppet initialization",'prep')
+        return
+      end
+      Facts::register_generated(d)
+    end
+
+  #################################################################
+  # gateways
+  #################################################################
+
+    def self.post_stack()
+      Facts::post_stack()
+    end
+
     def self.set_root_facts(f)
       Facts::roots(f)
     end
@@ -275,25 +279,13 @@ module Vuppeteer
     def self.register_generated(v)
       Facts::register_generated(v)
     end
+
+    def self.install_files()
+      return Installer::install_files() if @features[:installer]
+    end
   
-    def self.get_fact(f, d = nil)
-      Facts::get(f, d)
-    end
-  
-    def self.set_facts(f, m = false)
-      Facts::set(f, m)
-    end
-
-    def self.facts()
-      Facts::facts()
-    end
-
-    def self.fact?(f)
-      Facts::fact?(f)
-    end
-
-    def self.post_stack()
-      Facts::post_stack()
+    def self.global_install_files()
+      return Installer::global_install_files() if @features[:installer]
     end
 
   #################################################################

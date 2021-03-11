@@ -13,7 +13,7 @@ module FileMirror
     self_reference = File.absolute_path(Mr::active_path()) == File.absolute_path(to_path)
     raise "attempting to mirror self" if self_reference
     p = "#{to_path}#{prefix}"
-    Puppeteer::enforce_enumerable(file_list).each do |f| 
+    MrUtils::enforce_enumerable(file_list).each do |f| 
       non_recursive = f.end_with?('/.')
       conditional = f.end_with?('/?')
       no_replace = f.start_with?('+')
@@ -26,37 +26,37 @@ module FileMirror
         target_parent =  File.dirname(target)
         dir_mode = File.directory?(source)
         self.path_ensure(target_parent, self.allow_dir_creation?, false) if f.include?('/')
-        #print([dir_mode, source, "#{target_parent}", target]).to_s
+        #Vuppeteer::trace(dir_mode, source, "#{target_parent}", target)
         if ( dir_mode && (non_recursive || conditional))
-          #Puppeteer::say("cleanup #{target}", 'prep')
+          #Vuppeteer::say("cleanup #{target}", 'prep')
           self.path_ensure(target, self.allow_dir_creation?, false)
           Dir.foreach(source) do |c| #TODO each_child not supported yet
             if (!['.','..'].include?(c))
               condition = c.split('.').first()
-              #Puppeteer::say("inspecting #{source}#{c}", 'prep')
+              #Vuppeteer::say("inspecting #{source}#{c}", 'prep')
               #if non-recursive, copy if not a directory
               if (File.file?("#{source}#{c}") && non_recursive)
-                #Puppeteer::say("shallow file #{source}#{c} #{target}#{c}", 'prep')
+                #Vuppeteer::say("shallow file #{source}#{c} #{target}#{c}", 'prep')
                 FileUtils.cp("#{source}#{c}", "#{target}#{c}")
-                #Puppeteer::shutdown("copy to #{target}#{c} failed") if !File.exist?("#{target}#{c}")
+                #Vuppeteer::shutdown("copy to #{target}#{c} failed") if !File.exist?("#{target}#{c}")
               elsif (conditional && PuppetManager::get_stack('+optional-extensions').include?(condition))
                 c_dir_mode = File.directory?("#{source}#{c}")
-                #Puppeteer::say("conditional #{condition} #{source}#{c} #{target}#{c}", 'prep') if !c_dir_mode
-                #Puppeteer::say("conditional dir #{condition} #{source}#{c} #{target}", 'prep') if c_dir_mode
+                #Vuppeteer::say("conditional #{condition} #{source}#{c} #{target}#{c}", 'prep') if !c_dir_mode
+                #Vuppeteer::say("conditional dir #{condition} #{source}#{c} #{target}", 'prep') if c_dir_mode
                 FileUtils.cp_r("#{source}#{c}", (c_dir_mode ? ("#{target}") : ("#{target}#{c}")), {:remove_destination => true})
               end
             end
           end
         elsif (no_replace && File.exist?(finaltarget))
-          Puppeteer::say("Notice: skipping install file #{prefix}#{f}, it already exists",'prep')
+          Vuppeteer::say("Notice: skipping install file #{prefix}#{f}, it already exists",'prep')
           #TODO maybe copy but with an extra prefix e.g. example.
           #FileUtils.cp_r(source, (dir_mode ? ("#{target_parent}") : (target)), {:remove_destination => true})
         else
-          #Puppeteer::say("reset copy #{source} #{target} #{finaltarget}", 'prep')
+          #Vuppeteer::say("reset copy #{source} #{target} #{finaltarget}", 'prep')
           FileUtils.cp_r(source, (dir_mode ? ("#{target_parent}") : (target)), {:remove_destination => true})
         end
       else
-        Puppeteer::say("Notice: unable to mirror install file #{prefix}#{f}",'prep')
+        Vuppeteer::say("Notice: unable to mirror install file #{prefix}#{f}",'prep')
       end
     end
   end
@@ -78,7 +78,7 @@ module FileMirror
   end
 
   def self.import(file_list, to_path)
-    Puppeteer::enforce_enumerable(file_list).each do |f|
+    MrUtils::enforce_enumerable(file_list).each do |f|
       source = File.absolute_path(f)
       dir_mode = File.directory?(source)
       self.path_ensure(to_path, self.allow_dir_creation?, false)
@@ -94,7 +94,7 @@ module FileMirror
           #TODO need to ignore .git, .gitignore, local-dev.* files...
           FileUtils.cp_r(source, to_path, {:remove_destination => true})
         else
-          Puppeteer::say("Notice: #{source} unavailable for import", 'prep') #TODO detect if it has been imported and indicate that
+          Vuppeteer::say("Notice: #{source} unavailable for import", 'prep') #TODO detect if it has been imported and indicate that
         end 
       end
       #FileUtils.cp_r(source, (dir_mode ? ("#{to_parent}") : (to_path)), {:remove_destination => true})
@@ -132,7 +132,7 @@ module FileMirror
         additional = 'x' if additional.nil?
         unique += ".#{additional}"
       end
-      #Puppeteer.say("normally I would cp #{f} to #{to}#{unique}#{ext}")
+      #Vuppeteer.say("normally I would cp #{f} to #{to}#{unique}#{ext}")
       FileUtils.cp_r(f,"#{to}#{unique}#{ext}")
       to_base = File.basename(to)
       create_files.push("#{to_base}#{unique}#{ext}")

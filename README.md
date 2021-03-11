@@ -88,6 +88,8 @@ Other options can be passed in the Vagrantfile, or set during the initialization
    - Boolean, Defaults to true, set to false to disable loading any .yaml files from the '(\*.)facts' folders of active_path and/or "my_path". 
  - disable_hiera
    - Boolean, Defaults to false, set to true to disable Hiera for Puppet and any configuration from .yaml files from the '(\*.)hiera' folders of the active_path and/or "my_path". This also prevents Hiera from blocking matching .pp configuration files in the '*manifests' folders. See "Build Maturity" for more information.
+ - verbose
+   - increases a variety of error outputs, and tends to increase verbosity to sub-components (e.g. Puppet)
 
 ### Build Validity
 

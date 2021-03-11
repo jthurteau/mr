@@ -96,10 +96,10 @@ module FileManager
   end
 
   def self.tokened_file(path, token)
-    token = Puppeteer::enforce_enumerable(token)
+    token = MrUtlis::enforce_enumerable(token)
     first_token = token[0]
     f = nil
-    #print([path, token,File.file?(path)].to_s)
+    #Vuppeteer::trace(path, token,File.file?(path))
     #exit
     if !File.file?(path)
         f = File.new(path, 'w+')
@@ -125,7 +125,7 @@ module FileManager
       candidate = !comments_only || l.lstrip().start_with?('#')
       match = candidate && l.split('#', 2).last().lstrip().start_with?(search)
       lines.push(l.split(search, 2).last) if match
-      #Puppeteer::say([file, search, l, l.split('#',2).last().lstrip(), l.split('#', 2).last().lstrip().start_with?(search)].to_s) if candidate
+      #Vuppeteer::say([file, search, l, l.split('#',2).last().lstrip(), l.split('#', 2).last().lstrip().start_with?(search)].to_s) if candidate
     end
     f.close
     lines
@@ -164,26 +164,26 @@ module FileManager
   #   begin
   #     config = YAML.load_file(path) if File.exist?(path)
   #   rescue SystemCallError => e
-  #     if !Puppeteer::external?
-  #       Puppeteer::say("Warning: #{unavailable_file_text}" ,'prep')
+  #     if !Vuppeteer::external?
+  #       Vuppeteer::say("Warning: #{unavailable_file_text}" ,'prep')
   #       return config
   #     end
   #   rescue Psych::SyntaxError => e
-  #     if !Puppeteer::external?
-  #       Puppeteer::say("Warning: #{unparsable_file_text}, #{e.to_s}" ,'prep')
+  #     if !Vuppeteer::external?
+  #       Vuppeteer::say("Warning: #{unparsable_file_text}, #{e.to_s}" ,'prep')
   #       return config
   #    end
   #   end   
-  #   return config if config || !Puppeteer::external?
-  #   Puppeteer::say(external_file_text ,'prep')
+  #   return config if config || !Vuppeteer::external?
+  #   Vuppeteer::say(external_file_text ,'prep')
   #   external_path = Mr::path(path)
   #   begin
   #     config = YAML.load_file(external_path)
   #   rescue SystemCallError => e
-  #     Puppeteer::say("Warning: #{unavailable_file_text}" ,'prep')
+  #     Vuppeteer::say("Warning: #{unavailable_file_text}" ,'prep')
   #     config = {}
   #   rescue Psych::SyntaxError => e
-  #     Puppeteer::say("Warning: #{unparsable_file_text}, #{e.to_s}" ,'prep')
+  #     Vuppeteer::say("Warning: #{unparsable_file_text}, #{e.to_s}" ,'prep')
   #     return config
   #   end
   #   config
@@ -195,7 +195,7 @@ module FileManager
     f.rewind
     if (!f.eof? && f.readline.start_with?("# @protected"))
       f.close
-      Puppeteer::say("Error: attempted to save to protected config file #{path}", 'prep');
+      Vuppeteer::say("Error: attempted to save to protected config file #{path}", 'prep');
       return false
     end
     begin
@@ -206,7 +206,7 @@ module FileManager
       f.write("#{tag}\n#{wrapped}")
       f.close
     rescue => e
-      Puppeteer::say("Error: failed to write to config file #{path} #{e.to_s}", 'prep');
+      Vuppeteer::say("Error: failed to write to config file #{path} #{e.to_s}", 'prep');
       f.close
       return false
     end

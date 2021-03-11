@@ -67,7 +67,7 @@ module Hiera
     return false if PuppetManager::disabled?(:hiera) || !Vuppeteer::external?()
     e = "#{Vuppeteer::external_path}/facts/#{facet}.hiera"
     [e, "#{e}.yaml"].each do |f|
-      #Puppeteer::say("checking for #{facet}, #{f}")
+      #Vuppeteer::say("checking for #{facet}, #{f}")
       return true if File.exist?(f)
     end
     false

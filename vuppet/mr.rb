@@ -63,7 +63,6 @@ module Mr
     self._config(options)
     self._init(vagrant, MrUtils::caller_file(caller))
     Vuppeteer::start()
-    Vuppeteer::verify()
     Vuppeteer::shutdown('End of the Line for now', -1)
     if (!@disabled)
       ElManager::setup()# CollectionManager::request(Vuppeteer::get_fact('software_collection', RhelManager::sc))
@@ -106,7 +105,7 @@ module Mr
 
   ##
   # returns the path (dirname) to this file (aka my_path), or translates a path provided.
-  # translation converts from active_path to external puppeteer path (my_path) when applicable 
+  # translation converts from active_path to external vuppeteer path (my_path) when applicable 
   def self.path(to_sub = nil)
     return @my_path if !to_sub
     return to_sub.sub(@active_path, @my_path) if to_sub.start_with?(@active_path)
@@ -200,6 +199,8 @@ module Mr
         when :disable_hiera
           roots['hiera_disabled'] = v
           PuppetManager::disable(:hiera) if v
+        when :verbose
+          roots['verbose'] = v
         else
           Vuppeteer::say("Unrecognized configuration option: #{k}", 'prep')
         end

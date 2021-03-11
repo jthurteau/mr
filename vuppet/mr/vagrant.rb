@@ -38,7 +38,7 @@ module VagrantManager
 
   def self.config_vm(vm = nil)
     vagrant_default_warning = "Notice: No vagrant config provided (so default network/shared etc. are in place)"
-    Puppeteer::say(vagrant_default_warning, 'prep') if !@setup
+    Vuppeteer::say(vagrant_default_warning, 'prep') if !@setup
     self._vb_setup()
 
     if (vm.nil?)
@@ -78,7 +78,7 @@ module VagrantManager
       trigger.info = 'Checking, are Strings Attached?'
       trigger.ruby do |env, machine|
         PuppetManager::pre_puppet()
-        Vuppeteer::perform_host_commands(PuppetManager::get_host_commands())
+        Vuppeteer::perform_host_commands(PuppetManager::get_host_commands('pre_puppet'))
       end
     end
   end
@@ -97,7 +97,7 @@ module VagrantManager
 
   # def self.halt_vb_guest()
   #   # @prevent_vb_middleware = true
-  #   # Puppeteer::say('Notice: VirtualBox Guest Additions Plugin Autoloading Disabled.', 'prep');
+  #   # Vuppeteer::say('Notice: VirtualBox Guest Additions Plugin Autoloading Disabled.', 'prep');
   # end
 
   def self.halted_vb_guest?()
@@ -155,7 +155,7 @@ module VagrantManager
       # forwarded ports
       network = @setup.has_key?('network') ? @setup['network'] : []
       network.each do |n|
-        h = Puppeteer::sym_keys(n[1])
+        h = Vuppeteer::sym_keys(n[1])
         vm.network n[0], h 
       end
 
@@ -163,7 +163,7 @@ module VagrantManager
       # shared folders
       shared = @setup.has_key?('synced_folder') ? @setup['synced_folder'] : []
       shared.each do |s|
-        h = Puppeteer::sym_keys(s[2])
+        h = Vuppeteer::sym_keys(s[2])
         #TODO warn if there is no explicit type:
         vm.synced_folder s[0], s[1], h 
       end

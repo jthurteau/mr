@@ -68,7 +68,7 @@ module Collections
   end
 
   def self.sc_repos()
-    Puppeteer::enforce_enumerable(Vuppeteer::get_fact('sc_repos', []))    
+    MrUtils::enforce_enumerable(Vuppeteer::get_fact('sc_repos', []))    
   end
 
   def self.enabled_sc_repos()

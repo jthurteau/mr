@@ -54,7 +54,7 @@ module Modules
       if (m.include?(' OR '))
         m_for = m_alias ? " for module #{m_alias}" : ''
         m_parts = m.split(' OR ')
-        #Puppeteer::say("Notice: Scanning options#{m_for} in #{m_parts.to_s}", 'prep')
+        #Vuppeteer::say("Notice: Scanning options#{m_for} in #{m_parts.to_s}", 'prep')
         m_parts.each() do |p|
           if (File.exist?(p))
             Vuppeteer::say("Notice: Selecting #{p} from #{m_parts.to_s}#{m_for}", 'prep')
@@ -71,7 +71,7 @@ module Modules
       if (m.start_with?('https://') || !m_alias.nil?)
         m_name = m.start_with?('https://') ? self.prep_repo_inserts(m) : self.prep_fs_inserts(m)
         m_alias = m_name if m_alias.nil?
- #       Puppeteer::say("debug: module mirror command cp -r #{@module_shared_path}/#{m_name} #{@puppet_module_path}/#{m_alias}")
+ #       Vuppeteer::say("debug: module mirror command cp -r #{@module_shared_path}/#{m_name} #{@puppet_module_path}/#{m_alias}")
         commands = [
           "echo \" copying #{@module_shared_path}/#{m_name} to #{@puppet_module_path}/#{m_alias}\"",
           "rm -Rf #{@puppet_module_path}/#{m_alias}",
@@ -112,9 +112,9 @@ module Modules
     module_name = File.basename(path) #TODO #issue-18
     #module_source = tokenize parent dirs too for further differentiation when needed
     local_mirror_path = "#{self.host_module_path()}/#{module_name}"
-    FileManager::path_ensure(local_mirror_path, Puppeteer::allow_dir_creation?)
+    FileManager::path_ensure(local_mirror_path, FileManager::allow_dir_creation?)
     if (FileManager::clean_path?(local_mirror_path))
-      # print(["cp -r #{path}/* #{local_mirror_path}"].to_s)
+      # Vuppeteer::trace("cp -r #{path}/* #{local_mirror_path}")
       # exit
       @commands['local_install'].push("cp -r #{path}/* #{local_mirror_path}")
       @commands['local_install'].push("touch #{local_mirror_path}/.mr_lock")
@@ -134,7 +134,7 @@ module Modules
     module_name = uri[(uri.index('/', 8) + 1)..-5].gsub('/','-') #TODO #issue-18
     #module_source = tokenize host name too for further differentiation when needed
     module_repo_path = "#{self.host_module_path()}/#{module_name}"
-    FileManager::path_ensure(module_repo_path, Puppeteer::allow_dir_creation?)
+    FileManager::path_ensure(module_repo_path, Vuppeteer::allow_dir_creation?)
     if (RepoManager::clean_path?(module_repo_path))
       @commands['local_install'].push("git clone #{auth_uri} #{module_repo_path}")
     elsif (RepoManager::repo_path?(module_repo_path)) 

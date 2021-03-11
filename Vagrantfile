@@ -7,26 +7,20 @@ vuppeteer_order = [vuppeteer, '../mr/' + vuppeteer] # where to look, i.e. intern
 vuppeteer_order.each {|v| require_relative v if !defined?(Mr) && File.exist?("#{v}.rb")}
 raise 'Unable to build Local Development Environment. Vuppeteer unavailable.' if !defined?(Mr)
 
-# options = { 
-#     'assert' => {'project' => 'your-app-name',}, # see also /vuppet/project.yaml
-#     stack: [
-#       'app-user', 
-#       'your-org', #'apache_php_multiviews_starterapp', 'sample_docroot',
-#     ],
-#     facts: {'a' => 'b'},
-#     require: ['developer', 'db_password'],
-#     generated: {'app_db_password' => {'length' => 32, 'set' => :alnum,}}
-#   }
-
-options = nil #{ # https://github.com/jthurteau/mr/wiki/Managing-MrRogers-from-the-Vagrantfile
-#   assert: {'project' => 'your-app-name',}, # see also /vuppet/project.yaml
-#   stack: [
-#     'app-user', 
-#     'your-org', #'apache_php_multiviews_starterapp', 'sample_docroot',
-#   ],
-#   require: ['developer', 'db_password'],
-#   generated: {'app_db_password' => {'length' => 32, 'set' => :alnum,}}
-# }
+#options = nil 
+options = { # https://github.com/jthurteau/mr/wiki/Managing-MrRogers-from-the-Vagrantfile
+  assert: {'project' => 'daniel',}, # see also /vuppet/project.yaml
+  stack: [
+    'app-test', 
+    'your-org', #'apache_php_multiviews_starterapp', 'sample_docroot',
+  ],
+  facts: {
+    'verbose' => true,
+  },
+  load_developer_facts: true,
+  require: ['developer', 'db_password'],
+  generated: {'db_password' => {'length' => 32, 'set' => :alnum,},'a' => 'c'}
+}
 
 Vagrant.configure('2') do |v|
   # defaults to building with options + vuppet/project.yaml + vuppet/local-dev.project.yaml
