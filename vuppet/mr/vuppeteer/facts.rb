@@ -206,6 +206,7 @@ module Facts
 #################################################################
 
   def self._set_fact(k, v)
+    Vuppeteer::mark_sensitive(v) if Vuppeteer::enabled?(:autofilter) && VuppeteerUtils::sensitive_fact?(k)
     if @root_facts.any? {|r| r == k }
       self._set_as(:block, k, v)
     else

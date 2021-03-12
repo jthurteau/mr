@@ -54,49 +54,49 @@ module Triggers
     return if(@registered)
     v.trigger.before [:up] do |trigger|
       trigger.ruby do |env, machine|
-        @notices[:before][:up].each {|n| print n}
+        @notices[:before][:up].each {|n| Vuppeteer::say("- #{n}")}
         @map[:before][:up].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.after [:up] do |trigger|
       trigger.ruby do |env, machine|
-        @notices[:after][:up].each {|n| print n}
+        @notices[:after][:up].each {|n| Vuppeteer::say("- #{n}")}
         @map[:after][:up].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.before [:provision] do |trigger|
       trigger.ruby do |env, machine|
-        @notices[:before][:provision].each {|n| print n}
+        @notices[:before][:provision].each {|n| Vuppeteer::say("- #{n}")}
         @map[:before][:provision].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.after [:provision] do |trigger|
       trigger.ruby do |env, machine|
-        @notices[:after][:provision].each {|n| print n}
+        @notices[:after][:provision].each {|n| Vuppeteer::say("- #{n}")}
         @map[:after][:provision].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.before [:reload] do |trigger|
       trigger.ruby do |env, machine|
-        @notices[:before][:reload].each {|n| print n}
+        @notices[:before][:reload].each {|n| Vuppeteer::say("- #{n}")}
         @map[:before][:reload].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.after [:reload] do |trigger|
       trigger.ruby do |env, machine|
-        @notices[:after][:reload].each {|n| print n}
+        @notices[:after][:reload].each {|n| Vuppeteer::say("- #{n}")}
         @map[:after][:reload].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.before [:halt] do |trigger|
       trigger.ruby do |env, machine|
-        @notices[:before][:halt].each {|n| print n}
+        @notices[:before][:halt].each {|n| Vuppeteer::say("- #{n}")}
         @map[:before][:halt].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.before [:ssh] do |trigger|
       trigger.ruby do |env, machine|
-        @notices[:before][:ssh].each {|n| print n}
+        @notices[:before][:ssh].each {|n| Vuppeteer::say("- #{n}")}
         @map[:before][:ssh].each {|m| @triggered.push(m)}
       end
     end
@@ -104,6 +104,12 @@ module Triggers
   end
 
   def self.store_say(s, t)
+    if (s.class.include?(Enumerable))
+      s.each() do |v|
+        self.store_say(v, t)
+      end
+      return
+    end
     case t
     when :before_up
       @notices[:before][:up].push(s)
@@ -134,6 +140,15 @@ module Triggers
       @notices[:after][:up].push(s)
       @notices[:after][:provision].push(s)
       @notices[:after][:reload].push(s)
+    end
+  end
+
+  def self.flush()
+    @notices.each() do |o, c|
+      c.each() do |t, b|
+        o = b.shift()
+        Vuppeteer.say("* #{o}") if o
+      end
     end
   end
 

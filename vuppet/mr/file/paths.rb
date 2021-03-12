@@ -2,7 +2,7 @@
 # Encapsulates host file management for Mp
 #
 
-module FilePaths
+module Paths
   extend self
 
   @paths = {

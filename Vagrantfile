@@ -15,11 +15,11 @@ options = { # https://github.com/jthurteau/mr/wiki/Managing-MrRogers-from-the-Va
     'your-org', #'apache_php_multiviews_starterapp', 'sample_docroot',
   ],
   facts: {
-    'verbose' => true,
+    'debug' => true,
   },
   load_developer_facts: true,
   require: ['developer', 'db_password'],
-  generated: {'db_password' => {'length' => 32, 'set' => :alnum,},'a' => 'c'}
+  generated: {'db_password' => {'length' => 32, 'set' => :alnum, 'sensitive' => true},'a' => 'c'}
 }
 
 Vagrant.configure('2') do |v|

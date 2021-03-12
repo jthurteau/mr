@@ -26,12 +26,12 @@ module Mr
   require_relative 'mr/puppet'
 
   ##
-  # where mr runs from and aquires global(for intneral)/external recipies
+  # where mr runs from and aquires global(for intneral)/external recipes
   # for an "internal" mr project build, my_path and active_path are the same
   @my_path = File.dirname(__FILE__)
 
   ##
-  # active_path is where mr builds and aquires local/project recipies
+  # active_path is where mr builds and aquires local/project recipes
   # for an "external" mr project build, my_path and active_path are the different
   @active_path = 'vuppet'
 
@@ -63,32 +63,28 @@ module Mr
     self._config(options)
     self._init(vagrant, MrUtils::caller_file(caller))
     Vuppeteer::start()
-    Vuppeteer::shutdown('End of the Line for now', -1)
     if (!@disabled)
-      ElManager::setup()# CollectionManager::request(Vuppeteer::get_fact('software_collection', RhelManager::sc))
-      Vuppeteer::sync()
+      ElManager::setup()
       VagrantManager::register_triggers!()
     else
       Vuppeteer::say('Notice: Mr is DISABLED, normal provisioning and triggers bypassed')
     end
-    VagrantManager::init_plugins()
-    VagrantManager::config_vm() #TODO, handle multi vm situations
-    # x.each() do |a|
-    #   #box_name = ElManager::name_gen()
-    #   #infrastructure_name = ElManager::infra_gen()
-    #   #delim = infrastructure_name != '' && !infrastructure_name.nil? ? '-' : ''
-    #   #ElManager::is_it? ? ElManager::box() : @box_source
-    #   b = "#{box_name}#{delim}#{infrastructure_name}".ljust(2, '0')
-    #   VagrantManager::config_vm(b)
-    # end
+    Vuppeteer::shutdown('End of the Line for now', -1)
+    Vuppeteer::build()
   end 
 
   ##
   # Ensures prep steps have been applied and then sets up the puppet_apply provisioner
   def self.puppet_apply(options = nil)
-    Vuppeteer::shutdown('Not so fast....', -1)
-    return nil if @disabled || PuppetManager::disabled?()
-    self._prep()
+    return nil if @disabled
+    if (PuppetManager::disabled?()) 
+      Vuppeteer::say('Notice: puppet_apply skipped, puppet is disabled')
+      return nil
+    end
+    return if @prepped
+    Vuppeteer::shutdown('Error: attempting to manage puppet before initialization') if @prepped.nil?
+    Vuppeteer::prep(@guest_path)
+    @prepped = true
     PuppetManager::apply()
   end
 
@@ -158,7 +154,7 @@ module Mr
         case k
         when :mr_path
           configured_active_path = v
-          roots['mr_path']
+          roots['mr_path'] = v
         when :localize_token
           roots['localize_token'] = v
         when :override_token
@@ -201,6 +197,9 @@ module Mr
           PuppetManager::disable(:hiera) if v
         when :verbose
           roots['verbose'] = v
+        when :debug
+          roots['debug'] = v
+          roots['verbose'] = v if v
         else
           Vuppeteer::say("Unrecognized configuration option: #{k}", 'prep')
         end
@@ -223,18 +222,6 @@ module Mr
     PuppetManager::init()
     VagrantManager::init(v)
     @prepped = false
-  end
-
-  def self._prep()
-    Vuppeteer::shutdown('Error: attempting to manage puppet before Mr is initialized') if @prepped.nil?
-    return if @prepped
-    self._path_setup()
-    FileManager::global_ensure()
-    #TODO, these can be pushed down
-    Vuppeteer::set_facts({ 'vagrant_root': @guest_path}, true)
-    ElManager::resgister(VagrantManager::config())
-    VagrantManager::post_puppet()
-    @prepped = true
   end
   
 end

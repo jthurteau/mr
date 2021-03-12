@@ -28,7 +28,7 @@ module Modules
   def self.init(modules = nil)
     puppet_file_path = PuppetManager::guest_puppet_path()
     @module_shared_path.sub!('/vagrant/puppet', puppet_file_path) if puppet_file_path
-    @module_shared_path.sub!('local-dev.repos', RepoManager::host_repo_path()) if @module_shared_path.include?('local-dev.repos')
+    @module_shared_path.sub!('local-dev.repos', FileManager::host_repo_path()) if @module_shared_path.include?('local-dev.repos')
     if (modules)
       @module_list = MrUtils::enforce_enumerable(modules)
     else
@@ -129,15 +129,15 @@ module Modules
   end
 
   def self.prep_repo_inserts(uri) #NOTE use puppet-sync provisioner to update these
-    auth_uri = RepoManager::secure_repo_uri(uri)
+    auth_uri = FileManager::secure_repo_uri(uri)
     @commands['local_install'].push({say:"retreiving #{uri}"})
     module_name = uri[(uri.index('/', 8) + 1)..-5].gsub('/','-') #TODO #issue-18
     #module_source = tokenize host name too for further differentiation when needed
     module_repo_path = "#{self.host_module_path()}/#{module_name}"
     FileManager::path_ensure(module_repo_path, Vuppeteer::allow_dir_creation?)
-    if (RepoManager::clean_path?(module_repo_path))
+    if (FileManager::clean_path?(module_repo_path))
       @commands['local_install'].push("git clone #{auth_uri} #{module_repo_path}")
-    elsif (RepoManager::repo_path?(module_repo_path)) 
+    elsif (FileManager::repo_path?(module_repo_path)) 
       @commands['local_install'].push({path: module_repo_path, cmd:"git pull"})
     else
       @commands['local_install'].push({say:"Cannot setup #{uri} puppet module, target directory is non-empty, and not a working-copy."})
@@ -150,7 +150,7 @@ module Modules
   end
 
   def self.host_module_path()
-    "#{Mr::active_path()}/#{RepoManager::host_repo_path()}/puppet_modules"
+    "#{Mr::active_path()}/#{FileManager::host_repo_path}/puppet_modules"
   end
 
   def self.list()

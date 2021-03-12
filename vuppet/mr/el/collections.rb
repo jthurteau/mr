@@ -67,7 +67,7 @@ module Collections
     return Credentials.new().view()
   end
 
-  def self.sc_repos()
+  def self.repos()
     MrUtils::enforce_enumerable(Vuppeteer::get_fact('sc_repos', []))    
   end
 

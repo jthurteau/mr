@@ -15,8 +15,8 @@ module MrUtils
     return a.class.include?(Enumerable) ? a : [a]
   end
 
-  def self.inspect(v)
-    v.pretty_inspect
+  def self.inspect(v, breakup = false)
+    breakup ? v.pretty_inspect.split("\n") : v.pretty_inspect
   end
 
   def self.trace(local = true)

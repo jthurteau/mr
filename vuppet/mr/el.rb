@@ -12,111 +12,74 @@ module ElManager
   
   @singleton = nil
   @build = 'hobo'
-  @box = 'generic/rhel7'
-    # #   @box_source = 'centos/7'
+  @el_version = ['7','8'][0]
+  @box = 'generic/rhel8'
   @ident_file = 'puppet/license_ident.yaml'
-  @custom_sc = nil
-  @custom_setup = nil
-  @custom_update = nil
-  @destroy_script = nil
+
+  @scripts = {
+    sc: nil,
+    setup: nil,
+    update: nil,
+    destroy: nil
+  }
+
   @cred_keys = ['org','key','user','pass','host']
-  @cred_type = [nil, 'org','user'][0]
+  @cred_type = [nil, :org, :user][0]
+  @cred_types = {
+    org: ['org', 'key'],
+    user: ['user', 'pass'],
+  }
+
+  @cred_prefix = 'rhsm_'
+
   @known_box_prefixes = ['generic/rhel'];
 
   def self.init()
-
+    @el_version = self._detect_version()
+    @box = self._detect_box()
+    @ident = self._detect_ident()
   end
 
-  def self._old_init(hash_or_key = nil, source_box = nil)
-    @destroy_script = 'rhel_destroy' #TODO this whouldn't be set when in Centos/Nomad mode...
-    @box = source_box if !source_box.nil?
-    return self if !hash_or_key
-    return self._lookup_ident(hash_or_key) if !hash_or_key.class.include?(Enumerable)
-    self._init_hash(hash_or_key)
-  end
+  # def self._old_init(hash_or_key = nil, source_box = nil)
+  #   @destroy_script = 'rhel_destroy' #TODO this whouldn't be set when in Centos/Nomad mode...
+  #   @box = source_box if !source_box.nil?
+  #   return self if !hash_or_key
+  #   return self._lookup_ident(hash_or_key) if !hash_or_key.class.include?(Enumerable)
+  #   self._init_hash(hash_or_key)
+  # end
 
   def self.el_version()
-    return nil if !@box || !self.is_it?()
-    return self._get_box_el_version(@box)
-  end
-
-  def self._lookup_ident(ident_key)
-    rhel_data = FileManager::load_config_yaml(@ident_file, 'RHEL')
-    reg_data = rhel_data[ident_key] if rhel_data
-    reg_data['ident'] = ident_key if (!reg_data['ident']) && rhel_data
-    rc = 'RHEL registration configuration'
-    if (!reg_data) 
-      if (ident_key == 'nomad')
-        Vuppeteer::say("Warning: No default #{rc} specified, using fallback setup", 'prep')
-      else
-        Vuppeteer::say("Error: #{rc} for \"#{ident_key}\" is not available")
-        Vuppeteer::say("  specify 'nomad' to attempt the default fallback configuration")
-        Vuppeteer::shutdown("Error: Invalid #{rc} entry")
-      end
-    else
-      incomplete_config_text = "Warning: #{rc} for \"#{ident_key}\" is incomplete"
-      facts = Vuppeteer::facts()
-      complete_custom = reg_data.include?('custom_setup')
-      @cred_type = self.ready_to_register()
-      incomplete = !complete_custom && !@cred_type
-      if (@cred_type)
-        @cred_keys.each {|k| reg_data["rhsm_#{k}"] = facts["rhsm_#{k}"] if facts.include?("rhsm_#{k}")}
-      end
-      Vuppeteer::say(incomplete_config_text, 'prep') if incomplete
-    end
-    self.init_hash(reg_data)
-  end
-
-  def self.ready_to_register()
-    facts = Vuppeteer::facts()
-    complete_org = ['rhsm_org', 'rhsm_key'].all? {|k| facts.include?(k)}
-    complete_user = ['rhsm_pass', 'rhsm_user'].all? {|k| facts.include?(k)}
-    return 'org' if complete_org
-    return 'user' if complete_user
-  end
-
-  def self.init_hash(ident_hash)
-    @build = ident_hash.fetch('box_suffix', ident_hash['ident'])
-    @box = ident_hash.fetch('box', @box)
-    el_version = self._get_box_el_version(@box)
-    if (el_version == '8')
-      VagrantManager::halt_vb_guest() #TODO this should be in plugin-manager? right now it's vb middle ware, so not a "plugin"?
-    end
-    if ident_hash['custom_sc'] #TODO make this more robusty
-      #Vuppeteer::say("binding custom sc: " + Mr::path("#{org_hash['custom_sc']}"))
-      @custom_sc = ident_hash['custom_sc']
-    end
-    if ident_hash['custom_setup'] #TODO make this more robusty
-      #Vuppeteer::say("binding custom setup: " + Mr::path("#{org_hash['custom_setup']}"))
-      @custom_setup = ident_hash['custom_setup']
-    end
-    if ident_hash['custom_update'] #TODO make this more robusty
-      #Vuppeteer::say("binding custom update: " + Mr::path("#{org_hash['custom_update']}"))
-      @custom_update = ident_hash['custom_update']
-    end
-    if ident_hash['custom_destroy'] #TODO make this more robusty
-      #Vuppeteer::say("binding custom update: " + Mr::path("#{org_hash['custom_update']}"))
-      @destroy_script = ident_hash['custom_destroy']    
-    end
-    if ident_hash['software_collection'] #TODO make this more robusty
-      Vuppeteer::set_facts({'software_collection' => ident_hash['software_collection']}, true)
-    end
-    ident_hash['el_version'] = el_version
-    @singleton = Realm.new(ident_hash)
+    @el_version
   end
 
   def self.box()
     @box
   end
 
-  def self.sc()
-    return @custom_sc
+  def self.build() #TODO this might be deprecated
+    @build
+  end
+
+  def self.ready_to_register()
+    facts = Vuppeteer::facts()
+    @cred_types.each() do |t, r|
+      requires = r.map {|k| "#{@cred_prefix}#{k}"}
+      return t if requires.all? { |k| Vuppeteer::facts().include?(k)}
+    end
+  end
+
+  def self.setup()
+# CollectionManager::request(Vuppeteer::get_fact('software_collection', RhelManager::sc))
+  end
+
+  def self.script(w)
+    return @scripts.has_key?(w) ? @scripts[w] : nil
   end
 
   def self.sc_commands()
-    has_sc_repos = CollectionManager::sc_repos().length > 0
-    return ErBash::script(@custom_sc, RhelManager::credentials()) if @custom_sc
-    return ErBash::script('rhel_dev_sc', RhelManager::credentials()) if has_sc_repos
+    has_sc_repos = Collections::repos().length() > 0
+    return ErBash::script(self.script(:sc), self.credentials()) if self.script(:sc)
+    return ErBash::script('rhel_dev_sc', self.credentials()) if has_sc_repos
     return <<-SHELL
         echo Including the software_collections...
         echo none configured...
@@ -125,24 +88,24 @@ module ElManager
         # subscription-manager repos --enable rhel-7-server-optional-rpms
   end
 
-  def self.setup()
-    setup_script = @cred_type == 'user' ? 'rhel_developer_setup' : 'rhel_setup'
-    return ErBash::script(@custom_setup, RhelManager::credentials()) if @custom_setup
+  def self.setup_script()
+    setup_script = self._detect_setup_script()
+    return ErBash::script(self.script(:setup), self.credentials()) if self.script(:setup)
     ErBash::script(setup_script, RhelManager::credentials())
   end
 
-  def self.update()
-    return ErBash::script(@custom_update, RhelManager::credentials()) if @custom_update
+  def self.update_script()
+    return ErBash::script(self.script(:update), self.credentials()) if self.script(:update)
     ErBash::script('rhel_update', RhelManager::credentials())
   end
 
-  def self.unregister()
-    ErBash::script(@destroy_script, RhelManager::credentials())
+  def self.unregister_script()
+    ErBash::script(self.script(:destroy), self.credentials())
   end
 
   def self.box_destroy_prep()
-    return if !@destroy_script
-    VagrantManager::set_destroy_trigger(@destroy_script)
+    return if !self.script(:destroy)
+    VagrantManager::set_destroy_trigger(self.script(:destroy))
   end
 
   def self.collection_manifest()
@@ -157,9 +120,6 @@ module ElManager
     @singleton != nil
   end
 
-  def self.build()
-    @build
-  end
 
   ## came from Vuppeteer
     # def self.name_gen()
@@ -214,6 +174,90 @@ module ElManager
     CollectionManager::provision(VagrantManager::config()) #TODO this may be deprecated since it is tied to RHEL7?
   end
 
+  def self.cred_prefix()
+    @cred_prefix
+  end
+
+#################################################################
+private
+#################################################################
+
+  def self._detect_box()
+    #   Vuppeteer::fact?('box_source') ? PuppetFacts::get_fact('box_source') : 
+    # elsif PuppetFacts::get_fact('default_to_rhel')
+    #   @box_source = RhelManager::box()
+    # end
+  end
+
+  def self._detect_version()
+
+  end
+
+  def self._detect_ident()
+
+  end 
+
+  def self._lookup_ident(ident_key)
+    rhel_data = FileManager::load_config_yaml(@ident_file, 'RHEL')
+    reg_data = rhel_data[ident_key] if rhel_data
+    reg_data['ident'] = ident_key if (!reg_data['ident']) && rhel_data
+    rc = 'RHEL registration configuration'
+    if (!reg_data) 
+      if (ident_key == 'nomad')
+        Vuppeteer::say("Warning: No default #{rc} specified, using fallback setup", 'prep')
+      else
+        Vuppeteer::say("Error: #{rc} for \"#{ident_key}\" is not available")
+        Vuppeteer::say("  specify 'nomad' to attempt the default fallback configuration")
+        Vuppeteer::shutdown("Error: Invalid #{rc} entry")
+      end
+    else
+      incomplete_config_text = "Warning: #{rc} for \"#{ident_key}\" is incomplete"
+      facts = Vuppeteer::facts()
+      complete_custom = reg_data.include?('custom_setup')
+      @cred_type = self.ready_to_register()
+      incomplete = !complete_custom && !@cred_type
+      if (@cred_type)
+        @cred_keys.each {|k| reg_data["rhsm_#{k}"] = facts["rhsm_#{k}"] if facts.include?("rhsm_#{k}")}
+      end
+      Vuppeteer::say(incomplete_config_text, 'prep') if incomplete
+    end
+    self._init_hash(reg_data)
+  end
+
+  def self._init_hash(ident_hash)
+    @build = ident_hash.fetch('box_suffix', ident_hash['ident'])
+    @box = ident_hash.fetch('box', @box)
+    el_version = self._get_box_el_version(@box)
+    if (el_version == '8')
+      VagrantManager::halt_vb_guest() #TODO this should be in plugin-manager? right now it's vb middle ware, so not a "plugin"?
+    end
+    if ident_hash['custom_sc'] #TODO make this more robusty
+      #Vuppeteer::say("binding custom sc: " + Mr::path("#{org_hash['custom_sc']}"))
+      @custom_sc = ident_hash['custom_sc']
+    end
+    if ident_hash['custom_setup'] #TODO make this more robusty
+      #Vuppeteer::say("binding custom setup: " + Mr::path("#{org_hash['custom_setup']}"))
+      @custom_setup = ident_hash['custom_setup']
+    end
+    if ident_hash['custom_update'] #TODO make this more robusty
+      #Vuppeteer::say("binding custom update: " + Mr::path("#{org_hash['custom_update']}"))
+      @custom_update = ident_hash['custom_update']
+    end
+    if ident_hash['custom_destroy'] #TODO make this more robusty
+      #Vuppeteer::say("binding custom update: " + Mr::path("#{org_hash['custom_update']}"))
+      @destroy_script = ident_hash['custom_destroy']    
+    end
+    if ident_hash['software_collection'] #TODO make this more robusty
+      Vuppeteer::set_facts({'software_collection' => ident_hash['software_collection']}, true)
+    end
+    ident_hash['el_version'] = el_version
+    @singleton = Realm.new(ident_hash)
+  end
+
+  def self._detect_setup_script() #TODO handle non-rhel
+    @cred_type == :user ? 'rhel_developer_setup' : 'rhel_setup'
+  end
+
   def self._setup()
     ## came from Mr
 #     if Vuppeteer::fact?('box_source')
@@ -231,6 +275,7 @@ module ElManager
   #     #TODO software_collection = ''; #TODO! RhelManager::collection_manifest()
   end
 
+  #TODO deprecate
   def self._get_box_el_version(box_name)
     @known_box_prefixes.each do |b|
       if (box_name.start_with?(b))
@@ -239,8 +284,6 @@ module ElManager
     end
     return box_name.slice(-1)
   end
-
-  #TODO before destroy, unregister
 
   class Realm 
     @rhel_user = ''
@@ -254,12 +297,13 @@ module ElManager
     @el_version = '7'
 
     def initialize(hash)
-        @rhel_user = hash['rhsm_user'] if hash&.include?('rhsm_user')
-        @rhel_pass = hash['rhsm_pass'] if hash&.include?('rhsm_pass')
-        @rhel_org = hash['rhsm_org'] if hash&.include?('rhsm_org')
-        @rhel_key = hash['rhsm_key'] if hash&.include?('rhsm_key')
+        p = ElManager::cred_prefix
+        @rhel_user = hash["#{p}user"] if hash&.include?("#{p}user")
+        @rhel_pass = hash["#{p}pass"] if hash&.include?("#{p}pass")
+        @rhel_org = hash["#{p}org"] if hash&.include?("#{p}org")
+        @rhel_key = hash["#{p}key"] if hash&.include?("#{p}key")
         @key_repo = hash['key_repo'] if hash&.include?('key_repo')
-        @rhel_server = hash['rhsm_server'] if hash&.include?('rhsm_server')
+        @rhel_server = hash["#{p}server"] if hash&.include?("#{p}server")
         @dev_tools = Vuppeteer::get_fact('dev_tools') if hash&.include?('dev_tools')
         @man_attach = hash['manual_attach'] if hash&.include?('manual_attach')
         @el_version = hash['el_version'] if hash&.include?('el_version')
@@ -291,28 +335,24 @@ module ElManager
       options
     end
 
-    #TODO add a pre/post destroy hook for unregistering the VM from RHEL
-
     def dev_tools_needed()
-      return true
+      return @dev_tools
     end
-
-    #TODO add back in attaching a key via repo as a view option
 
     def dev_tools_command()
       'yum groups install "Development Tools" -y'
     end
 
     def sc_pending()
-      return CollectionManager::requested?()
+      return Collections::requested?()
     end
 
     def rhel_sc_repos()
-      CollectionManager::sc_repos()
+      Collections::repos()
     end
 
     def rhel_sc_repos_enabled()
-      CollectionManager::enabled_sc_repos()
+      Collections::enabled(:repos)
     end
   end
 

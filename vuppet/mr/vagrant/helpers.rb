@@ -9,7 +9,27 @@ module Helpers
   # @when_to_nano_enforce = 'once'
   # @when_to_scl_enable = 'once'
   # @default_helpers_added = false
-  
+
+    def self.setup(vm = nil)
+    vm = VagrantManager::config().vm if vm.nil?
+    ##NOTE this was from old Mr class::_post_puppet before calling this method, didn't seem to provide useful debugging
+    ## this particular method needed to always come after puppet, so as coded it wouldn't work with --provision-with
+    #     if !@puppet_opt['catalog'].nil? && @puppet_opt['catalog']
+    #       temp_path = FileManager::path(:temp)
+    #       temp_state_path = "#{Mr::active_path()}/#{temp_path}state"
+    #       FileManager::path_ensure(temp_state_path, true)
+    #       remote = @state_path
+    #       local = "#{@puppet_file_path}/#{temp_path}state"
+    #       result_files = ['classes.txt', 'last_run_report.yaml', 'last_run_summary.yaml', 'resources.txt', 'state.yaml']
+    #       FileManager::mirror_provisioner(remote, local, result_files, 'puppet-report')
+    #     end
+    helpers = Vuppeteer::get_fact('helpers')
+    helpers = [helpers] if helpers && !helpers.class.include?(Enumerable)
+    if (helpers || !Vuppeteer::get_fact('disable_default_hepers', false)) 
+      self.add_helpers(vm, helpers, !PuppVuppeteeretFacts::get('disable_default_hepers', false))
+    end
+  end
+
   # def self.nano_please(vm)
   #   vm.provision "nano_setup", type: :shell do |s|
   #     s.inline = 'yum install nano -y'
@@ -134,23 +154,5 @@ module Helpers
   #   end
   # end
 
-  def self.post_puppet(vm = nil)
-    vm = VagrantManager::config().vm if vm.nil?
-    ##NOTE this was from old Mr class::_post_puppet before calling this method, didn't seem to provide useful debugging
-    ## this particular method needed to always come after puppet, so as coded it wouldn't work with --provision-with
-    #     if !@puppet_opt['catalog'].nil? && @puppet_opt['catalog']
-    #       temp_path = FileManager::path(:temp)
-    #       temp_state_path = "#{Mr::active_path()}/#{temp_path}state"
-    #       FileManager::path_ensure(temp_state_path, true)
-    #       remote = @state_path
-    #       local = "#{@puppet_file_path}/#{temp_path}state"
-    #       result_files = ['classes.txt', 'last_run_report.yaml', 'last_run_summary.yaml', 'resources.txt', 'state.yaml']
-    #       FileManager::mirror_provisioner(remote, local, result_files, 'puppet-report')
-    #     end
-    helpers = Vuppeteer::get_fact('helpers')
-    helpers = [helpers] if helpers && !helpers.class.include?(Enumerable)
-    if (helpers || !Vuppeteer::get_fact('disable_default_hepers', false)) 
-      self.add_helpers(vm, helpers, !PuppVuppeteeretFacts::get('disable_default_hepers', false))
-    end
-  end
+
 end

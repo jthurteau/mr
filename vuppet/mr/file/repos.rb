@@ -2,17 +2,18 @@
 # Encapsulates host side Git repo management for MrRogers
 #
 
-module RepoManager
+module Repos
   extend self
   
-  @init = false
+  @initialized = false
   @host_repo_path = 'local-dev.repos'
 
   def self.init()
-    repos = Vuppeteer::fact?('project_repos') ? MrUtils::enforce_enumerable(Vuppeteer::get_fact('project_repos')) : []
-    self._init() if !@init
-    Vuppeteer::say("Notice: Updating local project repos...", 'prep') if repos.length > 0
-    repos.each() do |r|
+    self._init() if !@initialized
+    repos = Vuppeteer::get_fact('project_repos')
+    return if repos.nil?
+    Vuppeteer::say("Notice: Updating local project repos...", 'prep')
+    MrUtils::enforce_enumerable(repos).each() do |r|
       r_alias = nil #TODO consolidate this pattern with module directive parsing
       if (r.include?(' AS '))
         r_parts = r.split(' AS ')
@@ -54,12 +55,12 @@ module RepoManager
           {cmd: "cp -r #{r_uri}/* #{project_repo_path}", when:'prep'}
         ])
         Vuppeteer::say("#{r_uri} project repo, is not managed by mr_rogers (perform pull, branch, ect. manually).", 'prep')
-      elsif (RepoManager::clean_path?(project_repo_path))
+      elsif (self.clean_path?(project_repo_path))
         Vuppeteer::perform_host_commands([
           {cmd:"git clone #{self.secure_repo_uri(r_uri)} #{project_repo_path}"}
         ])
         self.branch(project_repo_path, self.repo_uri_branch(r_uri)) if (self.repo_uri_branch(r_uri) != '')
-      elsif (RepoManager::repo_path?(project_repo_path)) 
+      elsif (self.repo_path?(project_repo_path)) 
         self.branch(project_repo_path, self.repo_uri_branch(r_uri)) if (self.repo_uri_branch(r_uri) != '')
         Vuppeteer::perform_host_commands([{path: project_repo_path, cmd:'git pull', when:'prep'}])
       else
@@ -115,17 +116,13 @@ module RepoManager
     Vuppeteer::perform_host_commands([{path: repo_path, cmd: "git checkout #{branch}", when:'prep'}])
   end
 
-  def self.clean_path?(path)
-    Dir.empty?(path)
-  end
-
   def self.repo_path?(path)
     File.exist?("#{path}/.git")
   end
 
   def self._init()
     @host_repo_path.gsub!('local-dev', FileManager::localize_token()) if @host_repo_path.include?('local-dev')
-    @init = true
+    @initialized = true
   end
 
 end

@@ -22,7 +22,7 @@ module VagrantManager
       @version = Vagrant::VERSION
       @ruby_version = RUBY_VERSION
       @setup = FileManager::load_fact_yaml(@conf_source, 'Vagrant')
-      # self.config().vagrant.sensitive = sensitive_strings if sensitive_strings
+      @vagrant.config.vagrant.sensitive = Vuppeteer::get_sensitive()
 
       #     # config.vm.provider "virtualbox" do |v|
       #     #   v.name = "my_vm"
@@ -116,8 +116,12 @@ module VagrantManager
 
   end
 
-  def self.post_puppet()
-    HelperManager::post_puppet()
+  def self.setup_helpers()
+    Helpers::setup()
+  end
+
+  def self.flush_trigger_buffer()
+    Triggers::flush()
   end
 
   #################################################################

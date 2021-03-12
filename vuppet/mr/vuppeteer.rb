@@ -45,12 +45,14 @@ module Vuppeteer
  
     @features = {
       verbose: false,
+      debug: false,
       local: true,
       global: true,
       developer: false,
       stack: true,
       instance: true,
       installer: false,
+      autofilter: true,
     }
 
     def self.init(path = nil)
@@ -64,9 +66,14 @@ module Vuppeteer
       Facts::init()
       @features[:instance] = "#{Mr::active_path}/#{FileManager::localize_token}.instance.yaml"
       @instance = Facts::instance()
-      @features[:verbose] = Facts::get('verbose')
+      was = @features[:debug]
+      @features[:debug] = Facts::get('debug')
+      @features[:verbose] = @features[:debug] || Facts::get('verbose')
+      self.say('Notice: Debug Mode enabled' + (!was && @features[:debug] ? '... flushing trigger buffers.' : ''))
+      VagrantManager::flush_trigger_buffer() if !was && @features[:debug]
       Stack::init()
       Facts::post_stack_init()
+
     end
 
     def self.disable(o)
@@ -91,10 +98,34 @@ module Vuppeteer
 
     def self.start()
       self.expose_facts() if Facts::get('verbose_facts') || @features[:verbose]
+      self.say("Vuppeteer Features: #{@features.to_s}") if @features[:debug]
       if (self.external?)
-        Vuppeteer::shutdown('attempting install::prep')
+        Vuppeteer::shutdown('attempting install::prep', -1)
         Installer::prep() if @features[:installer]
       end
+      Vuppeteer::shutdown('attempting repo::init', -1)
+      FileManager::setup_repos() if (Facts::fact?('project_repos'))
+    end
+
+    def self.prep(guest_path)
+      Vuppeteer::shutdown('Not so fast....', -1)
+
+      Facts::set({'vagrant_root': guest_path}, true)
+      ElManager::register(VagrantManager::config())
+      VagrantManager::setup_helpers()
+    end
+
+    def self.build()
+      VagrantManager::init_plugins()
+      VagrantManager::config_vm() #TODO, handle multi vm situations
+      # x.each() do |a|
+      #   #box_name = ElManager::name_gen()
+      #   #infrastructure_name = ElManager::infra_gen()
+      #   #delim = infrastructure_name != '' && !infrastructure_name.nil? ? '-' : ''
+      #   #ElManager::is_it? ? ElManager::box() : @box_source
+      #   b = "#{box_name}#{delim}#{infrastructure_name}".ljust(2, '0')
+      #   VagrantManager::config_vm(b)
+      # end
     end
 
     def self.bow
@@ -102,6 +133,7 @@ module Vuppeteer
     end
 
     def self.say(output, trigger = :now, formatting = true)
+      trigger = :now if @features[:debug]
       if (output.class.include?(Enumerable))
         output.each do |o|
           self.say(o, trigger, formatting)
@@ -112,7 +144,7 @@ module Vuppeteer
         tab_multi = formatting && formatting.class == Integer ? formatting : 1
         end_line = supress_endline ? '' : "\n\r"
         line_tab = suppress_linetab ? '' : (VuppeteerUtils::Tabs * tab_multi)
-        full_output = "#{line_tab}#{output}#{end_line}"
+        full_output = VuppeteerUtils::filter_sensitive("#{line_tab}#{output}#{end_line}", @sensitive)
         trigger = [trigger] if !trigger.is_a? Array
         trigger.each do |t|
           t.to_sym
@@ -188,16 +220,19 @@ module Vuppeteer
       FileManager::save_yaml(@features[:instance], @instance)
     end
 
-    # def self.mark_sensitive(s)
-    #   @sensitive.push(s)
-    # end
-  
-    # def self.get_sensitive()
-    #   return @sensitive
-    # end
+    def self.mark_sensitive(s)
+      s = MrUtils::enforce_enumerable(s)
+      s.each() do |v|
+        @sensitive.push(v)
+      end
+    end
   
     def self.filter_sensitive(s)
-      return VuppeteerUtils::filter_sensitive(s)
+      return VuppeteerUtils::filter_sensitive(s, @sensitive)
+    end
+
+    def self.get_sensitive()
+      @sensitive
     end
   
     def self.report(facet, field = nil, prop = nil)
@@ -208,7 +243,7 @@ module Vuppeteer
       self.say(
         [
           'Processed Facts:',
-          MrUtils::inspect(Facts::facts()), 
+          MrUtils::inspect(Facts::facts(), true), 
           '----------------',
         ], 'prep'
       )
@@ -216,10 +251,6 @@ module Vuppeteer
 
     def self.import_files()
       return Facts::get('import', [])
-    end
-
-    def self.sync()
-      RepoManager::init() if (Facts::fact?('project_repos'))
     end
 
     def self.trace(*s)
@@ -260,7 +291,7 @@ module Vuppeteer
     end
 
   #################################################################
-  # gateways
+  # gateway methods
   #################################################################
 
     def self.get_stack(options = nil)

@@ -74,7 +74,9 @@ module VuppeteerUtils
       end
     end
     set = @char_sets.join() if (set == '')
-    self.random_string(set, length)
+    value = self.random_string(set, length)
+    Vuppeteer::mark_sensitive(value) if conf&.dig('sensitive') && conf['sensitive']
+    value
   end
 
   
@@ -86,6 +88,11 @@ module VuppeteerUtils
       r += char_set[rn]
     end
     r
+  end
+
+  def self.sensitive_fact?(k)
+    return true if self.sensitive_facts().any?() { |s| s.start_with?('*') && k.end_with?(s[1..-1]) }
+    false
   end
 
   def self.sensitive_facts()
@@ -145,25 +152,41 @@ module VuppeteerUtils
   #   end
   end
 
-  def self.filter_sensitive(s)
-    return self.filter_sentitive_string(s) if s.class = String
+  def self.filter_sensitive(s, f)
+    return self.filter_sentitive_string(s, f) if s.class == String
     r = s.class.new
-    s.each do |k,v| 
-      if(v.class == String)
-        r[k] = self.filter_sentitive_string(v)
-      else
-        r[k] = v.class.include?(Enumerable) ? self.filter_sensitive(v) : v
+    if (s.class == Hash) 
+      s.each() do |k,v| 
+        v = self.stringify(v)
+        if(v.class == String)
+          r[k] = self.filter_sentitive_string(v, f)
+        else
+          r[k] = v.class.include?(Enumerable) ? self.filter_sensitive(v, f) : v
+        end
+      end
+    elsif (s.class == Array)
+      s.each() do |v| 
+        v = self.stringify(v)
+        if(v.class == String)
+          r.push(self.filter_sentitive_string(v, f))
+        else
+          r.push(v.class.include?(Enumerable) ? self.filter_sensitive(v, f) : v)
+        end
       end
     end
     r
   end
 
-  def self.filter_sentitive_string(s)
+  def self.filter_sentitive_string(s, f)
     r = s.clone
-    @sensitive.each do |f|
-      r = r.gsub(f, '__REDACTED_AS_SENSITIVE__')
+    f.each do |m|
+      r = r.gsub(m, '__REDACTED_AS_SENSITIVE__')
     end
     r
+  end
+
+  def self.stringify(v)
+    return [Symbol, Integer, Float, TrueClass, FalseClass, NilClass].include?(v.class) ? (v.to_s) : v
   end
 
   #################################################################

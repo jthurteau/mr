@@ -7,7 +7,8 @@
 #TODO implement standard plugins
 # vagrant-vbguest https://github.com/dotless-de/vagrant-vbguest
 # vagrant-register? https://github.com/projectatomic/adb-vagrant-registration
-module Plugin
+
+module Plugins
   extend self
 
 #  @x = ['never', 'always'][1]

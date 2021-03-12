@@ -22,10 +22,10 @@ module FileManager
     return if @initialized
     self.localize_token(Vuppeteer::get_fact('localize_token'))
     self.override_token(Vuppeteer::get_fact('override_token'))
-    FilePaths::project_root(Vuppeteer::get_fact('host_root_path')) 
-    FilePaths::read_path(Vuppeteer::get_fact('host_allowed_read_path')) 
-    FilePaths::write_path(Vuppeteer::get_fact('host_allowed_write_path'))
-    FilePaths::init(root)
+    Paths::project_root(Vuppeteer::get_fact('host_root_path')) 
+    Paths::read_path(Vuppeteer::get_fact('host_allowed_read_path')) 
+    Paths::write_path(Vuppeteer::get_fact('host_allowed_write_path'))
+    Paths::init(root)
     @initialized = true
   end
 
@@ -44,15 +44,15 @@ module FileManager
   end
 
   def self.path_ensure(path, create = false, verbose = true)
-    FilePaths::ensure(path, create, verbose)
+    Paths::ensure(path, create, verbose)
   end
 
   def self.path(w, p = nil, f = nil)
     case w
     when :temp
-      return FilePaths::temp()
+      return Paths::temp()
     when :fact
-      return FilePaths::x_path('facts', p)
+      return Paths::x_path('facts', p)
       def self.manifest(manifest)
         self._x_path(manifest, 'manifests')
       end
@@ -69,21 +69,21 @@ module FileManager
         self._x_path(script, 'hiera')
       end
     when :hiera
-      return p.nil? ? false : FilePaths::hiera(p)
+      return p.nil? ? false : Paths::hiera(p)
     when :manifest
-      return p.nil? ? false : FilePaths::manifest(p)
+      return p.nil? ? false : Paths::manifest(p)
     when :bash
-      return p.nil? ? false : FilePaths::bash(p)
+      return p.nil? ? false : Paths::bash(p)
     when :template
-      return p.nil? ? false : FilePaths::template(p)
+      return p.nil? ? false : Paths::template(p)
     when :global
-      return p.nil? ? false : FilePaths::global(p, f)
+      return p.nil? ? false : Paths::global(p, f)
     when :local
-      return p.nil? ? false : FilePaths::local(p, f)
+      return p.nil? ? false : Paths::local(p, f)
     when :project
-      return p.nil? ? false : FilePaths::project(p, f)
+      return p.nil? ? false : Paths::project(p, f)
     when :external
-      return p.nil? ? false : FilePaths::external(p, f)
+      return p.nil? ? false : Paths::external(p, f)
     end
     false
   end
@@ -216,15 +216,43 @@ module FileManager
   def self.may?(operation, path)
     case operation
     when :write
-      return FilePaths::may_write?(path)
+      return Paths::may_write?(path)
     when :read
-      return FilePaths::may_read?(path)
+      return Paths::may_read?(path)
     end
     false
   end
 
   def fs_view()
     return Files.new().view()
+  end
+
+  #################################################################
+  # delegations
+  #################################################################
+
+  def self.setup_repos()
+    Repos::init()
+  end
+
+  #################################################################
+  # gateway methods
+  #################################################################
+
+  def self.secure_repo_uri(u)
+    Repos::secure_repo_uri(u)
+  end
+
+  def self.clean_path?(p)
+    Paths::clean_path?(p)
+  end
+
+  def self.repo_path?(p)
+    Repos::repo_path?(p)
+  end
+
+  def self.host_repo_path
+    Repos::host_repo_path()
   end
 
 #################################################################
