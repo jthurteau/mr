@@ -73,7 +73,6 @@ module Vuppeteer
       VagrantManager::flush_trigger_buffer() if !was && @features[:debug]
       Stack::init()
       Facts::post_stack_init()
-
     end
 
     def self.disable(o)
@@ -100,24 +99,23 @@ module Vuppeteer
       self.expose_facts() if Facts::get('verbose_facts') || @features[:verbose]
       self.say("Vuppeteer Features: #{@features.to_s}") if @features[:debug]
       if (self.external?)
-        Vuppeteer::shutdown('attempting install::prep', -1)
         Installer::prep() if @features[:installer]
       end
-      Vuppeteer::shutdown('attempting repo::init', -1)
       FileManager::setup_repos() if (Facts::fact?('project_repos'))
     end
 
-    def self.prep(guest_path)
-      Vuppeteer::shutdown('Not so fast....', -1)
-
+    def self.prep(guest_path) #TODO think about multi-vm scenario (passed vm param?, see also PuppetManager::apply)
       Facts::set({'vagrant_root': guest_path}, true)
       ElManager::register(VagrantManager::config())
       VagrantManager::setup_helpers()
     end
 
-    def self.build()
-      VagrantManager::init_plugins()
-      VagrantManager::config_vm() #TODO, handle multi vm situations
+    def self.build(which = nil)
+      which = self.default_vm if which.nil?
+      VagrantManager::init_plugins(which)
+      VagrantManager::config_vm(which) #TODO, handle multi vm situations
+      
+      Vuppeteer::shutdown('End of the Line for now', -1)
       # x.each() do |a|
       #   #box_name = ElManager::name_gen()
       #   #infrastructure_name = ElManager::infra_gen()

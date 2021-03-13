@@ -11,39 +11,37 @@
 module Plugins
   extend self
 
+  @plugins = {
+    registration: {
+      name: 'vagrant-registration'
+    },
+  }
 #  @x = ['never', 'always'][1]
   
-  # def self.init()
-  #   v = VagrantManager::get()
-  #   if Vagrant.has_plugin?('vagrant-registration')
-  #   #   v.registration.username = 'foo'
-  #   #   v.registration.password = 'bar'
-  #     v.registration.skip = true
-  #     v.registration.unregister_on_halt = false
-  #     #v.registration.name = host+app+developer?
-  #   #config.registration.auto_attach = false # only do this on dev
-  #   end
-  # end
+  def self.init()
+    v = VagrantManager::get()
+    if Vagrant.has_plugin?(@plugins[:registration][:name])
+      v.registration.skip = true
+      v.registration.unregister_on_halt = false
+    end
+  end
 
-  # def self.managing?(what)
-  #   return false if 'registration' != what
-  #   return RhelManager.is_it?() && '8' == RhelManager::el_version() && RhelManager::ready_to_register()
-  # end
+  def self.managing?(what)
+    return false if !@plugins.has_key?(what)
+    case what
+    when :registration
+      return ElManager.is_it?() && '8' == ElManager::el_version() && ElManager::ready_to_register()
+    end
+  end
 
-  # def self.setup_registration()
-  #   v = VagrantManager::get()
-  #   mode = RhelManager::ready_to_register()
-  #   if Vagrant.has_plugin?('vagrant-registration')
-  #     if 'user' == mode
-  #       v.registration.username = Vuppeteer::get_fact('rhsm_user')
-  #       v.registration.password = Vuppeteer::get_fact('rhsm_pass')
-  #     elsif 'org' == mode
-  #       v.registration.org = Vuppeteer::get_fact('rhsm_org')
-  #       v.registration.activationkey = Vuppeteer::get_fact('rhsm_key')
-  #     end
-  #     v.registration.skip = false
-  #   #config.registration.auto_attach = false # only do this on dev
-  #   end
-  # end
+  def self.setup(what)
+    return if !@plugins.has_key?(what) || Vagrant.has_plugin?(@plugins[what][:name])
+    v = VagrantManager::get()
+    case what
+    when :registration
+      p =  v.registration 
+      ElManager::configure_plugin(what, p)
+    end
+  end
 
 end

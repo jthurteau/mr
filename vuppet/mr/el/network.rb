@@ -180,6 +180,14 @@ module Network
   #           s.inline = RhelManager::setup()
   end
 
+  def self.hostspec()
+    return Hostspec.new(@hostname, @domain, @public_ip).view()
+  end
+
+  #################################################################
+  private
+  #################################################################
+
   def self._passthrough_host(app = nil, developer = nil)
     NetworkManager::host_conf(app, developer)
     NetworkManager::pass(VagrantManager::config().trigger, VagrantManager::config().vm)
@@ -199,7 +207,5 @@ module Network
     end
   end
 
-  def self.hostspec()
-    return Hostspec.new(@hostname, @domain, @public_ip).view()
-  end
+
 end

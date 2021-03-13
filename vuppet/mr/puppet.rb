@@ -22,8 +22,25 @@ module PuppetManager
   @opt = {}
 
   def self.init()
-    self._init()
+    @conf = Vuppeteer::load_facts(@conf_source)
+    if @conf
+      @file_path = @conf['files'] if @conf['files']
+      @version = @conf['version'] if @conf['version']
+      ['verbose', 'debug', 'output', 'log_format'].each do |o|
+        @opt[o] = @conf[o] if @conf.has_key?(o)
+      end
+      m = @conf.has_key?['module_versions'] && @conf['module_versions'].class == Hash
+      Modules::set_versions(@conf['module_versions']) if m
+      Vuppeteer::add_derived(@conf['derived_facts']) if @conf['derived_facts']
+    else
+      @conf = {}
+      Vuppeteer::say("Notice: No puppet config provided (default version/options etc. are in place)", 'prep')
+    end
+    self.disable() if Vuppeteer::fact?('bypass_puppet')
+    Vuppeteer::set_facts({'puppet_files' => @file_path}, true)
+    Modules::init(Vuppeteer::get_fact('puppet_modules'))
     Manifests::init()
+    Hiera::init(@file_path) if (!self.disabled?(:hiera))
   end
 
   def self.disabled?(what = :puppet)
@@ -37,8 +54,12 @@ module PuppetManager
   end
 
   def self.apply(options = nil)
+    if (self.disabled?) 
+      Vuppeteer::say('Notice: puppet_apply skipped, puppet is disabled')
+      return
+    end
     run_options = self::_setup(options)
-
+    #TODO figure out which vm in a multi-vm situation from options or additional param
     #CollectionManager::provision(VagrantManager::config()) #TODO why is this called twice? (also in _register)
     VagrantManager::host_pre_puppet_triggers()
 
@@ -134,36 +155,12 @@ module PuppetManager
   private
 #################################################################
 
-  def self._init()
-    @conf = Vuppeteer::load_facts(@conf_source)
-    if @conf
-      @file_path = @conf['files'] if @conf['files']
-      @version = @conf['version'] if @conf['version']
-      ['verbose', 'debug', 'output', 'catalog', 'log_format'].each do |o|
-        @opt[o] = @conf[o] if @conf.has_key?(o)
-      end
-      m = @conf.has_key?['module_versions'] && @conf['module_versions'].class == Hash
-      Modules::set_versions(@conf['module_versions']) if m
-      Vuppeteer::add_derived(@conf['derived_facts']) if @conf['derived_facts']
-    else
-      @conf = {}
-      Vuppeteer::say("Notice: No puppet config provided (default version/options etc. are in place)", 'prep')
-    end
-    self.disable() if Vuppeteer::fact?('bypass_puppet')
-    Vuppeteer::set_facts({'puppet_files' => @file_path}, true)
-    Modules::init(Vuppeteer::get_fact('puppet_modules'))
-    Hiera::init(@file_path) if (!self.disabled?(:hiera))
-    ElManager::init() #setup() used to be here (in mr.rb anyway)
-  end
-
   def self._setup(options = nil)
       o = !options.nil? ? options : @opt
       ##came from Mr puppetize
       v = !o['verbose'].nil? && o['verbose'] #Vuppeteer::get_fact('puppet_verbose', false)
       d = !o['debug'].nil? && o['debug'] #Vuppeteer::get_fact('puppet_debug', false)
-      c = !o['catalog'].nil? && o['catalog']
       o['out_options'] = (v ? '--verbose ' : '') + (d ? '--debug ' : '')
-      o['out_options'] += '--write-catalog-summary ' if c
       o['out_log_to'] = !o['output'].nil? ? o['output'] : 'console' #Vuppeteer::get_fact('puppet_output', 'console')
       logtime = DateTime.now.strftime('%Y-%m-%d-%H-%M-%S')
       if ('file' == o['out_log_to'])

@@ -37,6 +37,7 @@ module VagrantManager
   end
 
   def self.config_vm(vm = nil)
+    Vuppeteer::shutdown("vm " + vm.to_s, -2)
     vagrant_default_warning = "Notice: No vagrant config provided (so default network/shared etc. are in place)"
     Vuppeteer::say(vagrant_default_warning, 'prep') if !@setup
     self._vb_setup()
@@ -104,20 +105,20 @@ module VagrantManager
     @prevent_vb_middleware
   end
 
-  def self.init_plugins()
+  def self.init_plugins(vm)
     Plugins::init()
   end
 
-  def self.plugin_managing(p)
-
+  def self.plugin_managing?(p)
+    Plugins::managing?(p)
   end
 
-  def self.plugin(x)
-
+  def self.plugin(p)
+    Plugins::setup(p)
   end
 
-  def self.setup_helpers()
-    Helpers::setup()
+  def self.setup_helpers(v = nil, h = nil)
+    Helpers::setup(v, h)
   end
 
   def self.flush_trigger_buffer()

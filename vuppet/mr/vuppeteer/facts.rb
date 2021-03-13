@@ -46,6 +46,12 @@ module Facts
     'rhsm_user','rhsm_pass','rhsm_org', 'rhsm_key', 'rhsm_host',
   ]
 
+  ##
+  #
+  @merge_facts = {
+    'helpers' => true,
+
+  }
 
   ##
   # load the inital facts file, remove invalid keys, and merge it in with root_facts
@@ -205,7 +211,7 @@ module Facts
   private
 #################################################################
 
-  def self._set_fact(k, v)
+  def self._set_fact(k, v) #TODO #1.0.0 implement @merge_facts
     Vuppeteer::mark_sensitive(v) if Vuppeteer::enabled?(:autofilter) && VuppeteerUtils::sensitive_fact?(k)
     if @root_facts.any? {|r| r == k }
       self._set_as(:block, k, v)

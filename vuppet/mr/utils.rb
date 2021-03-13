@@ -11,8 +11,8 @@ module MrUtils
     h.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
   end
 
-  def self.enforce_enumerable(a)
-    return a.class.include?(Enumerable) ? a : [a]
+  def self.enforce_enumerable(a, even_nil = true)
+    return a.class.include?(Enumerable) ? a : (!even_nil && a.nil? ? a : [a])
   end
 
   def self.inspect(v, breakup = false)

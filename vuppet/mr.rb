@@ -60,8 +60,19 @@ module Mr
   # nil has the same effect as an empty hash (default options)
   # if only a string is provided it is mapped to {assert: {'project' => [string]}}
   def self.vagrant(vagrant, options = {})
+    if !@prepped.nil?
+      Vuppeteer::say('Warning: Mr::vagrant can only be called once, second entry detected')
+      Vuppeteer::trace('Second entry at:')
+      return
+    end
     self._config(options)
-    self._init(vagrant, MrUtils::caller_file(caller))
+    FileManager::init(File.dirname(MrUtils::caller_file(caller)))
+    Vuppeteer::init(@active_path == @my_path ? nil : @my_path)
+    @disabled = Vuppeteer::get_fact('disabled', false)
+    PuppetManager::init()
+    ElManager::init()
+    VagrantManager::init(vagrant)
+    @prepped = false
     Vuppeteer::start()
     if (!@disabled)
       ElManager::setup()
@@ -69,29 +80,25 @@ module Mr
     else
       Vuppeteer::say('Notice: Mr is DISABLED, normal provisioning and triggers bypassed')
     end
-    Vuppeteer::shutdown('End of the Line for now', -1)
-    Vuppeteer::build()
+    Vuppeteer::build(ElManager::get_vms())
   end 
 
   ##
   # Ensures prep steps have been applied and then sets up the puppet_apply provisioner
   def self.puppet_apply(options = nil)
-    return nil if @disabled
-    if (PuppetManager::disabled?()) 
-      Vuppeteer::say('Notice: puppet_apply skipped, puppet is disabled')
-      return nil
+    return if @disabled
+    if (!@prepped)
+      Vuppeteer::shutdown('Error: attempting to manage puppet before initialization') if @prepped.nil?
+      Vuppeteer::prep(@guest_path)
+      @prepped = true
     end
-    return if @prepped
-    Vuppeteer::shutdown('Error: attempting to manage puppet before initialization') if @prepped.nil?
-    Vuppeteer::prep(@guest_path)
-    @prepped = true
     PuppetManager::apply()
   end
 
   ##
   # Registers a provisioner
-  def self.add_provisioner(provisioner_name, config, props)
-    #TODO accept helper_provisioners
+  def self.add_provisioner(provisioner_name, config = nil, props = nil)
+    return VagrantManager::add_helpers([provisioner_name]) if config.nil?() || props.nil?()
     VagrantManager::config().vm.provision provisioner_name , MrUtils::sym_keys(config) do |p|
       props.each do |h, v|
         p.send(h + '=', v)
@@ -145,7 +152,6 @@ module Mr
   #################################################################
 
   def self._config(config)
-    Vuppeteer::shutdown('Error: attempting to re-configure Mr after initialization') if !@prepped.nil?
     configured_active_path = @active_path
     roots = {}
     option_roots = {}
@@ -212,16 +218,6 @@ module Mr
     end
     Vuppeteer::set_root_facts(roots)
     @active_path = File.absolute_path(configured_active_path)
-  end
-
-  def self._init(v, vagrant_file)
-    return if !@prepped.nil?
-    FileManager::init(File.dirname(vagrant_file))
-    Vuppeteer::init(@active_path == @my_path ? nil : @my_path)
-    @disabled = Vuppeteer::get_fact('disabled', false)
-    PuppetManager::init()
-    VagrantManager::init(v)
-    @prepped = false
   end
   
 end

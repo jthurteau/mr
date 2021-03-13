@@ -133,6 +133,13 @@ module VuppeteerUtils
     errors
   end
 
+  def self.match(key, config, list = nil)
+    nil_allowed = false #TODO allow if conig matches :nil :nillable, etc
+    return false if !list.nil? && !list.key_exists?(key) && !nil_allowed
+    value = list.nil? key : list[key]
+    return false; #TODO self.validate(value,config) ?
+  end
+
   def self.generate(list, method = nil)
     return self._generate(list) if method.nil?
     generated_hash = {}

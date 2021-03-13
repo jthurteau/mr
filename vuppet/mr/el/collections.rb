@@ -20,10 +20,10 @@ module Collections
   def self.provision(v, source = nil)
     #TODO add source? even if @collections_added?
     if (@collections_requested && !@collections_added)
-        v.vm.provision "software_collections", type: :shell, run: CollectionManager::run_when() do |s|
-          s.inline = RhelManager::is_it? ? RhelManager::sc_commands() : CollectionManager::commands()
+        v.vm.provision "software_collections", type: :shell, run: self.run_when() do |s|
+          s.inline = ElManager::is_it? ? ElManager::sc_commands() : self.commands()
         end
-        CollectionManager::retire()
+        self.retire()
     end
   end
 
@@ -63,7 +63,7 @@ module Collections
   end
 
   def credentials() #TODO make a CentosManager instead?
-    return RhelManager::credentials() if RhelManager::is_it?
+    return ElManager::credentials() if ElManager::is_it?
     return Credentials.new().view()
   end
 

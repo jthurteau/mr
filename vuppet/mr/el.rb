@@ -7,6 +7,7 @@
 module ElManager
   extend self
 
+  require_relative 'el/boxes'
   require_relative 'el/network'
   require_relative 'el/collections'
   
@@ -15,6 +16,9 @@ module ElManager
   @el_version = ['7','8'][0]
   @box = 'generic/rhel8'
   @ident_file = 'puppet/license_ident.yaml'
+  @ident = {}
+  @vms = []
+  @sc = nil
 
   @scripts = {
     sc: nil,
@@ -38,15 +42,9 @@ module ElManager
     @el_version = self._detect_version()
     @box = self._detect_box()
     @ident = self._detect_ident()
+    #TODO Vuppeteer::mark_sensitive([sensitive ident keys])
+    @scripts[:destroy] = 'rhel_destroy' #if self.is_it? #TODO this whouldn't be set when in Centos/Nomad mode...
   end
-
-  # def self._old_init(hash_or_key = nil, source_box = nil)
-  #   @destroy_script = 'rhel_destroy' #TODO this whouldn't be set when in Centos/Nomad mode...
-  #   @box = source_box if !source_box.nil?
-  #   return self if !hash_or_key
-  #   return self._lookup_ident(hash_or_key) if !hash_or_key.class.include?(Enumerable)
-  #   self._init_hash(hash_or_key)
-  # end
 
   def self.el_version()
     @el_version
@@ -60,16 +58,18 @@ module ElManager
     @build
   end
 
-  def self.ready_to_register()
-    facts = Vuppeteer::facts()
-    @cred_types.each() do |t, r|
-      requires = r.map {|k| "#{@cred_prefix}#{k}"}
-      return t if requires.all? { |k| Vuppeteer::facts().include?(k)}
-    end
+  def self.setup()
+    Vuppeteer::say("ElManager pre-setup config reports: #{@box}:#{@el_version} " + @ident.to_s) if Vuppeteer::enabled?(:debug)
+    Collections::request(Vuppeteer::get_fact('software_collection', @sc))
+    @vms = [Boxes::get_main()]
   end
 
-  def self.setup()
-# CollectionManager::request(Vuppeteer::get_fact('software_collection', RhelManager::sc))
+  def self.ready_to_register()
+    #facts = Vuppeteer::facts()
+    @cred_types.each() do |t, r|
+      requires = r.map {|k| "#{@cred_prefix}#{k}"}
+      return t if requires.all? { |k| @ident.include?(k)} #Vuppeteer::facts().include?(k)}
+    end
   end
 
   def self.script(w)
@@ -103,11 +103,6 @@ module ElManager
     ErBash::script(self.script(:destroy), self.credentials())
   end
 
-  def self.box_destroy_prep()
-    return if !self.script(:destroy)
-    VagrantManager::set_destroy_trigger(self.script(:destroy))
-  end
-
   def self.collection_manifest()
     self.is_it? ? '' : '-sc:centos'
   end
@@ -120,67 +115,85 @@ module ElManager
     @singleton != nil
   end
 
-
   ## came from Vuppeteer
-    # def self.name_gen()
-    #   return Vuppeteer::get_fact('box_name') if Vuppeteer::fact?('box_name')
-    #   app = Vuppeteer::get_fact('app', '')
-    #   developer = Vuppeteer::get_fact('developer', '')
-    #   fallback = [app, developer].all?{|v| v == ''} ? 'vagrant-puppet' : ''
-    #   delim = [app, developer].none?{|v| v == ''} ? '-' : ''
-    #   "#{developer}#{delim}#{app}#{fallback}"
-    # end
-  
-    # def self.infra_gen()
-    #   return '' if Vuppeteer::fact?('standalone')  
-    #   RhelManager::is_it? ? RhelManager::build() : 'nomad'
-    # end
+  # def self.name_gen()
+  #   return Vuppeteer::get_fact('box_name') if Vuppeteer::fact?('box_name')
+  #   app = Vuppeteer::get_fact('app', '')
+  #   developer = Vuppeteer::get_fact('developer', '')
+  #   fallback = [app, developer].all?{|v| v == ''} ? 'vagrant-puppet' : ''
+  #   delim = [app, developer].none?{|v| v == ''} ? '-' : ''
+  #   "#{developer}#{delim}#{app}#{fallback}"
+  # end
+
+  # def self.infra_gen()
+  #   return '' if Vuppeteer::fact?('standalone')  
+  #   RhelManager::is_it? ? RhelManager::build() : 'nomad'
+  # end
 
   def self.register()
-    
     NetworkManager::resgister(cors)#app = nil, developer = nil #self._register(Vuppeteer::get_fact('org_domain'))
-    ## came from Mr
-  #     if (RhelManager::is_it?)
-  #       RhelManager::box_destroy_prep()
-  
-  #       if (VagrantManager::plugin_managing?(:registration))
-  #         VagrantManager::plugin(:setup_registration)
-  #       else
-  #         VagrantManager::config().vm.provision 'register', type: :shell do |s|
-  #         end
-  #       end
-  #       registration_update_inline = RhelManager::update()
-  #       VagrantManager::config().vm.provision 'unregister', type: :shell, run: 'never' do |s|
-  #         s.inline = RhelManager::unregister()
-  #       end
-  #     else
-  #       VagrantManager::config().vm.provision 'register', type: :shell do |s|
-  #         s.inline = ErBash::script('centos_setup')
-  #       end
-  #       VagrantManager::config().vm.provision 'unregister', type: :shell, run: 'never' do |s|
-  #         s.inline = unavailable_script
-  #       end
-  #       registration_update_inline = unavailable_script
-  #     end
-  
-  #     VagrantManager::config().vm.provision 'update_registration', type: :shell, run: @when_to_reregister do |s|
-  #       s.inline = registration_update_inline
-  #     end
-      
-  #     VagrantManager::config().vm.provision 'refresh', type: :shell, run: 'never' do |s|
-  #       s.inline = ErBash::script('yum_refresh')
-  #     end
+    if (self.is_it?)
+      self.box_destroy_prep()
+      if (VagrantManager::plugin_managing?(:registration))
+        VagrantManager::plugin(:setup_registration)
+        VagrantManager::config().vm.provision 'register', type: :shell, run: 'never' do |s|
+          s.inline = 'echo Vagrant plugin is managing registration'
+        end
+      else
+        VagrantManager::config().vm.provision 'register', type: :shell do |s|
+        end
+      end
+      registration_update_inline = RhelManager::update()
+      VagrantManager::config().vm.provision 'unregister', type: :shell, run: 'never' do |s|
+        s.inline = RhelManager::unregister()
+      end
+    else
+      VagrantManager::config().vm.provision 'register', type: :shell do |s|
+        s.inline = ErBash::script('fedora_setup')
+      end
+      VagrantManager::config().vm.provision 'unregister', type: :shell, run: 'never' do |s|
+        s.inline = unavailable_script
+      end
+      registration_update_inline = unavailable_script
+    end
 
-    CollectionManager::provision(VagrantManager::config()) #TODO this may be deprecated since it is tied to RHEL7?
+    VagrantManager::config().vm.provision 'update_registration', type: :shell, run: @when_to_reregister do |s|
+      s.inline = registration_update_inline
+    end
+    
+    VagrantManager::config().vm.provision 'refresh', type: :shell, run: 'never' do |s|
+      s.inline = ErBash::script('yum_refresh')
+    end
+
+    Collections::provision(VagrantManager::config()) #TODO this may be deprecated since it is tied to RHEL7?
   end
 
   def self.cred_prefix()
     @cred_prefix
   end
 
-#################################################################
-private
-#################################################################
+  def self.configure_plugin(plugin, name)
+    #TODO case name #we only support one plugin right now...
+    mode = self.ready_to_register()
+    case mode
+    when :user
+      p.username = @ident[:user] #Vuppeteer::get_fact('rhsm_user')
+      p.password = @ident[:pass] #Vuppeteer::get_fact('rhsm_pass')
+    when :org
+      p.org = @ident[:org] #Vuppeteer::get_fact('rhsm_org')
+      p.activationkey = @ident[:key] #Vuppeteer::get_fact('rhsm_key')
+    end
+    p.skip = false
+    #p.auto_attach = false if @ident.has_key?(:manual_attach) && @ident[:manual_attach] # only do this on dev?
+  end
+
+  def self.get_vms()
+    return @vms
+  end
+
+  #################################################################
+  private
+  #################################################################
 
   def self._detect_box()
     #   Vuppeteer::fact?('box_source') ? PuppetFacts::get_fact('box_source') : 
@@ -194,7 +207,12 @@ private
   end
 
   def self._detect_ident()
-
+    license_important = Vuppeteer::get_fact('license_important', false)
+    #     if (license_important)
+    #       selected_license = Vuppeteer::get_fact('license_ident', Vuppeteer::get_fact('pref_license_ident', nil))
+    #     else
+    #       selected_license = Vuppeteer::get_fact('pref_license_ident', Vuppeteer::get_fact('license_ident', nil))
+    #     end
   end 
 
   def self._lookup_ident(ident_key)
@@ -227,8 +245,7 @@ private
   def self._init_hash(ident_hash)
     @build = ident_hash.fetch('box_suffix', ident_hash['ident'])
     @box = ident_hash.fetch('box', @box)
-    el_version = self._get_box_el_version(@box)
-    if (el_version == '8')
+    if (@el_version == '8')
       VagrantManager::halt_vb_guest() #TODO this should be in plugin-manager? right now it's vb middle ware, so not a "plugin"?
     end
     if ident_hash['custom_sc'] #TODO make this more robusty
@@ -258,31 +275,9 @@ private
     @cred_type == :user ? 'rhel_developer_setup' : 'rhel_setup'
   end
 
-  def self._setup()
-    ## came from Mr
-#     if Vuppeteer::fact?('box_source')
-  #       @box_source = Vuppeteer::get_fact('box_source')
-  #     elsif Vuppeteer::get_fact('default_to_rhel')
-  #       @box_source = RhelManager::box()
-  #     end
-  #     license_important = Vuppeteer::get_fact('license_important', false)
-  #     if (license_important)
-  #       selected_license = Vuppeteer::get_fact('license_ident', Vuppeteer::get_fact('pref_license_ident', nil))
-  #     else
-  #       selected_license = Vuppeteer::get_fact('pref_license_ident', Vuppeteer::get_fact('license_ident', nil))
-  #     end
-  #     RhelManager::init(selected_license, @box_source)
-  #     #TODO software_collection = ''; #TODO! RhelManager::collection_manifest()
-  end
-
-  #TODO deprecate
-  def self._get_box_el_version(box_name)
-    @known_box_prefixes.each do |b|
-      if (box_name.start_with?(b))
-        return box_name.slice(b.length..-1)
-      end
-    end
-    return box_name.slice(-1)
+  def self._box_destroy_prep()
+    return if !self.script(:destroy)
+    VagrantManager::set_destroy_trigger(self.script(:destroy))
   end
 
   class Realm 

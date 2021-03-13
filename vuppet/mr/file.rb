@@ -232,6 +232,7 @@ module FileManager
   #################################################################
 
   def self.setup_repos()
+    Vuppeteer::shutdown('attempting repo::init', -1)
     Repos::init()
   end
 

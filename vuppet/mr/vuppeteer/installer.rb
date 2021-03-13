@@ -3,18 +3,16 @@
 #
 
 module Installer
-  # require 'file/utils'
-#  require_relative 'file/mirror'
   extend self
 
   @install_files = [
     'mr_rogers.rb', 
     'mr_rogers',
-    '+license_ident.yaml',
+    '+el.yaml',
     '+puppet.yaml',
     '+vagrant.yaml',
     '+local-dev.example.project.yaml',
-    '+facts.example.yaml',
+    '+example.project.yaml',
   ]
 
   @install_global_files = [ 
@@ -26,13 +24,13 @@ module Installer
     'facts/?',
     'hiera/?',
     'manifests/?',
-    #'manifests/global.pp',
     'templates/?',
     'templates/gitignore.example.erb',
     'templates/hiera.erb',
   ]
 
   def self.prep()
+    Vuppeteer::shutdown('attempting install::prep', -1)
     mirror_path = "#{Mr::active_path()}/#{FileManager::path(:temp)}ext/"
     import_path = "#{Mr::active_path()}/#{FileManager::path(:temp)}imp/"
     FileUtils.rm_r(mirror_path, {:force => true}) if (File.directory?(mirror_path))
