@@ -9,6 +9,7 @@ module FileManager
   require_relative 'file/mirror'
   require_relative 'file/erbash'
   require_relative 'file/repos'
+  #TODO require_relative 'file/cache'
 
   @initialized = false
   @localize_token = 'local-dev'
@@ -16,13 +17,11 @@ module FileManager
 
   @allow_host_dir_creation = true
 
-  #TODO @loaded_files = {}
-
   def self.init(root = nil)
     return if @initialized
     self.localize_token(Vuppeteer::get_fact('localize_token'))
     self.override_token(Vuppeteer::get_fact('override_token'))
-    Paths::project_root(Vuppeteer::get_fact('host_root_path')) 
+    Paths::project_root(Vuppeteer::get_fact('host_root_path')) #NOTE if this is nil, the value in root param prevails
     Paths::read_path(Vuppeteer::get_fact('host_allowed_read_path')) 
     Paths::write_path(Vuppeteer::get_fact('host_allowed_write_path'))
     Paths::init(root)
@@ -131,16 +130,17 @@ module FileManager
     lines
   end
 
+  def self.facet_split(source = nil)
+    s = MrUtils::splitter
+    source.nil? ? s : (source.include?(s) ? source.split(s, 2) : [source])
+  end
+
   ##
   # loads a yaml file, if it exists and has hash keys
   def self.load_fact_yaml(path, critical = true)
-    if (path.include?('::'))
-      parts = path.split('::', 2)
-      fact = parts.length > 1  && parts[1] != '' ? parts[1] : nil
-      path = parts[0]
-    else
-      fact = nil 
-    end
+    parts = self.facet_split(path)
+    path = parts[0].end_with?('.yaml') ? parts[0] : "#{parts[0]}.yaml" 
+    facet = parts.length > 1  && parts[1] != '' ? parts[1] : nil
     if (!File.exist?(path))
       MrUtils::meditate("facts \"#{path}\" not available", critical, 'prep')
       return nil
@@ -152,42 +152,8 @@ module FileManager
     end
     MrUtils::meditate("empty facts in \"#{path}\"", critical, 'prep') if (y.nil?)
     MrUtils::meditate("invalid facts in \"#{path}\"", critical, 'prep') if (!y.nil? && y.class != Hash)
-    y.class == Hash ? (fact.nil? ? y : (y.has_key?(fact) ? y[fact] : nil) ) : nil
+    y.class == Hash ? (facet.nil? ? y : (y.has_key?(facet) ? y[facet] : nil) ) : nil
   end
-
-  # def self.load_config_yaml(path, description)
-  #   #rescueable = [SystemCallError, Psych::SyntaxError]
-  #   unavailable_file_text = "#{description} configurations unavailable"
-  #   unparsable_file_text = "#{description} configurations unparsable"
-  #   external_file_text = "Using external #{description} configurations."
-  #   config = nil
-  #   begin
-  #     config = YAML.load_file(path) if File.exist?(path)
-  #   rescue SystemCallError => e
-  #     if !Vuppeteer::external?
-  #       Vuppeteer::say("Warning: #{unavailable_file_text}" ,'prep')
-  #       return config
-  #     end
-  #   rescue Psych::SyntaxError => e
-  #     if !Vuppeteer::external?
-  #       Vuppeteer::say("Warning: #{unparsable_file_text}, #{e.to_s}" ,'prep')
-  #       return config
-  #    end
-  #   end   
-  #   return config if config || !Vuppeteer::external?
-  #   Vuppeteer::say(external_file_text ,'prep')
-  #   external_path = Mr::path(path)
-  #   begin
-  #     config = YAML.load_file(external_path)
-  #   rescue SystemCallError => e
-  #     Vuppeteer::say("Warning: #{unavailable_file_text}" ,'prep')
-  #     config = {}
-  #   rescue Psych::SyntaxError => e
-  #     Vuppeteer::say("Warning: #{unparsable_file_text}, #{e.to_s}" ,'prep')
-  #     return config
-  #   end
-  #   config
-  # end
 
   def self.save_yaml(path, data, backup = false)
     self._backup(path) if backup

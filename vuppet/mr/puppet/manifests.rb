@@ -57,7 +57,7 @@ module Manifests
       if (l.lstrip().start_with?('include'))
         contents = l.split('include', 2).last.split('#').first
         contents.split(',').each do |m|
-          modules.push(m.split('::').first.split('\'').last)
+          modules.push(m.split(MrUtils::splitter).first.split('\'').last)
         end
       end
     end

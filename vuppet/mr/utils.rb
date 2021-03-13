@@ -7,6 +7,12 @@ module MrUtils
 
   require 'pp'
 
+  @splitter = '::'
+
+  def self.splitter()
+    @splitter
+  end
+
   def self.sym_keys(h) #NOTE workaround until Ruby 2.5? h = h.transform_keys(&:to_s)
     h.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
   end
@@ -60,10 +66,10 @@ module MrUtils
   end
 
   def self.traverse(index, search, throws = false)
-    indexes = self.traversable(index) ? index.split('::') : self.enforce_enumerable(index)
+    indexes = self.traversable(index) ? index.split(@splitter) : self.enforce_enumerable(index)
     n = indexes.shift
     n = n.to_i if n.match(/^[0-9]*$/)
-    indexes = indexes.join('::')
+    indexes = indexes.join(@splitter)
     h = search.is_a?(Hash) && search.has_key?(n)
     a = search.is_a?(Array) && n.is_a?(Integer) && n < search.length
     if h || a
@@ -74,7 +80,7 @@ module MrUtils
   end
 
   def self.traversable(index)
-    return index.class == String && index.include?('::')
+    return index.class == String && index.include?(@splitter)
   end
   
   def self.dig(h, k)

@@ -6,8 +6,18 @@
 module Boxes
   extend self
 
-  def self.get_main()
-    return 'test'
+  @builds = {}
+
+  def self.add(vm_name, conf_source)
+    @builds[vm_name] = conf_source
+  end 
+
+  def self.include?(v)
+    return @builds.has_key?(v)
+  end
+
+  def self.get()
+    return @builds
   end
 
   #################################################################

@@ -15,8 +15,7 @@ module Mr
   extend self
 
   #HENEYDO
-  #TODO see also sendfile vbox bug
-  # https://www.vagrantup.com/docs/synced-folders/virtualbox
+  #TODO #1.1.0 see also sendfile vbox bug https://www.vagrantup.com/docs/synced-folders/virtualbox
 
   require_relative 'mr/utils'
   require_relative 'mr/file'
@@ -45,20 +44,21 @@ module Mr
   @prepped = nil
 
   ##
-  # the yaml file to use for mr, vuppet, project configuration
-  # other yaml sources (puppet, vagrant, etc) can be a separate file, or '::x' to map to 'x' in project_fact_file
-  @project_facts_file = 'project'
+  # the yaml file to use for mr, vuppet, build configuration
+  # other yaml sources (puppet, vagrant, etc) can be a separate file, or '::x' to map to 'x' in build_facts_file
+  @build_facts_file = 'vuppeteer'
 
   ##
   # a yaml file to use for local preferences if load_developer_facts is true
-  # this may be set in options from the Vagrantfile or the local-dev.project.yaml 
-  @developer_facts_file = '~/.mr/developer.yaml'
+  # this may be set in options from the Vagrantfile or the local-dev.vuppeteer.yaml 
+  @developer_facts_file = '~/.mr/developer'
 
   ##
   # Performs all of the setup on the provided vagrant config up to the puppet-prep stage
+  # vagrant is vagrant config referece
   # options may be a hash, string, or nil
   # nil has the same effect as an empty hash (default options)
-  # if only a string is provided it is mapped to {assert: {'project' => [string]}}
+  # if a string is provided it is mapped to a Hash, {assert: {'project' => [string]}}
   def self.vagrant(vagrant, options = {})
     if !@prepped.nil?
       Vuppeteer::say('Warning: Mr::vagrant can only be called once, second entry detected')
@@ -121,8 +121,8 @@ module Mr
     return @active_path
   end
 
-  def self.project
-    return @project_facts_file
+  def self.build
+    return @build_facts_file
   end
 
   def self.developer_facts
@@ -171,9 +171,12 @@ module Mr
           roots['host_allowed_read_path'] = v
         when :allowed_write_path
           roots['host_allowed_write_path'] = v
+        when :safe_mount
+          roots['safe_mount'] = v
+          Vuppeteer::say("Notice: Safe Mount option invoked, but it is not implemented yet", 'prep')
         when :facts
           if (v.class == String)
-            @project_facts_file = (y.end_with?('.yaml') ? v[0..-4] : v)
+            @build_facts_file = (y.end_with?('.yaml') ? v[0..-4] : v)
           elsif (v.respond_to?(:to_h))
             option_roots = v
           else
@@ -189,6 +192,8 @@ module Mr
           Vuppeteer::disable(:stack) if !v
         when :load_local_facts
           Vuppeteer::disable(:local) if !v
+        when :load_instance_facts
+          Vuppeteer::disable(:instance) if !v
         when :load_developer_facts
           Vuppeteer::enable(:developer) if v
           if (v.class == String)
@@ -203,20 +208,27 @@ module Mr
           PuppetManager::disable(:hiera) if v
         when :verbose
           roots['verbose'] = v
+          Vuppeteer::enable(:verbose) if v
         when :debug
           roots['debug'] = v
           roots['verbose'] = v if v
+          Vuppeteer::enable(:debug) if v
+          Vuppeteer::enable(:verbose) if v
         else
-          Vuppeteer::say("Unrecognized configuration option: #{k}", 'prep')
+          Vuppeteer::say("Notice: Unrecognized configuration option: #{k}", 'prep')
         end
       end   
     elsif(!config.nil?)
       Vuppeteer::add_asserts({'project' => config.to_s})
     end
     option_roots.each do |r, v|
-      roots[r] = v if !roots.has_key?(r)
+      if !roots.has_key?(r)
+        roots[r] = v 
+      else 
+        Vuppeteer::say("Notice: Duplicate configuration options for #{r}" ,'prep')
+      end
     end
-    Vuppeteer::set_root_facts(roots)
+    Vuppeteer::root(roots)
     @active_path = File.absolute_path(configured_active_path)
   end
   

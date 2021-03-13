@@ -9,11 +9,12 @@ raise 'Unable to build Local Development Environment. Vuppeteer unavailable.' if
 
 #options = nil 
 options = { # https://github.com/jthurteau/mr/wiki/Managing-MrRogers-from-the-Vagrantfile
-  assert: {'project' => 'daniel',}, # see also /vuppet/project.yaml
+  assert: {'project' => 'daniel',}, # see also /vuppet/vuppeteer.yaml
   stack: [
     'app-test', 
     'your-org', #'apache_php_multiviews_starterapp', 'sample_docroot',
   ],
+  #debug: true,
   facts: {
     'debug' => true,
   },
@@ -23,7 +24,7 @@ options = { # https://github.com/jthurteau/mr/wiki/Managing-MrRogers-from-the-Va
 }
 
 Vagrant.configure('2') do |v|
-  # defaults to building with options + vuppet/project.yaml + vuppet/local-dev.project.yaml
+  # defaults to building with options + vuppet/vuppeteer.yaml + vuppet/local-dev.vuppeteer.yaml
   Mr::vagrant(v, options)
   ## provisioners, optionally run additional provisioners before puppet
   # example : v.vm.provision "shell", inline: "echo Hello, World"

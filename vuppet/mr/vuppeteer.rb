@@ -63,8 +63,8 @@ module Vuppeteer
         self.say("External Mr #{external_path} managing build.", 'prep')
         @features[:installer] = true
       end
+      @features[:instance] = "#{Mr::active_path}/#{FileManager::localize_token}.instance.yaml" if @features[:instance] == true
       Facts::init()
-      @features[:instance] = "#{Mr::active_path}/#{FileManager::localize_token}.instance.yaml"
       @instance = Facts::instance()
       was = @features[:debug]
       @features[:debug] = Facts::get('debug')
@@ -253,12 +253,16 @@ module Vuppeteer
 
     def self.trace(*s)
       c = MrUtils::caller_file(caller, :line)
-      self.say("TRACE #{c} #{s.to_s}") if @features[:verbose]
+      self.say("TRACE #{c} #{s.to_s}", @features[:verbose] ? :now : :debug)
     end
 
   #################################################################
   # delegations
   #################################################################
+
+    def self.root(f)
+      Facts::roots(f)
+    end
 
     def self.get_fact(f, default = nil)
       Facts::get(f, default)
@@ -277,7 +281,7 @@ module Vuppeteer
     end
 
     def self.load_facts(source)
-      source.start_with?('::') ? Facts::get(source[2..-1]) : FileManager::load_fact_yaml(source, false)
+      source.start_with?(MrUtils::splitter) ? Facts::get(source[2..-1]) : FileManager::load_fact_yaml(source, false)
     end
 
     def self.add_derived(d)
@@ -294,10 +298,6 @@ module Vuppeteer
 
     def self.get_stack(options = nil)
       return Stack::get(options)
-    end
-
-    def self.set_root_facts(f)
-      Facts::roots(f)
     end
 
     def self.add_asserts(v)

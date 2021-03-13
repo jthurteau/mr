@@ -7,7 +7,6 @@ module Stack
 
   @ppp = []
 
-
   def self.init()
     stack = Vuppeteer::get_fact('stack')
     if stack.nil?

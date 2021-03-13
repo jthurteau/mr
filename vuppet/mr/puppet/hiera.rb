@@ -19,7 +19,7 @@ module Hiera
       PuppetManager::disable(:hiera)
       return 
     end
-    if (@conf_source.start_with?('::')) #TODO fold this back into load_fact_yaml once loaded_files is implemented
+    if (@conf_source.start_with?(MrUtils::splitter)) #TODO fold this back into load_fact_yaml once loaded_files is implemented
       @conf = Vuppeteer::get_fact(@conf_source[2..-1], {})
     else
       @conf = FileManager::load_fact_yaml(@conf_source, 'Puppet')

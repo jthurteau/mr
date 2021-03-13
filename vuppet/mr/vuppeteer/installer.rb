@@ -11,8 +11,8 @@ module Installer
     '+el.yaml',
     '+puppet.yaml',
     '+vagrant.yaml',
-    '+local-dev.example.project.yaml',
-    '+example.project.yaml',
+    '+local-dev.example.vuppeteer.yaml',
+    '+example.vuppeteer.yaml',
   ]
 
   @install_global_files = [ 

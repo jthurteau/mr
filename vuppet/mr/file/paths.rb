@@ -11,21 +11,24 @@ module Paths
     write: { set: false, label: 'Write Path', match: ['vuppet'] }, #paths relative to the project root
   }
 
+  @current_root = 0 #TODO someday we may want to support multiple roots?
+
   def self.init(root = nil)
     self._init(:root, root) if !@paths[:root][:set]
     @paths.each do |k, p|
       p[:set] = true
     end
+    @paths[:root][:match][@current_root] = File.absolute_path(@paths[:root][:match][@current_root])
     @paths[:read][:match].each_index do |i|
       p = @paths[:read][:match][i]
       next if p.start_with?('~/')
-      pa = File.absolute_path(p)
+      pa = File.absolute_path(p, @paths[:root][:match][@current_root])
       @paths[:read][:match][i] = pa if pa != p
     end
     @paths[:write][:match].each_index do |i|
       p = @paths[:write][:match][i]
       next if p.start_with?('~/')
-      pa = File.absolute_path(p)
+      pa = File.absolute_path(p, @paths[:root][:match][@current_root])
       @paths[:write][:match][i] = pa if pa != p
     end
   end
@@ -85,7 +88,7 @@ module Paths
   end
 
   def self.in?(child, parent, inclusive = true)
-    Vuppeteer::trace(child,parent,inclusive)
+    #Vuppeteer::trace(child,parent,inclusive)
     c = File.absolute_path(child)
     c += c.end_with?('/') ? '' : '/'
     p = File.absolute_path(self.expand(parent))

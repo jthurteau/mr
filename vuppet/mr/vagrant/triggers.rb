@@ -32,6 +32,9 @@ module Triggers
       up: [],
       provision: [],
       reload: [],
+    },
+    debug_buffer: {
+      end: []
     }
   }
 
@@ -140,6 +143,8 @@ module Triggers
       @notices[:after][:up].push(s)
       @notices[:after][:provision].push(s)
       @notices[:after][:reload].push(s)
+    when :debug
+      @notices[:debug_buffer][:end].push(s)
     end
   end
 

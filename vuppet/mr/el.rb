@@ -18,7 +18,8 @@ module ElManager
   @ident_file = 'puppet/license_ident.yaml'
   @ident = {}
   @vms = []
-  @sc = nil
+  @sc = nil  
+  @multibuild = false
 
   @scripts = {
     sc: nil,
@@ -54,6 +55,18 @@ module ElManager
     @box
   end
 
+  def self.multi_vm()
+    @multibuild = true
+  end
+
+  def self.has?(v)
+    return Boxes.include?(v)
+  end
+
+  def self.add(vm_name, conf_source = '::')
+    Boxes.add(vm_name, conf_source)
+  end 
+
   def self.build() #TODO this might be deprecated
     @build
   end
@@ -61,7 +74,7 @@ module ElManager
   def self.setup()
     Vuppeteer::say("ElManager pre-setup config reports: #{@box}:#{@el_version} " + @ident.to_s) if Vuppeteer::enabled?(:debug)
     Collections::request(Vuppeteer::get_fact('software_collection', @sc))
-    @vms = [Boxes::get_main()]
+    @vms = Boxes::get()
   end
 
   def self.ready_to_register()
