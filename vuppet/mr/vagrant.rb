@@ -43,7 +43,7 @@ module VagrantManager
   end
 
   def self.get_vm_configs(names)
-    return @vm_configs.clone if names == :all
+    return @vm_configs if names == :all
     results = {}
     names = MrUtils::enforce_enumerable(names)
     names.each() do |n|
@@ -164,22 +164,22 @@ module VagrantManager
     @vm_configs[label] = vm
     #Vuppeteer::trace(vm, label, @setup)
     vm.box = ElManager::box(label)
-    if (@setup.nil? || (!label.nil? && !@setup.include?(label)))
-      vm_label = label.nil? ? 'vm' : "vm:#{label}" 
-      Vuppeteer::say("Warning: could not configure vagrant #{vm_label} from facts, using default setup")
-      return
+    if (label.nil? || !@setup.include?(label))
+      vm_string = label.nil? ? 'vm' : "vm:#{label}" 
+      Vuppeteer::say("Warning: could not configure vagrant #{vm_string} from facts, using default setup")
     end
-    vm_setup = label.nil? ? @setup : @setup[label]
+    vm_setup = label.nil? || @setup.has_key?(label) ? @setup[:null] : @setup[label]
     ##
     # providers
     vm.provider 'virtualbox' do |vb|
+      vb.name = label
       ##TODO we can probably streamline builds with linked clones
       #vb.linked_clone = true if Gem::Version.new(Vagrant::VERSION) >= Gem::Version.new('1.8.0')
       vb.gui = vm_setup && vm_setup.has_key?('gui') ? vm_setup['gui'] : false
       vb.memory = vm_setup && vm_setup.has_key('memory') ? vm_setup['memory'] : '1024'
     end
 
-    if (vm_setup && vm_setup.class.include?(Enumerable))
+    if (vm_setup && vm_setup.class == Hash)
       ##
       # config.vm.box_check_update = false
       # config.vm.guest manually set to :windows for windows guest
