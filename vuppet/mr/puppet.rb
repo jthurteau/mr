@@ -17,7 +17,7 @@ module PuppetManager
     hiera: true,
   }
 
-  @guest_path = '/vagrant/vuppet'
+  @guest_path = 'vuppet'
   @guest_root = {default: '/vagrant', null: '/vagrant'}
   @version = {default: '5'}
   @groups = {}
@@ -26,7 +26,7 @@ module PuppetManager
   def self.init()
     @conf = Vuppeteer::load_facts(@conf_source, 'Notice:(Puppet Configuration)')
     if @conf
-      @guest_path = @conf['files'] if @conf['files']
+      @guest_path = @conf['guest_path'] if @conf['guest_path']
       @version[:default] = @conf['version'] if @conf['version']
       ['verbose', 'debug', 'output', 'log_format'].each do |o|
         @opt[o] = @conf[o] if @conf.has_key?(o)
@@ -55,17 +55,23 @@ module PuppetManager
     Vuppeteer::say("Unsupported option for PuppetManager::disable #{what}") if !@features.include?(what)
   end
 
-  def self.apply(options = nil, vm_names = :all)
+  def self.apply(vm_names = :all, options = nil)
     return Vuppeteer::say('Notice: puppet_apply skipped, puppet is disabled') if self.disabled?
     run_options = self::_setup(options)
     vms = Vuppeteer::resolve(vm_names)
+    #Vuppeteer::trace(vm_names, vms)
     vms.each() do |v|
       self._apply(run_options, v) #VagrantManager::config().vm
     end
   end
 
-  def self.guest_puppet_path()
-    return @guest_path
+  def self.guest_path(p = nil, v = nil)
+    #guest_path(@module_shared_path, group)
+    return "#{self.guest_root(v)}/#{p}"
+  end
+
+  def self.guest_root(vm_name = nil)
+    return vm_name && @guest_root.has_key?(vm_name) ? @guest_root[vm_name] : @guest_root[:default]
   end
 
   def self.translate_guest_commands(commands)
@@ -132,7 +138,14 @@ module PuppetManager
   end
 
   def self._apply(options, vm_name)
-    vm = Vuppeteer::get_vm(vm_name)
+    vms = VagrantManager::get_vm_configs(vm_name)
+    if (vms && vms.has_key?(vm_name))
+      vm = vms[vm_name]
+    else
+      Vuppeteer::shutdown('Attempting to puppet apply to an undefined vm')
+    end
+    run_options = self._setup(options.nil? ? @opt : options)
+    when_enabled = @features[:puppet] && true ? 'once' : 'never' #TODO detect puppet_bypass on individual VMs
     guest_root = @guest_root.has_key?(vm_name) ? @guest_root[vm_name] : @guest_root[:default]
     puppet_group = @groups.has_key?(vm_name) ? @groups[vm_name] : nil
     puppet_group = @version.has_key?(vm_name) ? @version[vm_name] : @version[:default] if !puppet_group
@@ -140,7 +153,7 @@ module PuppetManager
     #CollectionManager::provision(VagrantManager::config()) #TODO why is this called twice? (also in _register)
     VagrantManager::host_pre_puppet_triggers()
 
-    Modules::processCommands(vm_name, puppet_group)
+    Modules::processCommands(puppet_group)
     prep_command_string = self.translate_guest_commands(Modules::get_commands(['status', 'install', 'additional']))
     sync_command_string = self.translate_guest_commands(Modules::get_commands(['dev_sync']))
     reset_command_string = self.translate_guest_commands(Modules::get_commands(['remove']))
@@ -150,10 +163,10 @@ module PuppetManager
     end
 
     #TODO push this info VagrantManager => ElManager
-    # fix_snippet = '8' == RhelManager::el_version() ? ("\n" + ErBash::script('rhel8_puppet_fix') + "\n") : ''
+    # fix_snippet = '8' == RhelManager::el_version() ? ("\n" + FileManager::bash('rhel8_puppet_fix') + "\n") : ''
     # #TODO, it's an ERB fragment, so that can now be done inline with ERB
     # VagrantManager::config().vm.provision 'puppet-prep', type: :shell do |s|
-    #   s.inline = ErBash::script('puppet_prep', CollectionManager::credentials()) + fix_snippet + "\n#{prep_command_string}"
+    #   s.inline = FileManager::bash('puppet_prep', CollectionManager::credentials()) + fix_snippet + "\n#{prep_command_string}"
     #   # rpm -ivh https://yum.puppetlabs.com/puppetlabs-release-el-7.noarch.rpm #an older version of 5?
     # end
 
@@ -161,15 +174,15 @@ module PuppetManager
       s.inline = sync_command_string
     end
 
-    Vuppeteer::say("Notice (VM #{vm_name}): Puppet options \"#{options['out_options']} --logdest #{options['log_to']}\"", 'prep') if ('console' != run_options['log_to'])
+    Vuppeteer::say("Notice (VM #{vm_name}): Puppet options \"#{run_options['out_options']} --logdest #{run_options['log_to']}\"", 'prep') if ('console' != run_options['log_to'])
 
     if (self.disabled?)
       Vuppeteer::say("Notice: Bypassing main Puppet provisioning", 'prep')
     else
-      vm.provision 'puppet' do |puppet|
+      vm.provision 'puppet', type: :puppet, run: when_enabled do |puppet|
         puppet.manifests_path = Manifests::path()
         puppet.manifest_file = Manifests::file()
-        puppet.options = "#{options['out_options']} --logdest #{options['log_to']}"
+        puppet.options = "#{run_options['out_options']} --logdest #{run_options['log_to']}"
         puppet.facter = Vuppeteer::facts() + {'vagrant_root' => guest_root} #TODO make a facter filter method?
         puppet.hiera_config_path = Hiera::config_path() if !self.disabled?(:hiera)
       end
@@ -178,7 +191,7 @@ module PuppetManager
     vm.provision 'puppet-debug', type: :puppet, run: 'never' do |puppet|
       puppet.manifests_path = Manifests::path()
       puppet.manifest_file = Manifests::file()
-      puppet.options = "--verbose --debug --write-catalog-summary --logdest #{options['log_to']}"
+      puppet.options = "--verbose --debug --write-catalog-summary --logdest #{run_options['log_to']}"
       puppet.facter = Vuppeteer::facts() #TODO make a facter filter method?
       puppet.hiera_config_path = Hiera::config_path() if !self.disabled?(:hiera)
     end

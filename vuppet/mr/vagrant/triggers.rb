@@ -56,48 +56,56 @@ module Triggers
   def self.register!(v)
     return if(@registered)
     v.trigger.before [:up] do |trigger|
+      trigger.name = 'Mr: Before Up Handler'
       trigger.ruby do |env, machine|
         @notices[:before][:up].each {|n| Vuppeteer::say("- #{n}")}
         @map[:before][:up].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.after [:up] do |trigger|
+      trigger.name = 'Mr: After Up Handler'
       trigger.ruby do |env, machine|
         @notices[:after][:up].each {|n| Vuppeteer::say("- #{n}")}
         @map[:after][:up].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.before [:provision] do |trigger|
+      trigger.name = 'Mr: Before Provision Handler'
       trigger.ruby do |env, machine|
         @notices[:before][:provision].each {|n| Vuppeteer::say("- #{n}")}
         @map[:before][:provision].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.after [:provision] do |trigger|
+      trigger.name = 'Mr: After Provision Handler'
       trigger.ruby do |env, machine|
         @notices[:after][:provision].each {|n| Vuppeteer::say("- #{n}")}
         @map[:after][:provision].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.before [:reload] do |trigger|
+      trigger.name = 'Mr: Before Reload Handler'
       trigger.ruby do |env, machine|
         @notices[:before][:reload].each {|n| Vuppeteer::say("- #{n}")}
         @map[:before][:reload].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.after [:reload] do |trigger|
+      trigger.name = 'Mr: After Reload Handler'
       trigger.ruby do |env, machine|
         @notices[:after][:reload].each {|n| Vuppeteer::say("- #{n}")}
         @map[:after][:reload].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.before [:halt] do |trigger|
+      trigger.name = 'Mr: Before Halt Handler'
       trigger.ruby do |env, machine|
         @notices[:before][:halt].each {|n| Vuppeteer::say("- #{n}")}
         @map[:before][:halt].each {|m| @triggered.push(m)}
       end
     end
     v.trigger.before [:ssh] do |trigger|
+      trigger.name = 'Mr: Before SSH Handler'
       trigger.ruby do |env, machine|
         @notices[:before][:ssh].each {|n| Vuppeteer::say("- #{n}")}
         @map[:before][:ssh].each {|m| @triggered.push(m)}

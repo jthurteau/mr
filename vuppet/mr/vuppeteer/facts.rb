@@ -302,7 +302,7 @@ module Facts
     error_label = errors.length > 2 ? 'validation errors' : 'valication error'
     additional = errors.length > 1 ? " (+#{errors.length - 1} more #{error_label})" : ''
     Vuppeteer::shutdown(Vuppeteer::enabled?(:verbose) ? errors : (errors[0] + additional)) if errors.length > 0
-    vm_suffix = self.get('standalone', false) ? '' : '-#{s}'
+    vm_suffix = self.get('standalone', false) ? '' : '#{s}'
     if self.fact?('project')
       p = self.get('project')
       ElManager.add("#{p}#{vm_suffix}")
@@ -313,7 +313,7 @@ module Facts
       ElManager.add(self.get('vm_name'))
     elseif self.fact?('vms') && !self.get('standalone', false)
       ElManager::multi_vm
-      vms = MrUtils.enforce_enumerable(self.get('vms'))
+      vms = MrUtils::enforce_enumerable(self.get('vms'))
       if (vms.class == Array) 
         vms.each() do |c|
           c = FileManager::load_fact_yaml(c, false) if c.class == String

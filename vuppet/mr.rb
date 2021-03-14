@@ -70,24 +70,27 @@ module Mr
     PuppetManager::init()
     VagrantManager::init(vagrant)
     @prepped = false
-    Vuppeteer::shutdown('TEST: shutdown before start', -2)
     Vuppeteer::start()
     return Vuppeteer::say(@bypass_message) if !Vuppeteer::enabled?(:mr)
-    ElManager::setup()
-    VagrantManager::register_triggers!()
-    Vuppeteer::build(ElManager::vms(:active))
+    Vuppeteer::prep()
+    @prepped = true #TODO set this based on the return of ::prep
   end 
 
   ##
   # Ensures prep steps have been applied and then sets up the puppet_apply provisioner
-  def self.puppet_apply()
+  def self.puppet_apply(which = nil, options = nil)
     return if !Vuppeteer::enabled?(:mr)
     if (!@prepped)
       Vuppeteer::shutdown('Error: attempting to manage puppet before initialization') if @prepped.nil?
       Vuppeteer::prep()
-      @prepped = true
+      @prepped = true #TODO set this based on the return of ::prep
     end
-    PuppetManager::apply()
+    PuppetManager::apply(which, options)
+    # Vuppeteer::post_process() taking this out until ordered provisioners are standard, use ::helpers explicitly
+  end
+
+  def self.helpers(h = nil, which = nil)
+    Vuppeteer::helpers(which, h)
   end
 
   ##

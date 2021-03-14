@@ -56,8 +56,8 @@ module ElManager
     @multibuild = false if @multibuild.nil?
     detected = self._detect_ident()
     @ident[:default] = detected ? self._validate(detected) : {}
-    @el_version[:default] = self._detect_version()
-    @box[:default] = self._detect_box()
+    self._detect_version()
+    self._detect_box()
     @ident[:default]['el_version'] = @el_version[:default]
     @ident[:default]['box'] = @box[:default]
     @singletons[:default] = Realm.new(@ident[:default])
@@ -84,12 +84,12 @@ module ElManager
     @box[w]
   end
 
-  def self.resolve(n = nil)
-    return[Boxes::get()] if (n.nil? || n == :all) && !@multibuild
+  def self.catalog(n = nil)
+    #Vuppeteer::trace('catalog lookup', n)
+    return Boxes::get() if (n.nil? || n == :all || n == :active) && !@multibuild
     names = []
-    n = n == :all ? Boxes::get(n) : MrUtils::enforce_enumerable(n)
-    n.each() do |v|
-      names.push(Boxes::get(v)) if Boxes::include?(v)
+    MrUtils::enforce_enumerable(n).each() do |v|
+      names += Boxes::get(v)
     end
     names
   end
@@ -99,7 +99,11 @@ module ElManager
   end
 
   def self.add(vm_name, conf_source = '::')
-    Boxes.add(vm_name, conf_source)
+    if (vm_name.include?('#{')) 
+      Boxes.proto(vm_name, conf_source)
+    else
+      Boxes.add(vm_name, conf_source)
+    end
   end 
 
   def self.build() #TODO this might be deprecated
@@ -107,6 +111,7 @@ module ElManager
   end
 
   def self.setup()
+    self._build_prototypes()
     if (@multibuild) 
       Vuppeteer::shutdown('attempting multi-vm provision' , -2)
       Boxes::all().each do |v|
@@ -122,8 +127,8 @@ module ElManager
   def self.ready_to_register(ident = nil, validation = nil)
     ident = @ident if ident.nil?
     p = validation.nil? ? @cred_prefix : ''
-    validation = @cred_types if valication.nil?
-    validation = {custom: validation} if valication.class == Array
+    validation = @cred_types if validation.nil?
+    validation = {custom: validation} if validation.class == Array
     validation.each() do |t, r|
       requires = r.map {|k| "#{p}#{k}"}
       return t if requires.all? { |k| ident.include?(k)}
@@ -137,8 +142,8 @@ module ElManager
   def self.sc_commands()
     #TODO lookup os flavor for self.scripts
     has_sc_repos = Collections::repos().length() > 0
-    return ErBash::script(self.script(:sc), self.credentials()) if self.script(:sc)
-    return ErBash::script('rhel_dev_sc', self.credentials()) if has_sc_repos
+    return FileManager::bash(self.script(:sc), self.credentials()) if self.script(:sc)
+    return FileManager::bash('rhel_dev_sc', self.credentials()) if has_sc_repos
     return <<-SHELL
         echo Including the software_collections...
         echo none configured...
@@ -149,17 +154,17 @@ module ElManager
 
   def self.setup_script()
     setup_script = self._detect_setup_script()
-    return ErBash::script(self.script(:setup), self.credentials()) if self.script(:setup)
-    ErBash::script(setup_script, RhelManager::credentials())
+    return FileManager::bash(self.script(:setup), self.credentials()) if self.script(:setup)
+    FileManager::bash(setup_script, self.credentials())
   end
 
   def self.update_script()
-    return ErBash::script(self.script(:update), self.credentials()) if self.script(:update)
-    ErBash::script('rhel_update', RhelManager::credentials())
+    return FileManager::bash(self.script(:update), self.credentials()) if self.script(:update)
+    FileManager::bash('rhel_update', self.credentials())
   end
 
   def self.unregister_script()
-    ErBash::script(self.script(:destroy), self.credentials())
+    FileManager::bash(self.script(:destroy), self.credentials())
   end
 
   def self.collection_manifest()
@@ -174,42 +179,49 @@ module ElManager
     @singletons[w] != nil
   end
 
-  def self.register()
-    NetworkManager::resgister(cors)#app = nil, developer = nil #self._register(Vuppeteer::get_fact('org_domain'))
-    if (self.is_it?)
-      self.box_destroy_prep()
-      if (VagrantManager::plugin_managing?(:registration))
-        VagrantManager::plugin(:setup_registration)
-        VagrantManager::config().vm.provision 'register', type: :shell, run: 'never' do |s|
-          s.inline = 'echo Vagrant plugin is managing registration'
+  def self.register(vms = nil)
+    #Vuppeteer::trace(vms)
+    vms = MrUtils::enforce_enumerable(vms)
+    vms = VagrantManager::get_vm_configs(vms) if vms.class == Array
+    #Vuppeteer::trace(vms)
+    vms.each() do |n, v|
+      cors = Vuppeteer::get_fact('org_domain') #TODO this could be different per VM
+      Network::register(cors)#app = nil, developer = nil #self._register(Vuppeteer::get_fact('org_domain'))
+      if (self.is_it?)
+        self._box_destroy_prep()
+        if (VagrantManager::plugin_managing?(:registration))
+          VagrantManager::plugin(:setup_registration)
+          v.provision 'register', type: :shell, run: 'never' do |s|
+            s.inline = 'echo Vagrant plugin is managing registration'
+          end
+        else
+          v.provision 'register', type: :shell do |s|
+          end
+        end
+        registration_update_inline = self.update_script()
+        v.provision 'unregister', type: :shell, run: 'never' do |s|
+          s.inline = self.unregister_script()
         end
       else
-        VagrantManager::config().vm.provision 'register', type: :shell do |s|
+        v.provision 'register', type: :shell do |s|
+          s.inline = FileManager::bash_script('fedora_setup')
         end
+        v.provision 'unregister', type: :shell, run: 'never' do |s|
+          s.inline = unavailable_script
+        end
+        registration_update_inline = unavailable_script
       end
-      registration_update_inline = RhelManager::update()
-      VagrantManager::config().vm.provision 'unregister', type: :shell, run: 'never' do |s|
-        s.inline = RhelManager::unregister()
-      end
-    else
-      VagrantManager::config().vm.provision 'register', type: :shell do |s|
-        s.inline = ErBash::script('fedora_setup')
-      end
-      VagrantManager::config().vm.provision 'unregister', type: :shell, run: 'never' do |s|
-        s.inline = unavailable_script
-      end
-      registration_update_inline = unavailable_script
-    end
 
-    VagrantManager::config().vm.provision 'update_registration', type: :shell, run: @when_to_reregister do |s|
-      s.inline = registration_update_inline
-    end
-    
-    VagrantManager::config().vm.provision 'refresh', type: :shell, run: 'never' do |s|
-      s.inline = ErBash::script('yum_refresh')
-    end
+      v.provision 'update_registration', type: :shell, run: @when_to_reregister do |s|
+        s.inline = registration_update_inline
+      end
+      
+      v.provision 'refresh', type: :shell, run: 'never' do |s|
+        s.inline = FileManager::bash('yum_refresh')
+      end
 
-    Collections::provision(VagrantManager::config()) #TODO this may be deprecated since it is tied to RHEL7?
+      Collections::provision(v) #TODO this may be deprecated since it is tied to RHEL7?
+    end
   end
 
   def self.cred_prefix()
@@ -221,13 +233,13 @@ module ElManager
     mode = self.ready_to_register()
     case mode
     when :user
-      p.username = @ident[:user] #Vuppeteer::get_fact('rhsm_user')
-      p.password = @ident[:pass] #Vuppeteer::get_fact('rhsm_pass')
+      plugin.username = @ident[:user] #Vuppeteer::get_fact('rhsm_user')
+      plugin.password = @ident[:pass] #Vuppeteer::get_fact('rhsm_pass')
     when :org
-      p.org = @ident[:org] #Vuppeteer::get_fact('rhsm_org')
-      p.activationkey = @ident[:key] #Vuppeteer::get_fact('rhsm_key')
+      plugin.org = @ident[:org] #Vuppeteer::get_fact('rhsm_org')
+      plugin.activationkey = @ident[:key] #Vuppeteer::get_fact('rhsm_key')
     end
-    p.skip = false
+    plugin.skip = false
     #p.auto_attach = false if @ident.has_key?(:manual_attach) && @ident[:manual_attach] # only do this on dev?
   end
 
@@ -303,9 +315,29 @@ module ElManager
     @cred_type == :user ? 'rhel_developer_setup' : 'rhel_setup'
   end
 
+  def self._build_prototypes()
+    p = Boxes::get(:all, true)
+    p.each() do |b|
+      c = Boxes::config(b, true)
+      v = b.gsub('#{s}', self._suffix(Vuppeteer::get_fact(c)))
+      Boxes::add(v, c)
+    end
+    #Vuppeteer::trace(p,Boxes::get(:all))
+  end
+
   def self._box_destroy_prep()
     return if !self.script(:destroy)
     VagrantManager::set_destroy_trigger(self.script(:destroy))
+  end
+
+  def self._suffix(data)
+    d = data.has_key?('developer') ? "-#{data['developer']}" : ''
+    o = data.has_key?('org') ? "-#{data['org']}" : ''
+    b = data.has_key?('box_source') ? data['box_source'] : @box[:default]
+    fb = b.gsub('generic/' , '').gsub('/', '-')
+    ident = nil #TODO
+    l = false && self.ready_to_register(ident) == :user ? '-dev' : ''
+    return "#{d}#{o}-#{fb}#{l}"
   end
 
   class Realm 

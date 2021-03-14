@@ -72,11 +72,11 @@ module Paths
     File.exist?("#{path}/.mr_lock")
   end
 
-  def self.clear(path)
+  def self.clear!(path)
     if (!path.start_with?(Mr::active_path()))
       Vuppeteer::say("Warning: Unable to clear path #{path}, not in active path.", 'prep')
       return false
-    elsif (!self.writable?(path))
+    elsif (!self.may_write?(path))
       Vuppeteer::say("Warning: Unable to clear path #{path}, not in write path.", 'prep')
       return false
     end

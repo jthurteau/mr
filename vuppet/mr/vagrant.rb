@@ -7,11 +7,21 @@ module VagrantManager
 
   require_relative 'vagrant/triggers'
   require_relative 'vagrant/plugins'
+  require_relative 'vagrant/helpers'
 
   @vagrant = nil
   @version = nil
   @ruby_version = nil
-  @setup = nil
+  @setup = {
+    null: {
+      network: [
+        ['forwarded_port', {guest: 80, host: 8080, host_ip: '127.0.0.1'}],
+      ],
+      synced_folder: [
+        ['.', :guest_root, owner: 'vagrant', group: 'vagrant', type: 'virtualbox'],
+      ],
+    }
+  }
   @conf_source = ['vagrant', '::vagrant'][0]
   @features = {
     vb_middleware: true,
@@ -23,7 +33,8 @@ module VagrantManager
       @vagrant = singleton
       @version = Vagrant::VERSION
       @ruby_version = RUBY_VERSION
-      @setup = Vuppeteer::load_facts(@conf_source, 'Notice:(Vagrant Configuration)')
+      @setup[:default] = Vuppeteer::load_facts(@conf_source, 'Notice:(Vagrant Configuration)')
+      @setup[:default] = @setup[:null].clone if @setup[:default].nil?
       @vagrant.config.vagrant.sensitive = Vuppeteer::get_sensitive() if Mr::enabled?
   end
 
@@ -31,8 +42,17 @@ module VagrantManager
       @vagrant
   end
 
+  def self.get_vm_configs(names)
+    return @vm_configs.clone if names == :all
+    results = {}
+    names = MrUtils::enforce_enumerable(names)
+    names.each() do |n|
+      results[n] = @vm_configs[n] if @vm_configs.has_key?(n)
+    end
+    results
+  end
+
   def self.config_vm(vm = nil)
-    Vuppeteer::shutdown("vm " + vm.to_s, -2)
     return if !Mr::enabled?
     vagrant_default_warning = "Notice: No vagrant config provided (so default network/shared etc. are in place)"
     Vuppeteer::say(vagrant_default_warning, 'prep') if !@setup
@@ -42,22 +62,24 @@ module VagrantManager
       #   v.linked_clone = true if Gem::Version.new(Vagrant::VERSION) >= Gem::Version.new('1.8.0')
       # end
     end
-
-    if (vm.nil?)
-      self._config(@vagrant.config.vm)
+    vms = ElManager::catalog(vm)
+    #Vuppeteer::trace('lookup result', vm, vms)
+    Vuppeteer::shutdown('Error: No VMs to provision') if vms.length() < 1
+    if (vms.length == 1)
+      self._config(@vagrant.config.vm, vms[0])
     else
-      @vagrant.config.vm.define vm do |v|
-        self._config(v.vm, vm)
+      Vuppeteer::shutdown('temporarily blocking multi-vm', -2)
+      vms.each() do |v| #TODO #1.0.0 make sture they are active/enabled vms
+        @vagrant.config.vm.define vm do |c|
+          self._config(c.vm, v)
+        end
       end
     end
+    @vm_configs
   end
 
   def self.version()
     @version
-  end
-
-  def self.get()
-    @vagrant
   end
 
   ##
@@ -116,8 +138,12 @@ module VagrantManager
     Plugins::setup(p) if Mr::enabled?
   end
 
-  def self.setup_helpers(v = nil, h = nil)
-    Helpers::setup(v, h) if Mr::enabled?
+  def self.setup_helpers(h = nil, v = nil)
+    return if !Mr::enabled?
+    vms = ElManager::catalog(v.nil? ? :active : v)
+    vms.each() do |c|
+      Helpers::setup(h, @vm_configs[c]) if @vm_configs.has_key?(c)
+    end
   end
 
   def self.flush_trigger_buffer()
@@ -134,11 +160,13 @@ module VagrantManager
     end
   end
 
-  def self._config(vm, label = nil)
+  def self._config(vm, label)
+    @vm_configs[label] = vm
+    #Vuppeteer::trace(vm, label, @setup)
     vm.box = ElManager::box(label)
     if (@setup.nil? || (!label.nil? && !@setup.include?(label)))
       vm_label = label.nil? ? 'vm' : "vm:#{label}" 
-      Vuppeteer::say("Warning: could not configure vagrant #{vm_label} from facts")
+      Vuppeteer::say("Warning: could not configure vagrant #{vm_label} from facts, using default setup")
       return
     end
     vm_setup = label.nil? ? @setup : @setup[label]
@@ -174,6 +202,7 @@ module VagrantManager
       shared.each do |s|
         h = Vuppeteer::sym_keys(s[2])
         #TODO warn if there is no explicit type:
+        st = s[1].class == String ? s[1] : self._lookup(s[1], label)
         vm.synced_folder s[0], s[1], h 
       end
 
@@ -185,6 +214,14 @@ module VagrantManager
   def self._linked_clone?(vm)
     return false if !@features.has_key?(:linked_clones) 
     return @features[:linked_clones].class == TrueClass || (@features.respond_to?('include?') && @features.include?(vm))
+  end
+
+  def self._lookup(sym, vm_name)
+    case sym
+    when :guest_root
+      return PuppetManager.guest_root(vm_name)
+    end
+    Vuppeteer::shutdown("Error: Unrecognized Puppet binding #{sym.to_s} called on #{vm_name}", -5)
   end
 
 end

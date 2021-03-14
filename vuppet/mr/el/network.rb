@@ -45,12 +45,12 @@ module Network
     end
 
     vm.provision 'set_hostname', type: :shell do |s|
-      s.inline = ErBash::script('set_hostname', self.hostspec())
+      s.inline = FileManager::bash('set_hostname', self.hostspec())
     end
 
-    if (RhelManager::is_it?)
+    if (ElManager::is_it?) #TODO this is vm dependent
       vm.provision 'setup_domain', type: :shell do |s|
-        s.inline = ErBash::script('setup_domain', self.hostspec())
+        s.inline = FileManager::bash('setup_domain', self.hostspec())
       end
     end
     @host_passed = true

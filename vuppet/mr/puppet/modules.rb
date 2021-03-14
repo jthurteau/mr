@@ -34,13 +34,10 @@ module Modules
       'local_install' => []
     }
   }
-  @module_shared_path = '/vagrant/vuppet/local-dev.repos/puppet_modules'
+  @module_shared_path = 'vuppet/#{ldr}/puppet_modules'
   @puppet_module_path = '/etc/puppetlabs/code/environments/production/modules'
 
   def self.init(modules = nil)
-    puppet_file_path = PuppetManager::guest_puppet_path()
-    @module_shared_path.sub!('/vagrant/vuppet', puppet_file_path) if puppet_file_path
-    @module_shared_path.sub!('local-dev.repos', FileManager::host_repo_path()) if @module_shared_path.include?('local-dev.repos')
     if (modules)
       @module_list[:default] = MrUtils::enforce_enumerable(modules)
     else
@@ -50,17 +47,21 @@ module Modules
   end
 
   def self.processCommands(group = :default) 
+    local_host_repos = FileManager::host_repo_path()
+    module_path = PuppetManager::guest_path(@module_shared_path, group)
+    module_shared_path = module_path.sub('#{ldr}', local_host_repos)
+    #Vuppeteer::trace('module version commands',group, module_shared_path)
     if (group.nil?)
-      @commands['status'].push("echo \"Notice: no group specified for module commands\"")
+      @commands[:null]['status'].push("echo \"Notice: no group specified for module commands\"")
       return
     end
-    if (!@commands.has_key(group))
-      @commands['status'].push("echo \"Warning: no matching group for requested module commands, using default\"")
+    if (!@commands.has_key?(group))
+      @commands[:null]['status'].push("echo \"Warning: no matching group for requested module commands, using default\"")
       group = :default
     end
     group_string = group.to_s #TODO 'Puppet V if numeric/version otherwise VM Group'
     no_info_string = 'no module version information available for Puppet'
-    @commands['status'].push("echo \"#{no_info_string} #{group_string}\"") if !@module_table.has_key?(group)
+    @commands[group]['status'].push("echo \"#{no_info_string} #{group_string}\"") if !@module_table.has_key?(group)
     modules = @module_list.has_key?(group) ? @module_list[group] : @module_list[:default]
     modules.each do |m|
       m_alias = nil
@@ -89,29 +90,30 @@ module Modules
       if (m.start_with?('https://') || !m_alias.nil?)
         m_name = m.start_with?('https://') ? self.prep_repo_inserts(m) : self.prep_fs_inserts(m)
         m_alias = m_name if m_alias.nil?
- #       Vuppeteer::say("debug: module mirror command cp -r #{@module_shared_path}/#{m_name} #{@puppet_module_path}/#{m_alias}")
+ #       Vuppeteer::say("debug: module mirror command cp -r #{module_shared_path}/#{m_name} #{@puppet_module_path}/#{m_alias}")
         commands = [
-          "echo \" copying #{@module_shared_path}/#{m_name} to #{@puppet_module_path}/#{m_alias}\"",
+          "echo \" copying #{module_shared_path}/#{m_name} to #{@puppet_module_path}/#{m_alias}\"",
           "rm -Rf #{@puppet_module_path}/#{m_alias}",
-          "cp -r #{@module_shared_path}/#{m_name} #{@puppet_module_path}/#{m_alias}",
+          "cp -r #{module_shared_path}/#{m_name} #{@puppet_module_path}/#{m_alias}",
         ]
         self.push_commands(commands,['install', 'dev_sync'], group)
-        @commands['remove'].push("rm -Rf #{@puppet_module_path}/#{m_alias}")
+        @commands[group]['remove'].push("rm -Rf #{@puppet_module_path}/#{m_alias}")
       else
+        group_string = group.to_s #TODO 'Puppet V if numeric/version otherwise VM Group'
         version_available = @module_table.has_key?(group) && @module_table[group].has_key?(m)
-        @commands['status'].push("echo module #{m} version information unavailable for puppet #{version}") if !version_available
-        version_flag = version_available ? " --version #{@module_table[version][m]}" : ''
-        @commands['install'].push("puppet module install #{m}#{version_flag}")
-        @commands['remove'].push("puppet module uninstall #{m}")
+        @commands[group]['status'].push("echo module #{m} version information unavailable for puppet #{group_string}") if !version_available
+        version_flag = version_available ? " --version #{@module_table[group][m]}" : ''
+        @commands[group]['install'].push("puppet module install #{m}#{version_flag}")
+        @commands[group]['remove'].push("puppet module uninstall #{m}")
       end
     end
-    @commands['additional'].push("puppet config set strict_variables true --section main")
+    @commands[group]['additional'].push("puppet config set strict_variables true --section main")
   end
 
   def self.push_commands(commands, command_groups, vm_group = :default)
     command_groups.each do |g|
       commands.each do |c|
-        @commands[g].push(c)
+        @commands[vm_group][g].push(c)
       end
     end
   end
@@ -119,14 +121,15 @@ module Modules
   def self.get_commands(commands, vm_group = :default)
     output = []
     commands.each do |g|
-      @commands[vm_group][g].each {|cc| output.push(cc)} if @commands.has_key?(g)
+      @commands[:null][g].each {|cc| output.push(cc)} if @commands[:null].has_key?(g)
+      @commands[vm_group][g].each {|cc| output.push(cc)} if @commands[vm_group].has_key?(g)
     end
     output
   end
 
-  def self.prep_fs_inserts(path)
+  def self.prep_fs_inserts(path, vm_group = :default)
     #TODO, make sure environments/production/modules exists on remote, that doesn't seem to be guarunteed /etc/puppetlabs/code/..
-    @commands['local_install'].push({say:"  mirroring module at #{path}"})
+    @commands[vm_group]['local_install'].push({say:"  mirroring module at #{path}"})
     module_name = File.basename(path) #TODO #issue-18
     #module_source = tokenize parent dirs too for further differentiation when needed
     local_mirror_path = "#{self.host_module_path()}/#{module_name}"
@@ -134,31 +137,31 @@ module Modules
     if (FileManager::clean_path?(local_mirror_path))
       # Vuppeteer::trace("cp -r #{path}/* #{local_mirror_path}")
       # exit
-      @commands['local_install'].push("cp -r #{path}/* #{local_mirror_path}")
-      @commands['local_install'].push("touch #{local_mirror_path}/.mr_lock")
+      @commands[vm_group]['local_install'].push("cp -r #{path}/* #{local_mirror_path}")
+      @commands[vm_group]['local_install'].push("touch #{local_mirror_path}/.mr_lock")
     elsif (FileManager::managed_path?(local_mirror_path)) 
-      @commands['local_install'].push("rm -Rf #{local_mirror_path}/*")
-      @commands['local_install'].push("touch #{local_mirror_path}/.mr_lock")
-      @commands['local_install'].push("cp -r #{path}/* #{local_mirror_path}")
+      @commands[vm_group]['local_install'].push("rm -Rf #{local_mirror_path}/*")
+      @commands[vm_group]['local_install'].push("touch #{local_mirror_path}/.mr_lock")
+      @commands[vm_group]['local_install'].push("cp -r #{path}/* #{local_mirror_path}")
     else
-      @commands['local_install'].push({say:"Cannot setup #{path} puppet module, target directory is non-empty, and not managable."})
+      @commands[vm_group]['local_install'].push({say:"Cannot setup #{path} puppet module, target directory is non-empty, and not managable."})
     end
     module_name
   end
 
-  def self.prep_repo_inserts(uri) #NOTE use puppet-sync provisioner to update these
+  def self.prep_repo_inserts(uri, vm_group = :default) #NOTE use puppet-sync provisioner to update these
     auth_uri = FileManager::secure_repo_uri(uri)
-    @commands['local_install'].push({say:"retreiving #{uri}"})
+    @commands[vm_group]['local_install'].push({say:"retreiving #{uri}"})
     module_name = uri[(uri.index('/', 8) + 1)..-5].gsub('/','-') #TODO #issue-18
     #module_source = tokenize host name too for further differentiation when needed
     module_repo_path = "#{self.host_module_path()}/#{module_name}"
     FileManager::path_ensure(module_repo_path, Vuppeteer::allow_dir_creation?)
     if (FileManager::clean_path?(module_repo_path))
-      @commands['local_install'].push("git clone #{auth_uri} #{module_repo_path}")
+      @commands[vm_group]['local_install'].push("git clone #{auth_uri} #{module_repo_path}")
     elsif (FileManager::repo_path?(module_repo_path)) 
-      @commands['local_install'].push({path: module_repo_path, cmd:"git pull"})
+      @commands[vm_group]['local_install'].push({path: module_repo_path, cmd:"git pull"})
     else
-      @commands['local_install'].push({say:"Cannot setup #{uri} puppet module, target directory is non-empty, and not a working-copy."})
+      @commands[vm_group]['local_install'].push({say:"Cannot setup #{uri} puppet module, target directory is non-empty, and not a working-copy."})
     end
     module_name
   end

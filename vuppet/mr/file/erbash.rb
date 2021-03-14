@@ -2,7 +2,7 @@
 # Generates bash scripts from erb files for MrRogers
 #
 
-module FileErBash
+module ErBash
   require 'erb'
 
   extend self

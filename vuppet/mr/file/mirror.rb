@@ -62,7 +62,7 @@ module FileMirror
   end
 
   def self.mirror_bash(source_path, target_path, file_list)
-    ErBash::script('file_mirror', self::_mirror_view(source_path, target_path, file_list))
+    FileManager::bash('file_mirror', self::_mirror_view(source_path, target_path, file_list))
   end
 
   def self.mirror_provisioner(source_path, target_path, file_list, name = nil, always = true)

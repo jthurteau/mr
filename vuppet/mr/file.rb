@@ -52,29 +52,14 @@ module FileManager
       return Paths::temp()
     when :fact
       return Paths::x_path('facts', p)
-      def self.manifest(manifest)
-        self._x_path(manifest, 'manifests')
-      end
-    
-      def self.bash(script)
-        self._x_path(script, 'bash')
-      end
-    
-      def self.template(script)
-        self._x_path(script, 'templates')
-      end
-    
-      def self.hiera(script)
-        self._x_path(script, 'hiera')
-      end
     when :hiera
-      return p.nil? ? false : Paths::hiera(p)
+      return Paths::x_path('hiera', p)
     when :manifest
-      return p.nil? ? false : Paths::manifest(p)
+      return Paths::x_path('manifest', p)
     when :bash
-      return p.nil? ? false : Paths::bash(p)
+      return Paths::x_path('bash', p)
     when :template
-      return p.nil? ? false : Paths::template(p)
+      return Paths::x_path('template', p)
     when :global
       return p.nil? ? false : Paths::global(p, f)
     when :local
@@ -95,7 +80,7 @@ module FileManager
   end
 
   def self.tokened_file(path, token)
-    token = MrUtlis::enforce_enumerable(token)
+    token = MrUtils::enforce_enumerable(token)
     first_token = token[0]
     f = nil
     #Vuppeteer::trace(path, token,File.file?(path))
@@ -198,8 +183,15 @@ module FileManager
   #################################################################
 
   def self.setup_repos(r)
-    Vuppeteer::shutdown('attempting repo::init', -1)
     Repos::setup(r)
+  end
+
+  def self.bash(s, v = nil)
+    ErBash::script('fedora_setup', v)
+  end
+
+  def self.clear!(p)
+    Paths::clear!(p)
   end
 
   #################################################################
@@ -236,12 +228,12 @@ module FileManager
 
   class Files
 
-    def view()
+    def view() #TODO #1.0.0 this needs to know which VM it is in multi-vm
       return binding()
     end
 
-    def puppet_file_path()
-      PuppetManager::guest_puppet_path()
+    def shared_file_path(p, v = nil)
+      PuppetManager::guest_path(p, v)
     end
 
     def localize_token()

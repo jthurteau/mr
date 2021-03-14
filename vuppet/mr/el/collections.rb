@@ -20,7 +20,7 @@ module Collections
   def self.provision(v, source = nil)
     #TODO add source? even if @collections_added?
     if (@collections_requested && !@collections_added)
-        v.vm.provision "software_collections", type: :shell, run: self.run_when() do |s|
+        v.provision "software_collections", type: :shell, run: self.run_when() do |s|
           s.inline = ElManager::is_it? ? ElManager::sc_commands() : self.commands()
         end
         self.retire()

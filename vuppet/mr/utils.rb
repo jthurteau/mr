@@ -27,7 +27,9 @@ module MrUtils
 
   def self.trace(local = true)
     trace_stack = caller[1..-1]
-    trace_end = local ? (1 + trace_stack.find_index {|t| t.start_with?(Mr::path() + '/mr.rb')}) : -1
+    internal = trace_stack.find_index {|t| t.start_with?(Mr::path() + '/mr.rb')}
+    internal = trace_stack.find_index {|t| t.start_with?(Mr::path() + '/mr/')} if !internal
+    trace_end = local && internal ? (1 + internal) : -1
     return trace_stack[0..trace_end]
   end
 
@@ -66,6 +68,7 @@ module MrUtils
   end
 
   def self.traverse(index, search, throws = false)
+    return search if index == @splitter
     indexes = self.traversable(index) ? index.split(@splitter) : self.enforce_enumerable(index)
     n = indexes.shift
     n = n.to_i if n.match(/^[0-9]*$/)

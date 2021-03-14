@@ -105,25 +105,14 @@ module Vuppeteer
       FileManager::setup_repos(Facts::get('project_repos'))
     end
 
-    def self.prep() #TODO think about multi-vm scenario (passed vm param?, see also PuppetManager::apply)
-      ElManager::register(VagrantManager::config())
-      VagrantManager::setup_helpers()
+    def self.prep()
+      ElManager::setup()
+      VagrantManager::register_triggers!()
+      Vuppeteer::_build(ElManager::catalog(:active))
     end
 
-    def self.build(which = nil)
-      which = self.default_vm if which.nil?
-      VagrantManager::init_plugins(which)
-      VagrantManager::config_vm(which) #TODO, handle multi vm situations
-      
-      Vuppeteer::shutdown('End of the Line for now', -1)
-      # x.each() do |a|
-      #   #box_name = ElManager::name_gen()
-      #   #infrastructure_name = ElManager::infra_gen()
-      #   #delim = infrastructure_name != '' && !infrastructure_name.nil? ? '-' : ''
-      #   #ElManager::is_it? ? ElManager::box() : @box_source
-      #   b = "#{box_name}#{delim}#{infrastructure_name}".ljust(2, '0')
-      #   VagrantManager::config_vm(b)
-      # end
+    def self.helpers(which = nil, h = nil)
+      VagrantManager::setup_helpers(which, h)
     end
 
     def self.bow
@@ -185,7 +174,7 @@ module Vuppeteer
       self.say(s.class == Array ? s : (s + ', shutting Down.'))
       if e < 0
         self.say('Mr Shutdown Trace:')
-        self.say(MrUtils.trace(), :now, 2)
+        self.say(MrUtils::trace(), :now, 2)
       end
       exit e.is_a?(Integer) ? e.abs : e
     end
@@ -225,7 +214,7 @@ module Vuppeteer
     end
 
     def self.resolve(names = nil)
-      ElManager::resolve(names)
+      ElManager::catalog(names)
     end
 
     def self.mark_sensitive(s)
@@ -337,6 +326,12 @@ module Vuppeteer
   #################################################################
   private
   #################################################################
-  
+
+  def self._build(which)#which = nil)
+    #which = [ElManager.catalog()] if which.nil?
+    VagrantManager::init_plugins(which)
+    ElManager::register(VagrantManager::get_vm_configs(:all))
+    VagrantManager::config_vm(which) #TODO, handle multi vm situations
+  end
   
   end

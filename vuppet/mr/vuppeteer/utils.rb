@@ -228,7 +228,7 @@ module VuppeteerUtils
       return self._generate(m) if m.class == Symbol
       return self._generate(m[0], m[1..-1]) if m.class == Array
       if (m.class == Hash)
-        n = MrUtils.sym_keys(m)
+        n = MrUtils::sym_keys(m)
         return self._generate(n.has_key?(:method) ? n[:method] : :random, m)
       end
       nil

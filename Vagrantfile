@@ -33,4 +33,5 @@ Vagrant.configure('2') do |v|
   ## custom post puppetization provisioning can happen here
   # example : v.vm.provision "shell", inline: "echo Goodbye, World"
   # example : Mr::add_provisioner('name'[, hash, when])
+  Mr::helpers()
 end

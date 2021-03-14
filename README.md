@@ -300,7 +300,9 @@ By default, Mr expects a single-VM, project or app based build. If neither the '
   - \[-suffix]/\[suffix] is derived from:
     - empty string if fact 'standalone' is true and the project or app name are at least two characters in length
     - otherwise \[-developer]\[-org]\[-box] based on values gathered by the project configuration
-    - box always defaults to 'generic-rhelV' when not specified, where V is the EL version.
+    - '-dev' is appended if a developer license is in use
+    - if 'generic/X' boxes are used, the 'generic/' portion is omitted, otheriwse slashed in the box name are converted to dashes
+    - box always defaults to 'generic/rhelV' when not specified, where V is the EL version.
 - vms, a string vm_name, array of vm_name(s) or a hash keyed by vm_name(s). 
   - automatically switches Mr to multi-vm mode unless 'standalone' or 'vm_name' is set
   - in the case of an array, Mr expects a \[vm_name].yaml to exist in the active path for each VM
@@ -321,7 +323,6 @@ By default, Mr expects a single-VM, project or app based build. If neither the '
 - disable_hiera, whether to use Hiera for Puppet (see "Mr Options")
 - verbose, increases error outputs generally (see "Mr Options")
 - debug, sets 'verbose' true, enabled additional output, and prevents a variety of outputs from being buffered (see "Mr Options")
-- box_source, explicitly sets the 'box' ElManager and Vagrant will use
 - software_collection, enables use of Software Collections and optionally sets a source
 - sc_repos, sets a list of repos to enable for software_collections
 - license_ident, string or hash configuring how ElManager will handle VMs, including box_source, registration, and various OS related environment settings. strings are used as a lookup for idents defined in el.yaml

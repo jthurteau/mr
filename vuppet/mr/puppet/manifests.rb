@@ -33,7 +33,7 @@ module Manifests
       required_modules = Hiera::required_modules()
       needed_modules = []     
       ppp_final.each do |pp|
-        needed_modules = needed_modules + self._manifest(pp)
+        needed_modules = needed_modules + self._manifest(pp, ldm_file)
       end
       needed_modules.each do |m|
           required_modules.push(m) if !required_modules.include?(m)
@@ -76,7 +76,7 @@ module Manifests
     l = self.local(facet)
     p = self.project(facet)
     g = self.global(facet)
-    e = self.exernal(facet) 
+    e = self.external(facet) 
     return l if File.exist?(l)
     return p if File.exist?(p)
     return g if !Vuppeteer::external? && File.exist?(g)
@@ -85,19 +85,19 @@ module Manifests
   end
 
   def self.local(facet)
-    l = "#{Mr::active_path()}/#{FileManager::localize_token()}.manifests/#{s}.pp"
+    l = "#{Mr::active_path()}/#{FileManager::localize_token()}.manifests/#{facet}.pp"
   end
 
   def self.project(facet)
-    p = "#{Mr::active_path()}/manifests/#{s}.pp"
+    p = "#{Mr::active_path()}/manifests/#{facet}.pp"
   end
 
   def self.global(facet)
-    g = "#{Mr::active_path()}/global.manifests/#{s}.pp"
+    g = "#{Mr::active_path()}/global.manifests/#{facet}.pp"
   end
 
   def self.external(facet)
-    e = "#{Vuppeteer::external_path}/manifests/#{s}.pp" 
+    e = "#{Vuppeteer::external_path}/manifests/#{facet}.pp" 
   end
 
 #################################################################
@@ -106,7 +106,7 @@ module Manifests
 
   def self._manifest(s, ldm_file)
     needed_modules = []
-    return if s.include?('.') && !s.end_with?('.pp')
+    return [] if s.include?('.') && !s.end_with?('.pp')
     s = s[0..-4] if s.end_with?('.pp')
     manifest_source = self.select(s)
     defer_to_hiera = false

@@ -11,8 +11,7 @@ module Helpers
   # @when_to_chill = ['never', 'always'][1]
   # @when_to_nano_enforce = 'once'
 
-  def self.setup(vm = nil, helper = nil)
-    vm = VagrantManager::config().vm if vm.nil?
+  def self.setup(helper = nil, vm = nil)
     helpers = Vuppeteer::get_fact('helpers') if helper.nil?
     helpers = MrUtils::enforce_enumerable(helpers, false)
     default = !Vuppeteer::get_fact('disable_default_hepers', false)
@@ -57,47 +56,46 @@ module Helpers
   #     end
   #     #TODO loop these from an array
   #     vm.provision "chill", type: :shell, run: @when_to_chill do |s|
-  #       s.inline = ErBash::script('helper_chill')
+  #       s.inline = FileManager::bash('helper_chill')
   #     end
 
   #     vm.provision "start", type: :shell, run: 'never' do |s|
-  #       s.inline = ErBash::script('helper_start')
+  #       s.inline = FileManager::bash('helper_start')
   #     end
     
   #     vm.provision "stop", type: :shell, run: 'never' do |s|
-  #       s.inline = ErBash::script('helper_stop')
+  #       s.inline = FileManager::bash('helper_stop')
   #     end
 
   #     vm.provision "restart", type: :shell, run: 'never' do |s|
-  #       s.inline = ErBash::script('helper_restart')
+  #       s.inline = FileManager::bash('helper_restart')
   #     end
 
   #     vm.provision "super-restart", type: :shell, run: 'never' do |s|
-  #       s.inline = ErBash::script('helper_super-restart')
+  #       s.inline = FileManager::bash('helper_super-restart')
   #     end
 
   #     vm.provision "project-clone", type: :shell, run: 'never' do |s|
-  #       s.inline = ErBash::script('helper_clone')
+  #       s.inline = FileManager::bash('helper_clone')
   #     end
 
   #     vm.provision "project-stash", type: :shell, run: 'never' do |s|
-  #       s.inline = ErBash::script('helper_stash')
+  #       s.inline = FileManager::bash('helper_stash')
   #     end
 
   #     vm.provision "project-restore", type: :shell, run: 'never' do |s|
-  #       s.inline = ErBash::script('helper_restore')
+  #       s.inline = FileManager::bash('helper_restore')
   #     end
 
       end
   #     #TODO? pass in @puppet_file_path to merge changes to /vagrant/vuppet ??
-      install_script = Vuppeteer::external? ? ErBash::script('helper_install', FileManager::fs_view()) : "echo \"***Cannot install from an internal copy of MrRogers...\"\nexit 1" 
+      install_script = Vuppeteer::external? ? FileManager::bash('helper_install', FileManager::fs_view()) : "echo \"***Cannot install from an internal copy of MrRogers...\"\nexit 1" 
       vm.provision "mr-install", type: :shell, run: 'never' do |s|
         s.inline = install_script
       end
-      uninstall_script = !Vuppeteer::external? ? ErBash::script('helper_uninstall', FileManager::fs_view()) : "echo \"***MrRogers already uninstalled...\"\nexit 1" 
-        vm.provision "mr-uninstall", type: :shell, run: 'never' do |s|
-          s.inline = uninstall_script
-        end
+      uninstall_script = !Vuppeteer::external? ? FileManager::bash('helper_uninstall', FileManager::fs_view()) : "echo \"***MrRogers already uninstalled...\"\nexit 1" 
+      vm.provision "mr-uninstall", type: :shell, run: 'never' do |s|
+        s.inline = uninstall_script
       end
       @default_helpers_added = true
     end
@@ -108,27 +106,27 @@ module Helpers
   #     s.inline = 'yum install nano -y'
   #   end
   #   vm.provision "nano_make_default", type: :shell, run: @when_to_nano_enforce do |s|
-  #     s.inline = ErBash::script('nano_enforce')
+  #     s.inline = FileManager::bash('nano_enforce')
   #     s.privileged = false
   #   end
   # end
 
   # def self.scl_enable(vm, package)
   #   vm.provision "scl+#{package}", type: :shell, run: @when_to_scl_enable do |s|
-  #     s.inline = ErBash::script('scl_enable', CollectionManager::package_view(package))
+  #     s.inline = FileManager::bash('scl_enable', CollectionManager::package_view(package))
   #     s.privileged = false
   #   end
   # end
 
   # def self.composer_please(vm)
   #   vm.provision "composer_setup", type: :shell do |s|
-  #     s.inline = ErBash::script('composer')
+  #     s.inline = FileManager::bash('composer')
   #   end
   # end
 
   # def self.net_please(vm)
   #   vm.provision "network_setup", type: :shell do |s|
-  #     s.inline = ErBash::script('nettools')
+  #     s.inline = FileManager::bash('nettools')
   #   end
   # end
 
@@ -140,7 +138,7 @@ module Helpers
 
   # def self.windows_host_friendly(vm)
   #   vm.provision "windows_support", type: :shell do |s|
-  #     s.inline = ErBash::script('windows_support')
+  #     s.inline = FileManager::bash('windows_support')
   #     s.privileged = false
   #   end
   # end
