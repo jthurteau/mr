@@ -81,7 +81,7 @@ module ElManager
   end
 
   def self.box(w = :default)
-    @box[w]
+    @box[@box.has_key?(w) ? w : :default]
   end
 
   def self.catalog(n = nil)
@@ -325,7 +325,7 @@ module ElManager
     #Vuppeteer::trace(p,Boxes::get(:all))
   end
 
-  def self._box_destroy_prep()
+  def self._box_destroy_prep() #TODO #1.0.0 multi-vm support?
     return if !self.script(:destroy)
     VagrantManager::set_destroy_trigger(self.script(:destroy))
   end

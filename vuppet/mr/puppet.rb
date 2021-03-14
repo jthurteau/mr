@@ -176,6 +176,7 @@ module PuppetManager
 
     Vuppeteer::say("Notice (VM #{vm_name}): Puppet options \"#{run_options['out_options']} --logdest #{run_options['log_to']}\"", 'prep') if ('console' != run_options['log_to'])
 
+    puppet_facts = Vuppeteer::facts().merge!({'vagrant_root' => guest_root}) #TODO make a facter filter method?
     if (self.disabled?)
       Vuppeteer::say("Notice: Bypassing main Puppet provisioning", 'prep')
     else
@@ -183,7 +184,7 @@ module PuppetManager
         puppet.manifests_path = Manifests::path()
         puppet.manifest_file = Manifests::file()
         puppet.options = "#{run_options['out_options']} --logdest #{run_options['log_to']}"
-        puppet.facter = Vuppeteer::facts() + {'vagrant_root' => guest_root} #TODO make a facter filter method?
+        puppet.facter = puppet_facts 
         puppet.hiera_config_path = Hiera::config_path() if !self.disabled?(:hiera)
       end
     end
@@ -192,7 +193,7 @@ module PuppetManager
       puppet.manifests_path = Manifests::path()
       puppet.manifest_file = Manifests::file()
       puppet.options = "--verbose --debug --write-catalog-summary --logdest #{run_options['log_to']}"
-      puppet.facter = Vuppeteer::facts() #TODO make a facter filter method?
+      puppet.facter = puppet_facts
       puppet.hiera_config_path = Hiera::config_path() if !self.disabled?(:hiera)
     end
   end

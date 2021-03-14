@@ -35,7 +35,7 @@ module VagrantManager
       @ruby_version = RUBY_VERSION
       @setup[:default] = Vuppeteer::load_facts(@conf_source, 'Notice:(Vagrant Configuration)')
       @setup[:default] = @setup[:null].clone if @setup[:default].nil?
-      @vagrant.config.vagrant.sensitive = Vuppeteer::get_sensitive() if Mr::enabled?
+      @vagrant.vagrant.sensitive = Vuppeteer::get_sensitive() if Mr::enabled?
   end
 
   def self.get()
@@ -66,11 +66,11 @@ module VagrantManager
     #Vuppeteer::trace('lookup result', vm, vms)
     Vuppeteer::shutdown('Error: No VMs to provision') if vms.length() < 1
     if (vms.length == 1)
-      self._config(@vagrant.config.vm, vms[0])
+      self._config(@vagrant.vm, vms[0])
     else
       Vuppeteer::shutdown('temporarily blocking multi-vm', -2)
       vms.each() do |v| #TODO #1.0.0 make sture they are active/enabled vms
-        @vagrant.config.vm.define vm do |c|
+        @vagrant.vm.define vm do |c|
           self._config(c.vm, v)
         end
       end

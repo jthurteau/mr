@@ -68,7 +68,7 @@ module Manifests
     @output_path
   end
 
-  def self.get_file()
+  def self.file(v = nil) #TODO multi-vms may sometimes need multiple files
     @manifest
   end
 
