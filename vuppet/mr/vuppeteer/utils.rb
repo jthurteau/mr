@@ -48,6 +48,8 @@ module VuppeteerUtils
     :derived,
     :random,
   ]
+
+  @storable = [:random]
   
   def self.rand(conf = {})
     length = conf&.dig('length')
@@ -104,7 +106,8 @@ module VuppeteerUtils
   end
 
   def self.storable?(method)
-    return false
+    #Vuppeteer::trace(method)
+    return method.class == Hash || @storable.include?(method)
   end
 
   def self.verify(list, check, checked = [])
@@ -201,7 +204,7 @@ module VuppeteerUtils
   #################################################################
   
     def self._generate(m, c = {})
-      Vuppeteer::trace('generate', m, c)
+      #Vuppeteer::trace('generate', m, c)
       if (m.class == Hash)
         result = c
         m.each() do |k, v|
@@ -220,7 +223,7 @@ module VuppeteerUtils
     end
 
     def self._calculate(m, k)
-      Vuppeteer::trace('calculate', m, k)
+      #Vuppeteer::trace('calculate', m, k)
       return Vuppeteer::get_fact(m) if m.class == String
       return self._generate(m) if m.class == Symbol
       return self._generate(m[0], m[1..-1]) if m.class == Array

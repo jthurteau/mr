@@ -113,8 +113,8 @@ module Facts
     return true
   end
 
-  def self.get(match, default = nil)
-    result = MrUtils::search(match, @facts)
+  def self.get(match, default = nil, critical = false)
+    result = MrUtils::search(match, @facts, critical)
     #Vuppeteer::trace(result,@facts,match)
     return !result.nil? ? result : default
   end
@@ -189,16 +189,17 @@ module Facts
   end
 
   def self.ensure_facts(f) #TODO in general
-    Vuppeteer::trace('ensure facts', f)
+    #Vuppeteer::trace('ensure facts', f)
     missing = {}
     storable = []
+    v = Vuppeteer::enabled?(:verbose)
     f.each do |k, c|
       if (!self.fact?(k))
         missing[k] = c
         storable.push(k) if VuppeteerUtils::storable?(c)
-        Vuppeteer.say(["testing fact #{k}... missing"],["generating fact #{k}"], 'prep')
+        Vuppeteer.say(["testing fact #{k}... missing","  ... generating fact #{k}"], 'prep') if v
       else
-        Vuppeteer.say("testing fact #{k}... provided", 'prep')
+        Vuppeteer.say("testing fact #{k}... provided", 'prep') if v
       end
     end
     new_facts = VuppeteerUtils::generate(missing)
@@ -207,6 +208,7 @@ module Facts
     storable.each do |k|
       storable_new_facts[k] = new_facts[k]
     end
+    #Vuppeteer::trace(storable, storable_new_facts)
     Vuppeteer::update_instance(storable_new_facts, true) if storable_new_facts.length > 0
   end
 
@@ -296,7 +298,7 @@ module Facts
     rescue => e
       Vuppeteer::shutdown(e.class == String ? e : e.to_s, e.class == String ? 3 : -3)
     end
-    Vuppeteer::trace(errors) if errors.length > 0
+    #Vuppeteer::trace(errors) if errors.length > 0
     error_label = errors.length > 2 ? 'validation errors' : 'valication error'
     additional = errors.length > 1 ? " (+#{errors.length - 1} more #{error_label})" : ''
     Vuppeteer::shutdown(Vuppeteer::enabled?(:verbose) ? errors : (errors[0] + additional)) if errors.length > 0

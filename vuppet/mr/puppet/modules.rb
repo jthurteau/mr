@@ -6,45 +6,63 @@ module Modules
   extend self
 
   @module_table = {}
-  @module_list = [
-    'puppetlabs-postgresql', 
-    'puppetlabs-apache', 
-    'puppetlabs-mysql',
-    'puppetlabs-vcsrepo',
-    'puppet-python',
-    'puppet-nginx',
-  ]
-  @commands = {
-    'install' => [],
-    'dev_sync' => [],
-    'remove' => [],
-    'additional' => [],
-    'status' => [],
-    'local_install' => []
+  @module_list = {
+    default:[
+      'puppetlabs-postgresql', 
+      'puppetlabs-apache', 
+      'puppetlabs-mysql',
+      'puppetlabs-vcsrepo',
+      'puppet-python',
+      'puppet-nginx',
+    ],
   }
-  @module_shared_path = '/vagrant/puppet/local-dev.repos/puppet_modules'
+  @commands = {
+    default: {
+      'install' => [],
+      'dev_sync' => [],
+      'remove' => [],
+      'additional' => [],
+      'status' => [],
+      'local_install' => []
+    },
+    null: {
+      'install' => [],
+      'dev_sync' => [],
+      'remove' => [],
+      'additional' => [],
+      'status' => [],
+      'local_install' => []
+    }
+  }
+  @module_shared_path = '/vagrant/vuppet/local-dev.repos/puppet_modules'
   @puppet_module_path = '/etc/puppetlabs/code/environments/production/modules'
 
   def self.init(modules = nil)
     puppet_file_path = PuppetManager::guest_puppet_path()
-    @module_shared_path.sub!('/vagrant/puppet', puppet_file_path) if puppet_file_path
+    @module_shared_path.sub!('/vagrant/vuppet', puppet_file_path) if puppet_file_path
     @module_shared_path.sub!('local-dev.repos', FileManager::host_repo_path()) if @module_shared_path.include?('local-dev.repos')
     if (modules)
-      @module_list = MrUtils::enforce_enumerable(modules)
+      @module_list[:default] = MrUtils::enforce_enumerable(modules)
     else
       Vuppeteer::say('Notice: Using default Puppet Modules','prep')
     end
-    Vuppeteer::say('Notice: No Puppet Modules configured','prep') if @module_list.length == 0
+    Vuppeteer::say('Notice: No Puppet Modules configured','prep') if @module_list[:default].length == 0
   end
 
-  def self.processCommands(version) 
-    if (version.nil?)
-      @commands['status'].push("echo \"no Puppet version specified for module commands\"")
+  def self.processCommands(group = :default) 
+    if (group.nil?)
+      @commands['status'].push("echo \"Notice: no group specified for module commands\"")
       return
     end
+    if (!@commands.has_key(group))
+      @commands['status'].push("echo \"Warning: no matching group for requested module commands, using default\"")
+      group = :default
+    end
+    group_string = group.to_s #TODO 'Puppet V if numeric/version otherwise VM Group'
     no_info_string = 'no module version information available for Puppet'
-    @commands['status'].push("echo \"#{no_info_string} #{version}\"") if !@module_table[version]
-    @module_list.each do |m|
+    @commands['status'].push("echo \"#{no_info_string} #{group_string}\"") if !@module_table.has_key?(group)
+    modules = @module_list.has_key?(group) ? @module_list[group] : @module_list[:default]
+    modules.each do |m|
       m_alias = nil
       if (m.include?(' AS '))
         m_parts = m.split(' AS ')
@@ -77,10 +95,10 @@ module Modules
           "rm -Rf #{@puppet_module_path}/#{m_alias}",
           "cp -r #{@module_shared_path}/#{m_name} #{@puppet_module_path}/#{m_alias}",
         ]
-        self.push_commands(commands,['install', 'dev_sync'])
+        self.push_commands(commands,['install', 'dev_sync'], group)
         @commands['remove'].push("rm -Rf #{@puppet_module_path}/#{m_alias}")
       else
-        version_available = @module_table[version]&.has_key?(m)
+        version_available = @module_table.has_key?(group) && @module_table[group].has_key?(m)
         @commands['status'].push("echo module #{m} version information unavailable for puppet #{version}") if !version_available
         version_flag = version_available ? " --version #{@module_table[version][m]}" : ''
         @commands['install'].push("puppet module install #{m}#{version_flag}")
@@ -90,18 +108,18 @@ module Modules
     @commands['additional'].push("puppet config set strict_variables true --section main")
   end
 
-  def self.push_commands(commands, groups)
-    groups.each do |g|
+  def self.push_commands(commands, command_groups, vm_group = :default)
+    command_groups.each do |g|
       commands.each do |c|
         @commands[g].push(c)
       end
     end
   end
 
-  def self.get_commands(commands)
+  def self.get_commands(commands, vm_group = :default)
     output = []
     commands.each do |g|
-      @commands[g].each {|cc| output.push(cc)} if @commands.has_key?(g)
+      @commands[vm_group][g].each {|cc| output.push(cc)} if @commands.has_key?(g)
     end
     output
   end
@@ -145,8 +163,10 @@ module Modules
     module_name
   end
 
-  def self.set_versions(version_data)
-    @module_table = version_data
+  def self.set_versions(version_data, group = nil)
+    return if version_data.class != Hash
+    @module_table = version_data.merge(@module_table) if group.nil?
+    @module_table[group] = version_data if !group.nil?
   end
 
   def self.host_module_path()

@@ -8,9 +8,8 @@ module Repos
   @initialized = false
   @host_repo_path = 'local-dev.repos'
 
-  def self.init()
+  def self.setup(repos)
     self._init() if !@initialized
-    repos = Vuppeteer::get_fact('project_repos')
     return if repos.nil?
     Vuppeteer::say("Notice: Updating local project repos...", 'prep')
     MrUtils::enforce_enumerable(repos).each() do |r|
@@ -119,6 +118,10 @@ module Repos
   def self.repo_path?(path)
     File.exist?("#{path}/.git")
   end
+
+  #################################################################
+  private
+  #################################################################
 
   def self._init()
     @host_repo_path.gsub!('local-dev', FileManager::localize_token()) if @host_repo_path.include?('local-dev')

@@ -44,6 +44,7 @@ module Vuppeteer
     @instance_changed = false
  
     @features = {
+      mr: true,
       verbose: false,
       debug: false,
       local: true,
@@ -68,6 +69,7 @@ module Vuppeteer
       @instance = Facts::instance()
       was = @features[:debug]
       @features[:debug] = Facts::get('debug')
+      @features[:mr] = false if Facts::get('disabled')
       @features[:verbose] = @features[:debug] || Facts::get('verbose')
       self.say('Notice: Debug Mode enabled' + (!was && @features[:debug] ? '... flushing trigger buffers.' : ''))
       VagrantManager::flush_trigger_buffer() if !was && @features[:debug]
@@ -98,14 +100,12 @@ module Vuppeteer
     def self.start()
       self.expose_facts() if Facts::get('verbose_facts') || @features[:verbose]
       self.say("Vuppeteer Features: #{@features.to_s}") if @features[:debug]
-      if (self.external?)
-        Installer::prep() if @features[:installer]
-      end
-      FileManager::setup_repos() if (Facts::fact?('project_repos'))
+      Installer::prep() if self.external? && @features[:installer]
+      self.save_instance(true)
+      FileManager::setup_repos(Facts::get('project_repos'))
     end
 
-    def self.prep(guest_path) #TODO think about multi-vm scenario (passed vm param?, see also PuppetManager::apply)
-      Facts::set({'vagrant_root': guest_path}, true)
+    def self.prep() #TODO think about multi-vm scenario (passed vm param?, see also PuppetManager::apply)
       ElManager::register(VagrantManager::config())
       VagrantManager::setup_helpers()
     end
@@ -200,7 +200,7 @@ module Vuppeteer
         k.each() do |hk, hv|
           self.update_instance(hk, hv)
         end
-        self.save_instance() if v
+        self.save_instance(true) if v
         return
       end
       self.set_facts({k => v}, true)
@@ -213,9 +213,19 @@ module Vuppeteer
       end
     end
   
-    def self.save_instance()
-      return if !@features[:instance] || @features[:instance].class != String
-      FileManager::save_yaml(@features[:instance], @instance)
+    def self.save_instance(verbose = false)
+      return if @features[:instance].class != String || !@instance_changed
+      saved = FileManager::save_yaml(@features[:instance], @instance)
+      @instance_changed = false if @instance_changed && saved
+      Vuppeteer::say('Notice: Updated the instance facts file') if saved && verbose
+    end
+
+    def self.get_vm(name)
+      VagrantManager::get_vm(name)
+    end
+
+    def self.resolve(names = nil)
+      ElManager::resolve(names)
     end
 
     def self.mark_sensitive(s)
@@ -280,8 +290,12 @@ module Vuppeteer
       Facts::fact?(f)
     end
 
-    def self.load_facts(source)
-      source.start_with?(MrUtils::splitter) ? Facts::get(source[2..-1]) : FileManager::load_fact_yaml(source, false)
+    def self.load_facts(source, flag = nil)
+      begin
+        source.start_with?(MrUtils::splitter) ? Facts::get(source[2..-1], nil, true) : FileManager::load_fact_yaml(source, flag)
+      rescue => e
+        MrUtils::meditate("#{e} for \"#{source}\"", flag, 'prep')
+      end
     end
 
     def self.add_derived(d)

@@ -6,15 +6,15 @@
 module Collections
   extend self
 
-  @collections_requested = false
+  @collections_requested = {default: false}
   @collections_added = false
   @collection_sources = ['rhel', 'centos', 'remi']
-  @collection_source = nil
+  @collection_source = {default: nil}
   @when_to_install_sc = ['once', 'never'][0]
 
-  def self.request(sc_name = nil)
-    @collections_requested = !sc_name.nil?
-    @collection_source = sc_name if (sc_name)
+  def self.request(sc_name = nil, w = :default)
+    @collections_requested[w] = !sc_name.nil?
+    @collection_source[w] = sc_name if sc_name
   end
 
   def self.provision(v, source = nil)

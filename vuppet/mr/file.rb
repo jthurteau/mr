@@ -197,9 +197,9 @@ module FileManager
   # delegations
   #################################################################
 
-  def self.setup_repos()
+  def self.setup_repos(r)
     Vuppeteer::shutdown('attempting repo::init', -1)
-    Repos::init()
+    Repos::setup(r)
   end
 
   #################################################################
@@ -222,9 +222,9 @@ module FileManager
     Repos::host_repo_path()
   end
 
-#################################################################
-  private
-#################################################################
+  #################################################################
+    private
+  #################################################################
 
   def self._backup(path)
     unique = '' #TODO this is quick and dirty

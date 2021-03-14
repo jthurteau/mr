@@ -16,8 +16,12 @@ module Boxes
     return @builds.has_key?(v)
   end
 
-  def self.get()
-    return @builds
+  def self.get(w = nil)
+    return @builds.keys()[0] if w.nil? && @builds.length > 0
+  end
+
+  def self.all()
+    return @builds.keys
   end
 
   #################################################################

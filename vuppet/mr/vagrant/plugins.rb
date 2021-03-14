@@ -20,7 +20,7 @@ module Plugins
   
   def self.init()
     v = VagrantManager::get()
-    if Vagrant.has_plugin?(@plugins[:registration][:name])
+    if (Vagrant.has_plugin?(@plugins[:registration][:name]) && Mr::enabled?)
       v.registration.skip = true
       v.registration.unregister_on_halt = false
     end

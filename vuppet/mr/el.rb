@@ -11,23 +11,32 @@ module ElManager
   require_relative 'el/network'
   require_relative 'el/collections'
   
-  @singleton = nil
-  @build = 'hobo'
-  @el_version = ['7','8'][0]
-  @box = 'generic/rhel8'
-  @ident_file = 'puppet/license_ident.yaml'
-  @ident = {}
-  @vms = []
-  @sc = nil  
-  @multibuild = false
+  @singletons = {}
+  @multibuild = nil
+  @el_data_source = 'el'
+  @el_data = nil
+  @el_version = {default: '8', null: '8'}
+  @box = {default: 'generic/rhel8', null: 'generic/rhel8'}
+  @fallbox = 'generic/fedora28'
+  @ident = {default: nil}
+  @sc = {default: nil}  
 
   @scripts = {
-    sc: nil,
-    setup: nil,
-    update: nil,
-    destroy: nil
+    default: {
+      sc: nil,
+      setup: nil,
+      update: nil,
+      destroy: nil
+    },
+    null: {
+      sc: nil,
+      setup: nil,
+      update: nil,
+      destroy: nil
+    }
   }
 
+  @cred_prefix = 'rhsm_'
   @cred_keys = ['org','key','user','pass','host']
   @cred_type = [nil, :org, :user][0]
   @cred_types = {
@@ -35,28 +44,54 @@ module ElManager
     user: ['user', 'pass'],
   }
 
-  @cred_prefix = 'rhsm_'
-
-  @known_box_prefixes = ['generic/rhel'];
-
-  def self.init()
-    @el_version = self._detect_version()
-    @box = self._detect_box()
-    @ident = self._detect_ident()
-    #TODO Vuppeteer::mark_sensitive([sensitive ident keys])
-    @scripts[:destroy] = 'rhel_destroy' #if self.is_it? #TODO this whouldn't be set when in Centos/Nomad mode...
-  end
-
-  def self.el_version()
-    @el_version
-  end
-
-  def self.box()
-    @box
-  end
+  # @known_box_prefixes = ['generic/rhel'];
+  # @box_options = []
+  # @el_options = []
 
   def self.multi_vm()
-    @multibuild = true
+    @multibuild = true if @multibuild.nil?
+  end
+
+  def self.init()
+    @multibuild = false if @multibuild.nil?
+    detected = self._detect_ident()
+    @ident[:default] = detected ? self._validate(detected) : {}
+    @el_version[:default] = self._detect_version()
+    @box[:default] = self._detect_box()
+    @ident[:default]['el_version'] = @el_version[:default]
+    @ident[:default]['box'] = @box[:default]
+    @singletons[:default] = Realm.new(@ident[:default])
+    # @cred_types.each() do |t, r|
+    #   s = r.map {|c| "#{@cred_prefix}#{c}"}
+    # end
+    #TODO Vuppeteer::mark_sensitive([sensitive ident keys])
+    VagrantManager::halt_vb_guest() if @el_version[:default] == '8' #TODO this should be in plugin-manager? right now it's vb middle ware, so not a "plugin"?
+    @scripts[:default][:destroy] = 'rhel_destroy' #if self.is_it? #TODO this whouldn't be set when in Centos/Nomad mode...
+    # if ident_hash['software_collection'] #TODO make this more robusty
+    #   Vuppeteer::set_facts({'software_collection' => ident_hash['software_collection']}, true)
+    # end
+    @scripts[:null].keys().each() do |s|
+      k ="custom_#{s.to_s}"
+      @scripts[:default][s] = @ident[:default][k] if @ident[:default].has_key?(k)
+    end
+  end
+
+  def self.el_version(w = :default)
+    @el_version[w]
+  end
+
+  def self.box(w = :default)
+    @box[w]
+  end
+
+  def self.resolve(n = nil)
+    return[Boxes::get()] if (n.nil? || n == :all) && !@multibuild
+    names = []
+    n = n == :all ? Boxes::get(n) : MrUtils::enforce_enumerable(n)
+    n.each() do |v|
+      names.push(Boxes::get(v)) if Boxes::include?(v)
+    end
+    names
   end
 
   def self.has?(v)
@@ -72,24 +107,35 @@ module ElManager
   end
 
   def self.setup()
-    Vuppeteer::say("ElManager pre-setup config reports: #{@box}:#{@el_version} " + @ident.to_s) if Vuppeteer::enabled?(:debug)
-    Collections::request(Vuppeteer::get_fact('software_collection', @sc))
-    @vms = Boxes::get()
-  end
-
-  def self.ready_to_register()
-    #facts = Vuppeteer::facts()
-    @cred_types.each() do |t, r|
-      requires = r.map {|k| "#{@cred_prefix}#{k}"}
-      return t if requires.all? { |k| @ident.include?(k)} #Vuppeteer::facts().include?(k)}
+    if (@multibuild) 
+      Vuppeteer::shutdown('attempting multi-vm provision' , -2)
+      Boxes::all().each do |v|
+        #Collections::request(Vuppeteer::get_fact('software_collection', @sc), group)
+      end
+    else
+      box = "#{@box[:default]}:#{@el_version[:default]}"
+      Vuppeteer::say("ElManager pre-setup config reports: #{box} " + @ident[:default].to_s) if Vuppeteer::enabled?(:debug)
+      Collections::request(Vuppeteer::get_fact('software_collection', @sc))
     end
   end
 
-  def self.script(w)
-    return @scripts.has_key?(w) ? @scripts[w] : nil
+  def self.ready_to_register(ident = nil, validation = nil)
+    ident = @ident if ident.nil?
+    p = validation.nil? ? @cred_prefix : ''
+    validation = @cred_types if valication.nil?
+    validation = {custom: validation} if valication.class == Array
+    validation.each() do |t, r|
+      requires = r.map {|k| "#{p}#{k}"}
+      return t if requires.all? { |k| ident.include?(k)}
+    end
+  end
+
+  def self.script(w, flavor = :default)
+    return @scripts[flavor].has_key?(w) ? @scripts[flavor][w] : nil
   end
 
   def self.sc_commands()
+    #TODO lookup os flavor for self.scripts
     has_sc_repos = Collections::repos().length() > 0
     return ErBash::script(self.script(:sc), self.credentials()) if self.script(:sc)
     return ErBash::script('rhel_dev_sc', self.credentials()) if has_sc_repos
@@ -120,28 +166,13 @@ module ElManager
     self.is_it? ? '' : '-sc:centos'
   end
 
-  def self.credentials()
-    @singleton&.view()
+  def self.credentials(w = :default)
+    @singletons[w]&.view()
   end
 
-  def self.is_it?()
-    @singleton != nil
+  def self.is_it?(w = :default)
+    @singletons[w] != nil
   end
-
-  ## came from Vuppeteer
-  # def self.name_gen()
-  #   return Vuppeteer::get_fact('box_name') if Vuppeteer::fact?('box_name')
-  #   app = Vuppeteer::get_fact('app', '')
-  #   developer = Vuppeteer::get_fact('developer', '')
-  #   fallback = [app, developer].all?{|v| v == ''} ? 'vagrant-puppet' : ''
-  #   delim = [app, developer].none?{|v| v == ''} ? '-' : ''
-  #   "#{developer}#{delim}#{app}#{fallback}"
-  # end
-
-  # def self.infra_gen()
-  #   return '' if Vuppeteer::fact?('standalone')  
-  #   RhelManager::is_it? ? RhelManager::build() : 'nomad'
-  # end
 
   def self.register()
     NetworkManager::resgister(cors)#app = nil, developer = nil #self._register(Vuppeteer::get_fact('org_domain'))
@@ -200,88 +231,72 @@ module ElManager
     #p.auto_attach = false if @ident.has_key?(:manual_attach) && @ident[:manual_attach] # only do this on dev?
   end
 
-  def self.get_vms()
-    return @vms
+  def self.get_vms(n)
+    return Boxes::get(n)
   end
 
   #################################################################
   private
   #################################################################
 
-  def self._detect_box()
-    #   Vuppeteer::fact?('box_source') ? PuppetFacts::get_fact('box_source') : 
-    # elsif PuppetFacts::get_fact('default_to_rhel')
-    #   @box_source = RhelManager::box()
+  def self._detect_ident()
+    @el_data = Vuppeteer::load_facts(@el_data_source, 'Notice:(EL Configuration)')
+    license = self._negotiate()
+    el_license = @el_data && license && @el_data.has_key?(license) ? @el_data[license] : nil
+    # if(!el_license)
+    #   el_data = Vuppeteer::load_facts("#{FileManager::localize_token}.el.yaml", false)
+    #   el_license = el_data && license && el_data.has_key?(license) ? el_data[license] : nil
     # end
+    # if(!el_license)
+    #   el_data = Vuppeteer::load_facts('::licenses', false)
+    #   el_license = el_data && license && el_data.has_key?(license) el_data[license] ? : nil
+    # end
+    el_license
+  end 
+
+  def self._negotiate()
+    license_important = Vuppeteer::get_fact('license_important', false)
+    l = Vuppeteer::get_fact('el_license')
+    d = Vuppeteer::get_fact('el_developer_license')
+    #
+    # x = Vuppeteer::get_fact('license')
+    # x = Vuppeteer::get_fact('developer_license')
+    # x = Vuppeteer::get_fact('el_min_version')
+    # x = Vuppeteer::get_fact('licenses')
+    # x = Vuppeteer::get_fact('developer_licenses')
+    # x = Vuppeteer::get_fact('box_hit')
+    # x = Vuppeteer::get_fact('license')
+    license_important && l ? l : (d ? d : l)
+  end
+
+  def self._detect_box()
+    d = Vuppeteer::get_fact('default_to_rhel', true)
+    s = Vuppeteer::get_fact('box_source')
+    @box_source = s ? s : @fallbox if s || !d
   end
 
   def self._detect_version()
-
+    @el_version = Vuppeteer::get_fact('el_version') if Vuppeteer::fact?('el_version')
   end
 
-  def self._detect_ident()
-    license_important = Vuppeteer::get_fact('license_important', false)
-    #     if (license_important)
-    #       selected_license = Vuppeteer::get_fact('license_ident', Vuppeteer::get_fact('pref_license_ident', nil))
-    #     else
-    #       selected_license = Vuppeteer::get_fact('pref_license_ident', Vuppeteer::get_fact('license_ident', nil))
-    #     end
-  end 
-
-  def self._lookup_ident(ident_key)
-    rhel_data = FileManager::load_config_yaml(@ident_file, 'RHEL')
-    reg_data = rhel_data[ident_key] if rhel_data
-    reg_data['ident'] = ident_key if (!reg_data['ident']) && rhel_data
-    rc = 'RHEL registration configuration'
-    if (!reg_data) 
-      if (ident_key == 'nomad')
-        Vuppeteer::say("Warning: No default #{rc} specified, using fallback setup", 'prep')
-      else
-        Vuppeteer::say("Error: #{rc} for \"#{ident_key}\" is not available")
-        Vuppeteer::say("  specify 'nomad' to attempt the default fallback configuration")
-        Vuppeteer::shutdown("Error: Invalid #{rc} entry")
-      end
-    else
-      incomplete_config_text = "Warning: #{rc} for \"#{ident_key}\" is incomplete"
-      facts = Vuppeteer::facts()
-      complete_custom = reg_data.include?('custom_setup')
-      @cred_type = self.ready_to_register()
-      incomplete = !complete_custom && !@cred_type
-      if (@cred_type)
-        @cred_keys.each {|k| reg_data["rhsm_#{k}"] = facts["rhsm_#{k}"] if facts.include?("rhsm_#{k}")}
-      end
-      Vuppeteer::say(incomplete_config_text, 'prep') if incomplete
+  def self._validate(ident)
+    return {} if @box_source == @fallbox
+    if !ident
+      Vuppeteer::say('Warning: No license detected...', 'prep') 
+      return {}
     end
-    self._init_hash(reg_data)
-  end
-
-  def self._init_hash(ident_hash)
-    @build = ident_hash.fetch('box_suffix', ident_hash['ident'])
-    @box = ident_hash.fetch('box', @box)
-    if (@el_version == '8')
-      VagrantManager::halt_vb_guest() #TODO this should be in plugin-manager? right now it's vb middle ware, so not a "plugin"?
+    incomplete_config_text = "Warning: license data is incomplete"
+    custom = ident.include?('custom_requirements') ? ident['custom_requirements'] : nil 
+    @cred_type = self.ready_to_register(ident, custom)
+    if (custom && @cred_type)
+      new_cred = custom.class == Array ? custom : custom[@cred_type] 
+      @cred_types[@cred_type] = new_cred
     end
-    if ident_hash['custom_sc'] #TODO make this more robusty
-      #Vuppeteer::say("binding custom sc: " + Mr::path("#{org_hash['custom_sc']}"))
-      @custom_sc = ident_hash['custom_sc']
+    if !@cred_type
+      Vuppeteer::say(incomplete_config_text, 'prep')
+      return {}
     end
-    if ident_hash['custom_setup'] #TODO make this more robusty
-      #Vuppeteer::say("binding custom setup: " + Mr::path("#{org_hash['custom_setup']}"))
-      @custom_setup = ident_hash['custom_setup']
-    end
-    if ident_hash['custom_update'] #TODO make this more robusty
-      #Vuppeteer::say("binding custom update: " + Mr::path("#{org_hash['custom_update']}"))
-      @custom_update = ident_hash['custom_update']
-    end
-    if ident_hash['custom_destroy'] #TODO make this more robusty
-      #Vuppeteer::say("binding custom update: " + Mr::path("#{org_hash['custom_update']}"))
-      @destroy_script = ident_hash['custom_destroy']    
-    end
-    if ident_hash['software_collection'] #TODO make this more robusty
-      Vuppeteer::set_facts({'software_collection' => ident_hash['software_collection']}, true)
-    end
-    ident_hash['el_version'] = el_version
-    @singleton = Realm.new(ident_hash)
+    ident
   end
 
   def self._detect_setup_script() #TODO handle non-rhel

@@ -95,7 +95,8 @@ Options that can only be set in this way, include:
 Other options can be passed in the Vagrantfile, or set during the initialization process from configuration files. Generally the consideration behind where they should be set hinges on making it clear how the project is built without an overwhelming level of detail up-front. 
 
  - facts
-   - Hash of values constituting parameters to building the sandbox VM, or string name (ommitting the .yaml extension) for the build configuration.
+   - Hash of values constituting parameters to building the sandbox VM, or string name (ommitting the .yaml extension) for the build configuration fact source. 
+     - while most other "fact sources" can start with '::' to indicate they should be aquired from a facet of the already loaded build configuration facts, this fact source must resolve to a file (it may not begin with '::'). It may include '::' after the file name to limit the scope of the build configuration facts within the loaded file.
    - These values will be directly available to both Mr and Puppet ('puppet_fact_source' changes this behavior)
    - If the value is a hash, the default configuration file (\[active_path]/vuppeteer.yaml) is still loaded if it exists
    - additional values from other .yaml files in the active path are also be merged into the facts depending on configuration
@@ -335,12 +336,24 @@ By default, Mr expects a single-VM, project or app based build. If neither the '
 - puppet_config_source, source to load configuration for PuppetManager, defaults to puppet.yaml
 - vagrant_config_source, source to load configuration for VagrantManager, defaults to vagrant.yaml
 - el_config_source, source to load configuration for VagrantManager, defaults to el.yaml
+- el_license, a set, or calculated and stored instance fact to ensure that once a VM has been built changes to the build facts doesn't result in a mis-match
+- box_source, specifies a box to use for the build, if this is set it is recommended to also set el_version
+- default_to_rhel, defaults to true. fedora is used if false and no box_source is set
+- el_version, the version of EL for the build, only set this to force and avoid autodetection
+- developer_el_license,
+- license_important, adjusts the current license negotiation algorythm to favor project values over developer values
 
-    'pref_license_ident',
     'git_developer','ghc_developer','ghe_developer',
     'ghc_pat',
     'ghe_pat','ghe_host',
     'rhsm_user','rhsm_pass','rhsm_org', 'rhsm_key', 'rhsm_host',
+---future features---
+- license, one or more license ident strings the project supports, in general order of preference
+- developer_license, one or more license ident strings the developer prefers, in general order of preference
+- el_min_version, specifies the default minimum version of el the project will support, defaults to 7. If set, any license candidate must provide version data and be meet the minimum to be considered
+- licenses and developer_licenses,
+  - licenses is normally pulled from el.yaml (or local-dev.el.yaml when present), but may also be specified in build facts. This data deep merged in the following order local-dev.build.yaml > local-dev.el.yaml > build.yaml > el.yaml
+
 
 #### Bundling
 

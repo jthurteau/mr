@@ -35,11 +35,6 @@ module Mr
   @active_path = 'vuppet'
 
   ##
-  # if mr is disabled it will load and parse configuration, but manage no provisioners
-  # basic Vagrant operations should still be available (up, reload, halt, non-mr provisioning etc.)
-  @disabled = false
-
-  ##
   # indicates if everything that needs to happen before ::puppet_apply has happened
   @prepped = nil
 
@@ -53,6 +48,9 @@ module Mr
   # this may be set in options from the Vagrantfile or the local-dev.vuppeteer.yaml 
   @developer_facts_file = '~/.mr/developer'
 
+  @once_warning = 'Warning: Mr::vagrant can only be called once, second entry detected'
+  @bypass_message = 'Notice: Mr is DISABLED, normal provisioning and triggers bypassed'
+
   ##
   # Performs all of the setup on the provided vagrant config up to the puppet-prep stage
   # vagrant is vagrant config referece
@@ -61,35 +59,32 @@ module Mr
   # if a string is provided it is mapped to a Hash, {assert: {'project' => [string]}}
   def self.vagrant(vagrant, options = {})
     if !@prepped.nil?
-      Vuppeteer::say('Warning: Mr::vagrant can only be called once, second entry detected')
+      Vuppeteer::say(@once_warning)
       Vuppeteer::trace('Second entry at:')
       return
     end
     self._config(options)
     FileManager::init(File.dirname(MrUtils::caller_file(caller)))
     Vuppeteer::init(@active_path == @my_path ? nil : @my_path)
-    @disabled = Vuppeteer::get_fact('disabled', false)
-    PuppetManager::init()
     ElManager::init()
+    PuppetManager::init()
     VagrantManager::init(vagrant)
     @prepped = false
+    Vuppeteer::shutdown('TEST: shutdown before start', -2)
     Vuppeteer::start()
-    if (!@disabled)
-      ElManager::setup()
-      VagrantManager::register_triggers!()
-    else
-      Vuppeteer::say('Notice: Mr is DISABLED, normal provisioning and triggers bypassed')
-    end
-    Vuppeteer::build(ElManager::get_vms())
+    return Vuppeteer::say(@bypass_message) if !Vuppeteer::enabled?(:mr)
+    ElManager::setup()
+    VagrantManager::register_triggers!()
+    Vuppeteer::build(ElManager::vms(:active))
   end 
 
   ##
   # Ensures prep steps have been applied and then sets up the puppet_apply provisioner
-  def self.puppet_apply(options = nil)
-    return if @disabled
+  def self.puppet_apply()
+    return if !Vuppeteer::enabled?(:mr)
     if (!@prepped)
       Vuppeteer::shutdown('Error: attempting to manage puppet before initialization') if @prepped.nil?
-      Vuppeteer::prep(@guest_path)
+      Vuppeteer::prep()
       @prepped = true
     end
     PuppetManager::apply()
@@ -117,6 +112,10 @@ module Mr
     return to_sub 
   end
   
+  def self.enabled?
+    return Vuppeteer::enabled?(:mr)
+  end
+
   def self.active_path
     return @active_path
   end
@@ -177,10 +176,12 @@ module Mr
         when :facts
           if (v.class == String)
             @build_facts_file = (y.end_with?('.yaml') ? v[0..-4] : v)
+            valid_build_file = FileManager::facet_split(v)[0].length > 0
+            Vuppeteer::shutdown("Error: Invalid build facts file provided #{v}") if !valid_build_file
           elsif (v.respond_to?(:to_h))
             option_roots = v
           else
-            Vuppeteer::shutdown("Error: Invalid facts option passed in configuration", -3)
+            Vuppeteer::shutdown("Error: Invalid facts option passed in configuration")
           end
         when :generated
           Vuppeteer::register_generated(v)
