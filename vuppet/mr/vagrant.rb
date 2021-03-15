@@ -30,12 +30,22 @@ module VagrantManager
   @vm_configs = {}
 
   def self.init(singleton)
-      @vagrant = singleton
-      @version = Vagrant::VERSION
-      @ruby_version = RUBY_VERSION
-      @setup[:default] = Vuppeteer::load_facts(@conf_source, 'Notice:(Vagrant Configuration)')
-      @setup[:default] = @setup[:null].clone if @setup[:default].nil?
-      @vagrant.vagrant.sensitive = Vuppeteer::get_sensitive() if Mr::enabled?
+    @vagrant = singleton
+    @version = Vagrant::VERSION
+    @ruby_version = RUBY_VERSION
+    @setup[:default] = Vuppeteer::load_facts(@conf_source, 'Notice:(Vagrant Configuration)')
+    @setup[:default] = @setup[:null].clone if @setup[:default].nil?
+    return if !Mr::enabled?
+    Vuppeteer::say('')
+    if (!@features[:vb_middleware])
+      @vagrant.vbguest.auto_update = false
+    end
+    @vagrant.vagrant.sensitive = Vuppeteer::get_sensitive() 
+    # if (self._linked_clone?(vm))
+      # config.vm.provider 'virtualbox' do |v|
+      #   v.linked_clone = true if Gem::Version.new(Vagrant::VERSION) >= Gem::Version.new('1.8.0')
+      # end
+    # end
   end
 
   def self.get()
@@ -52,28 +62,45 @@ module VagrantManager
     results
   end
 
-  def self.config_vm(vm = nil)
+  def self.build(vm = nil)
     return if !Mr::enabled?
     vagrant_default_warning = "Notice: No vagrant config provided (so default network/shared etc. are in place)"
     Vuppeteer::say(vagrant_default_warning, 'prep') if !@setup
-    self._vb_setup()
-    if (self._linked_clone?(vm))
-      # config.vm.provider 'virtualbox' do |v|
-      #   v.linked_clone = true if Gem::Version.new(Vagrant::VERSION) >= Gem::Version.new('1.8.0')
-      # end
-    end
     vms = ElManager::catalog(vm)
-    #Vuppeteer::trace('lookup result', vm, vms)
-    Vuppeteer::shutdown('Error: No VMs to provision') if vms.length() < 1
-    if (vms.length == 1)
-      self._config(@vagrant.vm, vms[0])
-    else
-      Vuppeteer::shutdown('temporarily blocking multi-vm', -2)
-      vms.each() do |v| #TODO #1.0.0 make sture they are active/enabled vms
-        @vagrant.vm.define vm do |c|
-          self._config(c.vm, v)
+    current_vm = vms.pop()
+    multi_vm = false
+    if (current_vm)
+      Vuppeteer::trace('build VMs', current_vm, vms)
+      @vagrant.vm.box = ElManager::box(:default)
+      self._build(@vagrant.vm, current_vm)
+      loop do
+        @vagrant.vm.define current_vm do |c|
+          self._build(c.vm, current_vm)
         end
+        # #self._config(@vagrant.vm, current_vm)
+        # @vagrant.vm.define current_vm do |c|
+        #   Vuppeteer::trace('build VM', c)
+        #   @vm_configs[current_vm] = c
+        # end
+        current_vm = vms.pop()
+        Vuppeteer::trace('additional VMs', current_vm)
+        Vuppeteer::shutdown('temporarily blocking multi-vm', -2) if !multi_vm && !current_vm.nil?
+        break if !multi_vm || current_vm.nil?
+        Vuppeteer::trace('build VM', current_vm)
       end
+    else
+      Vuppeteer::shutdown('Error: No VMs to provision') if !current_vm #vms.length() < 1
+    end
+    @vm_configs
+  end
+
+  def self.config_vms(vms = nil)
+    return if !Mr::enabled?
+    @vm_configs.keys().each() do |v|
+      Vuppeteer::trace('config VM', v)
+      match = vms.nil? || (vms.class == Array && vms.include?(v)) || (vms.class == Hash && vms.has_key?(v))
+      self._config(v) if match
+      Vuppeteer::say("skipping config of #{v}") if !match
     end
     @vm_configs
   end
@@ -95,6 +122,7 @@ module VagrantManager
       trigger.run_remote = {
         inline: script
       }
+      trigger.on_error = :continue
     end
   end
   
@@ -118,12 +146,8 @@ module VagrantManager
   end
 
   def self.halt_vb_guest()
-    @prevent_vb_middleware = true
+    @features[:vb_middleware] = false
     Vuppeteer::say('Notice: VirtualBox Guest Additions Plugin Autoloading Disabled.', 'prep');
-  end
-
-  def self.halted_vb_guest?()
-    @prevent_vb_middleware
   end
 
   def self.init_plugins(vm)
@@ -154,16 +178,13 @@ module VagrantManager
     private
   #################################################################
 
-  def self._vb_setup()
-    if (!@features[:vb_middleware])
-      @vagrant.vbguest.auto_update = false
-    end
+  def self._build(vm, label)
+    @vm_configs[label] = vm
   end
 
-  def self._config(vm, label)
-    @vm_configs[label] = vm
-    #Vuppeteer::trace(vm, label, @setup)
-    vm.box = ElManager::box(label)
+  def self._config(label)
+    @vm_configs[label].box = ElManager::box(label)
+    Vuppeteer::trace('configuring', label, ElManager::box(label))
     if (label.nil? || !@setup.include?(label))
       vm_string = label.nil? ? 'vm' : "vm:#{label}" 
       Vuppeteer::say("Warning: could not configure vagrant #{vm_string} from facts, using default setup")
@@ -171,7 +192,7 @@ module VagrantManager
     vm_setup = label.nil? || @setup.has_key?(label) ? @setup[:null] : @setup[label]
     ##
     # providers
-    vm.provider 'virtualbox' do |vb|
+    @vm_configs[label].provider 'virtualbox' do |vb|
       vb.name = label
       ##TODO we can probably streamline builds with linked clones
       #vb.linked_clone = true if Gem::Version.new(Vagrant::VERSION) >= Gem::Version.new('1.8.0')
@@ -193,7 +214,7 @@ module VagrantManager
       network = vm_setup.has_key?('network') ? vm_setup['network'] : []
       network.each do |n|
         h = Vuppeteer::sym_keys(n[1])
-        vm.network n[0], h 
+        @vm_configs[label].network n[0], h 
       end
 
       ##
@@ -203,7 +224,7 @@ module VagrantManager
         h = Vuppeteer::sym_keys(s[2])
         #TODO warn if there is no explicit type:
         st = s[1].class == String ? s[1] : self._lookup(s[1], label)
-        vm.synced_folder s[0], s[1], h 
+        @vm_configs[label].synced_folder s[0], s[1], h 
       end
 
       #TODO make sure guest_path is set from facts when present

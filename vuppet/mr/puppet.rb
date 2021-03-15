@@ -157,18 +157,19 @@ module PuppetManager
     prep_command_string = self.translate_guest_commands(Modules::get_commands(['status', 'install', 'additional']))
     sync_command_string = self.translate_guest_commands(Modules::get_commands(['dev_sync']))
     reset_command_string = self.translate_guest_commands(Modules::get_commands(['remove']))
+    install_puppet_string = FileManager::bash('puppet_prep', CollectionManager::credentials())
 
     vm.provision 'puppet-reset', type: :shell, run: 'never' do |s|
       s.inline = "#{reset_command_string}"
     end
 
+    vm.provision 'puppet-prep', type: :shell do |s|
+      s.inline = "#{install_puppet_string}\n#{prep_command_string}"
+    end
     #TODO push this info VagrantManager => ElManager
     # fix_snippet = '8' == RhelManager::el_version() ? ("\n" + FileManager::bash('rhel8_puppet_fix') + "\n") : ''
     # #TODO, it's an ERB fragment, so that can now be done inline with ERB
-    # VagrantManager::config().vm.provision 'puppet-prep', type: :shell do |s|
-    #   s.inline = FileManager::bash('puppet_prep', CollectionManager::credentials()) + fix_snippet + "\n#{prep_command_string}"
-    #   # rpm -ivh https://yum.puppetlabs.com/puppetlabs-release-el-7.noarch.rpm #an older version of 5?
-    # end
+    # rpm -ivh https://yum.puppetlabs.com/puppetlabs-release-el-7.noarch.rpm #an older version of 5?
 
     vm.provision 'puppet-sync', type: :shell , run: 'never' do |s|
       s.inline = sync_command_string

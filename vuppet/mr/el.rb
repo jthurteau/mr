@@ -153,18 +153,31 @@ module ElManager
   end
 
   def self.setup_script()
-    setup_script = self._detect_setup_script()
-    return FileManager::bash(self.script(:setup), self.credentials()) if self.script(:setup)
-    FileManager::bash(setup_script, self.credentials())
+    setup_script = self.script(:setup) ? self.script(:setup) : self._detect_setup_script()
+    begin
+      #return FileManager::bash(self.script(:setup), self.credentials()) 
+      FileManager::bash(setup_script, self.credentials())
+    rescue => e
+      return "echo 'unable to load setup script #{setup_script}'"
+    end
   end
 
   def self.update_script()
-    return FileManager::bash(self.script(:update), self.credentials()) if self.script(:update)
-    FileManager::bash('rhel_update', self.credentials())
+    begin
+      return FileManager::bash(self.script(:update), self.credentials()) if self.script(:update)
+      FileManager::bash('rhel_update', self.credentials())
+    rescue => e
+      return "echo 'unable to load update script rhel_update'"
+    end
   end
 
   def self.unregister_script()
-    FileManager::bash(self.script(:destroy), self.credentials())
+    begin
+      FileManager::bash(self.script(:destroy), self.credentials())
+    rescue => e
+      return "echo 'unable to load unregister script #{self.script(:destroy)}'"
+    end
+    
   end
 
   def self.collection_manifest()
@@ -180,14 +193,14 @@ module ElManager
   end
 
   def self.register(vms = nil)
-    #Vuppeteer::trace(vms)
     vms = MrUtils::enforce_enumerable(vms)
     vms = VagrantManager::get_vm_configs(vms) if vms.class == Array
-    #Vuppeteer::trace(vms)
+    Vuppeteer::trace('registering vms...')
     vms.each() do |n, v|
+      Vuppeteer::trace('registering', n)
       cors = Vuppeteer::get_fact('org_domain') #TODO this could be different per VM
       Network::register(cors)#app = nil, developer = nil #self._register(Vuppeteer::get_fact('org_domain'))
-      if (self.is_it?)
+      if (self.is_it?(n))
         self._box_destroy_prep()
         if (VagrantManager::plugin_managing?(:registration))
           VagrantManager::plugin(:setup_registration)
@@ -203,8 +216,13 @@ module ElManager
           s.inline = self.unregister_script()
         end
       else
+        unavailable_script = "echo 'Unavailable when not using RHEL'"
         v.provision 'register', type: :shell do |s|
-          s.inline = FileManager::bash_script('fedora_setup')
+          begin
+            s.inline = FileManager::bash('fedora_setup')
+          rescue => e
+            s.inline = "echo 'unable to load refresh script fedora_setup'"
+          end
         end
         v.provision 'unregister', type: :shell, run: 'never' do |s|
           s.inline = unavailable_script
@@ -217,7 +235,11 @@ module ElManager
       end
       
       v.provision 'refresh', type: :shell, run: 'never' do |s|
-        s.inline = FileManager::bash('yum_refresh')
+        begin
+          s.inline = FileManager::bash('yum_refresh')
+        rescue => e
+          s.inline = "echo 'unable to load refresh script yum_refresh'"
+        end
       end
 
       Collections::provision(v) #TODO this may be deprecated since it is tied to RHEL7?
@@ -284,7 +306,8 @@ module ElManager
   def self._detect_box()
     d = Vuppeteer::get_fact('default_to_rhel', true)
     s = Vuppeteer::get_fact('box_source')
-    @box_source = s ? s : @fallbox if s || !d
+    #Vuppeteer::trace('detect box', d, s, s ? s : @fallbox, s || !d )
+    @box[:default] = s ? s : @fallbox if s || !d
   end
 
   def self._detect_version()
@@ -292,7 +315,7 @@ module ElManager
   end
 
   def self._validate(ident)
-    return {} if @box_source == @fallbox
+    return {} if @box[:default] == @fallbox
     if !ident
       Vuppeteer::say('Warning: No license detected...', 'prep') 
       return {}

@@ -330,8 +330,10 @@ module Vuppeteer
   def self._build(which)#which = nil)
     #which = [ElManager.catalog()] if which.nil?
     VagrantManager::init_plugins(which)
+    VagrantManager::build(which) #TODO, handle multi vm situations
+    #Vuppeteer::trace(which,VagrantManager::get_vm_configs(:all))
     ElManager::register(VagrantManager::get_vm_configs(:all))
-    VagrantManager::config_vm(which) #TODO, handle multi vm situations
+    VagrantManager::config_vms(which) #TODO, handle multi vm situations
   end
   
   end

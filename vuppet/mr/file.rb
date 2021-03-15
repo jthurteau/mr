@@ -187,7 +187,7 @@ module FileManager
   end
 
   def self.bash(s, v = nil)
-    ErBash::script('fedora_setup', v)
+    ErBash::script(s, v)
   end
 
   def self.clear!(p)
