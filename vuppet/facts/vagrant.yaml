@@ -1,0 +1,7 @@
+dev_user: vagrant
+dev_group: vagrant
+recipe_source: /vagrant/puppet #templates/,  bash/,  facts/
+global_recipe_source: /vagrant/puppet/global.
+app_repo: /vagrant
+projects_path: /vagrant/puppet/local-dev.repos/project_repos #TODO move/generalize this
+v_instance: local-dev #e.g. atu-d1, iscms-p1

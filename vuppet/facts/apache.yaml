@@ -1,0 +1,12 @@
+#deprecating in favor of www.yaml,
+web_root: /var/www
+doc_root: /var/www/html
+app_root: /var/www/application
+app_vendor_root: /var/www/application/vendor
+app_lib_root: /var/www/application/library
+storage_root: /var/www/storage
+static_root: /var/www/static
+www_group: web
+
+##
+# anything in the apache group should be apache specific

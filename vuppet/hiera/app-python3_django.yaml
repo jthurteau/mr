@@ -1,0 +1,4 @@
+# @requires pythonwrapper::django
+# @requires postgreswrapper
+
+postgreswrapper::version: "%{::postgres_version}"

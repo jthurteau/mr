@@ -1,0 +1,7 @@
+# @requires postgreswrapper
+# NOTE this module automatically provisions package for lib_devel
+---
+# @dep postgresql::lib::devel
+#postgresql::lib::devel': {}
+postgreswrapper::noop: ''
+...

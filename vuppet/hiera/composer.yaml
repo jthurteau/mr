@@ -1,0 +1,2 @@
+# @requires rhlamp::php
+rhlamp::php::manage_composer: true #NOTE this only installs composer, each app must declare a composer install

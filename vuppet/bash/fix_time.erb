@@ -1,0 +1,4 @@
+timedatectl set-timezone <%= timezone %>
+timedatectl set-local-rtc 0
+timedatectl set-ntp yes
+chronyc makestep

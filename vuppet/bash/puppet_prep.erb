@@ -1,0 +1,9 @@
+yum install git -y
+rpm -Uvh https://yum.puppetlabs.com/puppet5/puppet5-release-el-<%= @el_version %>.noarch.rpm
+yum install epel-release puppet -y
+yum update -y <% if (@el_version == '8') %> --nobest <% end %>
+if [ ! -e /usr/bin/puppet ]
+then
+    echo "linking puppet binary..."
+    ln -s /opt/puppetlabs/bin/puppet /usr/bin/puppet
+fi

@@ -1,0 +1,7 @@
+if [ ! -e ~/.bashrc ] || ! grep -q "enables scl for package <%=@package%>" ~/.bashrc
+then
+    echo " " >> ~/.bashrc
+    echo "## The line below enables scl for package <%=@package%>" >> ~/.bashrc
+    echo "source scl_source enable <%=@package%>" >> ~/.bashrc
+    echo " " >> ~/.bashrc
+fi

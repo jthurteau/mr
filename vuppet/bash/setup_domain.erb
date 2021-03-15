@@ -1,0 +1,20 @@
+if [ -e /etc/hosts ] || ! grep -q "needed for realm-puppet management" /etc/hosts
+then
+    echo " " >> /etc/hosts
+else
+    echo "UNABLE TO UPDATE /etc/hosts with entry: <%=@public_ip%>     <%=@hostname%>.<%=@domain%>     <%=@hostname%>"
+fi
+if [ -e /etc/hosts ] && grep -q "## The line below is needed for realm-puppet management" /etc/hosts
+then
+    echo "REMOVING ENTRY FROM /etc/hosts..."
+    sudo sed -i '/## The line below is needed for realm-puppet management/N;/##end-vagrant-puppet-host-entry/N;//d;' /etc/hosts
+fi
+if [ ! -e /etc/hosts ] || ! grep -q "needed for realm-puppet management" /etc/hosts
+then
+    echo "UPDATING /etc/hosts with entry: <%=@public_ip%>     <%=@hostname%>.<%=@domain%>     <%=@hostname%>"
+    echo "## The line below is needed for realm-puppet management" >> /etc/hosts
+    echo "<%=@public_ip%>     <%=@hostname%>.<%=@domain%>     <%=@hostname%> ##end-vagrant-puppet-host-entry" >> /etc/hosts
+    echo " " >> /etc/hosts
+else
+    echo "UNABLE TO UPDATE /etc/hosts with entry: <%=@public_ip%>     <%=@hostname%>.<%=@domain%>     <%=@hostname%>"
+fi

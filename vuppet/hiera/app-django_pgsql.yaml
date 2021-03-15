@@ -1,0 +1,8 @@
+# @requires postgreswrapper
+postgreswrapper::root_password: "%{::pg_db_password}"
+postgreswrapper::local_only: true
+postgreswrapper::dbs: true
+postgreswrapper::apps:
+  "%{app}": 
+    db_user: "%{::django_db_user}"
+    db_password: "%{::django_db_password}"

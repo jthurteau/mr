@@ -1,0 +1,6 @@
+
+postgres_version: '9.6'
+rhpg_version: 96
+
+#libpq_dev_package: rh-postgresql96-postgresql-devel #postgresql-devel #libpq-dev on other platforms #not needed with the pg module
+#libpq_lib_package: rh-postgresql96-postgresql-libs #postgresql-libs #libpq-dev on other platforms #not needed with the pg module

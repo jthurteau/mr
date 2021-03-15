@@ -1,0 +1,5 @@
+# @requires pythonwrapper
+pythonwrapper::recipe_path: "%{::app_repo}/puppet"
+pythonwrapper::web_root: "%{::web_root}"
+pythonwrapper::manage_www: true
+pythonwrapper::manage_www_apps: true

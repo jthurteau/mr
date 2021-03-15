@@ -1,0 +1,7 @@
+# @requires pythonwrapper::app
+pythonwrapper::app::app_name: "%{::app}"
+pythonwrapper::app::dev_user: "%{::dev_user}"
+pythonwrapper::app::web_group: "%{::www_group}"
+pythonwrapper::app::stor: "%{::app_repo}"
+pythonwrapper::app::provision_access: true
+pythonwrapper::app::django_port: "%{::django_port}"

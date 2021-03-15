@@ -1,0 +1,7 @@
+django_version: 1.5.12 #don't use 1.5.1 it has a bug in django-admin startproject
+gunicorn_version: 18.0.0 #newer versions don't support run_gunicorn from django
+python_binary_version: python2
+python_version: python2
+###
+# !!!!
+# Remember, for now you have to add Gunicorn to settings.py/[INSTALLED_APPS] manually

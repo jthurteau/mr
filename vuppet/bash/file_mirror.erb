@@ -1,0 +1,12 @@
+echo "Mirroring Files..."
+echo "  from <%= @source_path %> to <%= @target_path %>:"
+<% @files.each do |f| %>
+    <% if !f.include?('*') %>
+if [ -e <%= @target_path %>/<%= f %> ]
+then
+    rm <%= @target_path %>/<%= f %>
+fi
+    <% end %>
+echo "    <%= f %>"
+cp <%= (f.include?('*') ? '-Rf ' : '') %><%= @source_path %>/<%= f %> <%= @target_path %>/<%= (f.include?('*') ? '' : f) %>
+<% end %>

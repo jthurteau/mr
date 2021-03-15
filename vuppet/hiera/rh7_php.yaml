@@ -1,0 +1,12 @@
+# @requires rhlamp
+# @requires rhlamp::mysql
+# @requires rhlamp::php
+# @requires rhlamp::apache
+rhlamp::web_root: "%{::web_root}"
+rhlamp::default_stor_parent: "%{::app_repo}"
+rhlamp::default_stor: ''
+rhlamp::manage_apache: true
+rhlamp::manage_app_root: true
+rhlamp::php_version: "%{::rh7_php_version}"
+rhlamp::manage_php: true
+rhlamp::php_modules: true

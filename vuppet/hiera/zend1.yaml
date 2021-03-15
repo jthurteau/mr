@@ -1,0 +1,6 @@
+# @requires rhlamp::repo
+rhlamp::repos:
+  zend1:
+    source: 'git://github.com/zendframework/zf1.git'
+    target: "%{::app_vendor_root}/Zend"
+    link: {"%{::app_lib_root}/Zend" : "%{::app_vendor_root}/Zend/library/Zend"}

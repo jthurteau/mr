@@ -1,0 +1,9 @@
+# @requires pythonwrapper::apache
+# @requires apache::mod::proxy
+# @requires apache::mod::proxy_http
+
+apache::mod::proxy: {}
+apache::mod::proxy_http: {}
+
+pythonwrapper::apache::app_vhosts: true
+

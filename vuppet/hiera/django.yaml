@@ -1,0 +1,5 @@
+# @optional pythonwrapper
+# @requires pythonwrapper::django
+pythonwrapper::django::static: "%{web_root}/static"
+pythonwrapper::django::static_target: "%{app_repo}/%{app}/static"
+pythonwrapper::django::build_manage_sh: true

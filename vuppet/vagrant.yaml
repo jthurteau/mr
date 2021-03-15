@@ -1,0 +1,10 @@
+#TODO remname or move this to avoid confusion with /facts/vagrant.yaml (box.yaml?)
+#  memory: '1024'
+network: [
+  ['forwarded_port', {guest: 80, host: 8080, host_ip: '127.0.0.1'}]
+]
+synced_folder: [
+#  ['.', '{$puppet:guest_path}', owner: 'vagrant', group: 'vagrant', type: 'virtualbox']
+#TODO decide how to handle variables
+  ['.', '/vagrant', owner: 'vagrant', group: 'vagrant', type: 'virtualbox']
+]

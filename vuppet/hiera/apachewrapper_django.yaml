@@ -1,0 +1,24 @@
+# @requires apachewrapper
+# @requires apache::mod::proxy
+# @requires apache::mod::proxy_http
+
+apache::mod::proxy: {}
+apache::mod::proxy_http: {}
+#apache::default_vhost: false
+vhosts:
+  'local-dev':
+    servername: 'default-proxy'
+    port: '80'
+    docroot: false
+    manage_docroot: false
+    # additional_includes:
+    #   - '/confs/local-dev.conf'
+    proxy_pass:
+      - path: '/'
+        url: "http://localhost:%{::django_port}/"
+        no_proxy_uris : ['/static']
+    aliases:
+      - alias: '/static'
+        path: '/var/www/static'
+    # custom_fragment: |
+    #   

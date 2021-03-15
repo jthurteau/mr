@@ -1,0 +1,11 @@
+yum install <%=@rhel_repo%> -y
+if [[ $(subscription-manager identity) =~ "org ID: <%=@rhel_org%>" ]]
+then
+    echo "Unregistering RHEL"
+    subscription-manager unregister
+else
+    echo "RHEL not registered"
+fi
+subscription-manager register --org="<%=@rhel_org%>" --activationkey="<%=@rhel_key%>"<%=register_options%>
+yum clean all
+yum update -y

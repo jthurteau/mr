@@ -1,0 +1,7 @@
+echo "Including the software_collections..."
+yum clean all
+<% rhel_sc_repos.each do |r| %>
+subscription-manager repos --enable=<%= r %>
+<% end %>
+<% if dev_tools_needed %><%= dev_tools_command %><% end %>
+yum update -y

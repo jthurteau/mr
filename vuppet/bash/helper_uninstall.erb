@@ -1,0 +1,8 @@
+echo "Uninstalling MrRogers..."
+if [ ! -e <%= puppet_file_path %>/mr_rogers.rb ]
+then
+    echo "Nothing to uninstall..."
+else
+    echo "Removing Main MrRogers File"
+    rm <%= puppet_file_path %>/mr_rogers.rb
+fi

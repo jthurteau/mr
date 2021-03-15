@@ -1,0 +1,8 @@
+echo  "<% if @rhel_org %>org ID: <%= @rhel_org %><%else%>user ID: <%= @rhel_user %><% end %>"
+if [[ $(subscription-manager identity) =~ "system identity:" ]]
+then
+   echo "Unregistering RHEL"
+   subscription-manager unregister
+else
+    echo "RHEL not registered"
+fi

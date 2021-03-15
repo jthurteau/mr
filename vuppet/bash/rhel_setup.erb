@@ -1,0 +1,10 @@
+<% if @key_repo %>yum install <%=@key_repo%> -y<% end %>
+echo "org ID: <%=@rhel_org%>"
+if [[ $(subscription-manager identity) =~ "system identity:" ]]
+then
+    echo "RHEL already registered"
+else
+    subscription-manager register --org="<%=@rhel_org%>" --activationkey="<%=@rhel_key%>"<%=register_options%>
+fi
+<% if @attach_needed %><%= @attach_command %><% end %>
+<% if !sc_pending && dev_tools_needed %><%= dev_tools_command %><% end %>

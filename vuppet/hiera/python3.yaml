@@ -1,0 +1,12 @@
+# @optional python
+# @requires pythonwrapper
+pythonwrapper::python:
+  version: "python{$::python_pack_version}"
+  pip: present
+  dev: present
+  virtualenv: present
+
+#   package { 'python3': #module handles this
+#   ensure  => present,
+#   require => Exec['yum update -y'],
+# }

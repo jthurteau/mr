@@ -1,0 +1,25 @@
+# @requires python
+# @optional pythonwrapper
+# @requires pythonwrapper::app
+python::python_pyvenvs:
+  "%{::web_root}/application/%{::app}":
+    ensure: present
+    version: "%{::python_pip_version}"
+    systempkgs: false
+    owner: "%{::dev_user}"
+    group: "%{::www_group}"
+    mode: '0775'
+    #environment: []
+    require: 
+      - "File[%{::web_root}/application]"
+      - "Group[%{::www_group}]"
+python::python_requirements:
+  "%{::app_repo}/requirements.pip": #TODO add some way to force refresh 
+    virtualenv: "%{::web_root}/application/%{::app}"
+    owner: "%{::dev_user}"
+    pip_provider: pip3
+    require: 
+      - "Class[postgresql::lib::devel]"
+      - "Python::Pyvenv[%{::web_root}/application/%{::app}]"
+      - "File[pythonwrapper_app:deployment_%{::app}]"
+pythonwrapper::app::deployment_path: "%{::web_root}/application/%{::app}/%{::app}" #TODO let the django module handle this

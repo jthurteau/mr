@@ -1,0 +1,4 @@
+rhlamp::apps:
+  "%{::app_handle}":
+    repo: "%{::app_repo}"
+#rhlamp::mysql::app_dbs: true

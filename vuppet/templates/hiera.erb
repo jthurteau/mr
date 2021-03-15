@@ -1,0 +1,20 @@
+# <ENVIRONMENT>/hiera.yaml
+---
+version: 5
+
+defaults:  # Used for any hierarchy level that omits these keys.
+  datadir: '<%= @data_path %>' #/vagrant/puppet/local-dev.tmp/hiera/data
+  data_hash: yaml_data
+
+hierarchy:
+<% @files.each do |f| %>
+  - name: '<%= translate(f)  %> data'
+    path: '<%= f %>.yaml'
+<% end %> 
+#  - name: "Per-node data"                   # Human-readable name.
+#    path: "nodes/%{trusted.certname}.yaml"  # File path, relative to datadir.
+#                                   # ^^^ IMPORTANT: include the file extension!
+
+#  - name: "Per-OS defaults"
+#    path: "os/%{facts.os.family}.yaml"
+

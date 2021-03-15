@@ -1,0 +1,33 @@
+# @depends_on nginx
+# @requires nginxwrapper
+##
+# single app/vhost setup for django apps through nginx
+##
+nginxwrapper::config:
+  worker_connections: 768
+  gzip: 'on'
+  gzip_disable: 'msie6'
+  http_tcp_nopush: 'on'
+  http_tcp_nodelay: 'on'
+  types_hash_max_size: 2048
+
+nginxwrapper::manage_firewall: true
+
+# nginxwrapper::use_ssl: true
+# nginxwrapper::force_ssl: true
+# nginxwrapper::ssl_chain: /etc/ssl/certs/incommon.crt
+
+nginxwrapper::servers: "%{::app}"
+nginxwrapper::end_points:
+  '/static':
+    www_root: "%{::web_root}"
+
+  '/favicon.ico':
+    location_cfg_append:
+      access_log: 'off'
+      log_not_found: 'off'
+
+  'application':
+    location: '/'
+    #include_files: ['proxy_params'], #TODO working on this
+    proxy: "http://unix:%{::web_root}/application/%{::app}/django.sock"
