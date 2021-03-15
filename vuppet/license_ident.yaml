@@ -1,0 +1,28 @@
+'katello-sample':
+  box: 'generic/rhel7'
+  org: 'Default_Organization'
+  repo: 'http://*/katello-ca-consumer-latest.noarch.rpm'
+  #key from facts...
+  server: 'hostname.com'
+'custom-sample':
+  box: 'generic/rhel7'
+  #org from facts...
+  #key from facts...
+  custom_setup: 'rhel_custom_setup'
+  custom_update: 'rhel_custom_update'
+  custom_sc: 'rhel_custom_sc'
+'rhel7':
+  box_suffix: 'rh7'
+  box: 'generic/rhel7'
+'rhel7-dev':
+  #sudo subscription-manager register --username "username" --password "PASSWORD" --serverurl "subscription.rhsm.redhat.com"
+  box_suffix: 'rh7dev'
+  box: 'generic/rhel7'
+  manual_attach: true
+'rhel8':
+  box_suffix: 'rh8'
+  box: 'generic/rhel8'
+'rhel8-dev':
+  box_suffix: 'rh8dev'
+  box: 'generic/rhel8'
+  manual_attach: true

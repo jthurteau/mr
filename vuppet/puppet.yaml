@@ -1,0 +1,42 @@
+module_versions:
+  '3':
+    puppetlabs-postgresql: '4.9.0'
+    puppetlabs-apache: '1.11.1'
+    puppetlabs-mysql: '3.11.0'
+    puppetlabs-vcsrepo: '1.5.0'
+    puppetlabs-rsync: '0.4.0' #?
+    puppet-ruby: '0.6.0'
+    puppet-selinux: '0.8.0'
+    puppetlabs-firewall: '1.9.0'
+    puppet-firewalld: '2.2.0'
+#no compat version      
+#  puppet-python: '0.0.0'
+#  puppet-nginx: '0.0.0'
+  '5':
+    puppetlabs-postgresql: '6.4.0'
+    puppetlabs-apache: '5.1.0'
+    puppetlabs-mysql: '10.2.0'
+    puppetlabs-vcsrepo: '2.4.0'
+    puppetlabs-rsync: '1.1.1'
+    puppet-python: '4.1.1'
+    puppet-nginx: '1.1.0'
+    puppet-selinux: '3.2.0'
+    puppetlabs-firewall: '2.4.0'
+    puppet-firewalld: '4.3.0'
+#no compat version
+#  puppet-ruby: '0.0.0'
+  '6':
+    puppetlabs-postgresql: '6.4.0' #TODO
+    puppetlabs-apache: '5.1.0' #TODO
+    puppetlabs-mysql: '10.2.0' #TODO
+    puppetlabs-vcsrepo: '2.4.0' #TODO
+    puppetlabs-rsync: '1.1.1' #TODO
+    puppet-python: '4.1.1' #TODO
+    puppet-nginx: '1.1.0' #TODO
+    puppet-selinux: '3.2.0' #TODO
+    puppetlabs-firewall: '2.4.0' #TODO
+    puppet-firewalld: '4.3.0' #TODO
+#no compat version
+#  puppet-ruby: '0.0.0'
+derived_facts:
+  app_handle: 'app'
