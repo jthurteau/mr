@@ -66,7 +66,7 @@ module VagrantManager
   def self.build(vm = nil)
     return if !Mr::enabled?
     vagrant_default_warning = "Notice: No vagrant config provided (so default network/shared etc. are in place)"
-    Vuppeteer::say(vagrant_default_warning, 'prep') if !@setup
+    Vuppeteer::say(vagrant_default_warning, :prep) if !@setup
     vms = ElManager::catalog(vm)
     current_vm = vms.pop()
     multi_vm = false
@@ -148,7 +148,7 @@ module VagrantManager
 
   def self.halt_vb_guest()
     @features[:vb_middleware] = false
-    Vuppeteer::say('Notice: VirtualBox Guest Additions Plugin Autoloading Disabled.', 'prep');
+    Vuppeteer::say('Notice: VirtualBox Guest Additions Plugin Autoloading Disabled.', :prep);
   end
 
   def self.init_plugins(vm)
@@ -188,9 +188,9 @@ module VagrantManager
     Vuppeteer::trace('configuring', label, ElManager::box(label))
     if (label.nil? || !@setup.include?(label))
       vm_string = label.nil? ? 'vm' : "vm:#{label}" 
-      Vuppeteer::say("Warning: could not configure vagrant #{vm_string} from facts, using default setup")
+      Vuppeteer::say("Notice: No custom vagrant configuration for #{vm_string} detected, using default setup")
     end
-    vm_setup = label.nil? || @setup.has_key?(label) ? @setup[:null] : @setup[label]
+    vm_setup = label.nil? || @setup.has_key?(label) ? @setup[:default] : @setup[label]
     ##
     # providers
     @vm_configs[label].provider 'virtualbox' do |vb|

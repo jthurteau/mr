@@ -74,10 +74,10 @@ module Paths
 
   def self.clear!(path)
     if (!path.start_with?(Mr::active_path()))
-      Vuppeteer::say("Warning: Unable to clear path #{path}, not in active path.", 'prep')
+      Vuppeteer::say("Warning: Unable to clear path #{path}, not in active path.", :prep)
       return false
     elsif (!self.may_write?(path))
-      Vuppeteer::say("Warning: Unable to clear path #{path}, not in write path.", 'prep')
+      Vuppeteer::say("Warning: Unable to clear path #{path}, not in write path.", :prep)
       return false
     end
     FileUtils.rm_r(Dir.glob("#{path}/*"))
@@ -115,7 +115,7 @@ module Paths
       if (!initial_skip && !File.directory?(current_path))
         if (create && self.may_write?(current_path))
           verbose_string = "attempting to create directory #{p} in #{confirmed_path}"
-          Vuppeteer::say(verbose.class == TrueClass ? verbose_string : verbose, 'prep') if verbose
+          Vuppeteer::say(verbose.class == TrueClass ? verbose_string : verbose, :prep) if verbose
           Dir.mkdir(current_path, 0755)
           confirmed_path += initial_skip ? p : "/#{p}"
         else

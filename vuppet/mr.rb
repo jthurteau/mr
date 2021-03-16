@@ -175,7 +175,7 @@ module Mr
           roots['host_allowed_write_path'] = v
         when :safe_mount
           roots['safe_mount'] = v
-          Vuppeteer::say("Notice: Safe Mount option invoked, but it is not implemented yet", 'prep')
+          Vuppeteer::say("Notice: Safe Mount option invoked, but it is not implemented yet", :prep)
         when :facts
           if (v.class == String)
             @build_facts_file = (y.end_with?('.yaml') ? v[0..-4] : v)
@@ -219,7 +219,7 @@ module Mr
           Vuppeteer::enable(:debug) if v
           Vuppeteer::enable(:verbose) if v
         else
-          Vuppeteer::say("Notice: Unrecognized configuration option: #{k}", 'prep')
+          Vuppeteer::say("Notice: Unrecognized configuration option: #{k}", :prep)
         end
       end   
     elsif(!config.nil?)
@@ -229,7 +229,7 @@ module Mr
       if !roots.has_key?(r)
         roots[r] = v 
       else 
-        Vuppeteer::say("Notice: Duplicate configuration options for #{r}" ,'prep')
+        Vuppeteer::say("Notice: Duplicate configuration options for #{r}" , :prep)
       end
     end
     Vuppeteer::root(roots)

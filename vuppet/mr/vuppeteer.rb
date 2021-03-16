@@ -61,7 +61,7 @@ module Vuppeteer
       @external_path = path
       @initialized = true
       if (self.external?)
-        self.say("External Mr #{external_path} managing build.", 'prep')
+        self.say("External Mr #{external_path} managing build.", :prep)
         @features[:installer] = true
       end
       @features[:instance] = "#{Mr::active_path}/#{FileManager::localize_token}.instance.yaml" if @features[:instance] == true
@@ -233,16 +233,21 @@ module Vuppeteer
     end
   
     def self.report(facet, field = nil, prop = nil)
-      Report::push(facet, field, prop) if !field.nil? && !prop.nil?
+      if !field.nil? && !prop.nil?
+        Report::push(facet, field, prop)
+      else 
+        Report::pop(facet)
+      end
     end
   
-    def self.expose_facts()
+    def self.expose_facts() #TODO gateway this to facts?
+      self.say(Report::pop('facts'), :prep)
       self.say(
         [
           'Processed Facts:',
           MrUtils::inspect(Facts::facts(), true), 
           '----------------',
-        ], 'prep'
+        ], :prep
       )
     end
 
@@ -283,13 +288,13 @@ module Vuppeteer
       begin
         source.start_with?(MrUtils::splitter) ? Facts::get(source[2..-1], nil, true) : FileManager::load_fact_yaml(source, flag)
       rescue => e
-        MrUtils::meditate("#{e} for \"#{source}\"", flag, 'prep')
+        VuppeteerUtils::meditate("#{e} for \"#{source}\"", flag, :prep)
       end
     end
 
     def self.add_derived(d)
       if () 
-        self.say("Warning: invalid derived facts sent during Puppet initialization",'prep')
+        self.say("Warning: invalid derived facts sent during Puppet initialization", :prep)
         return
       end
       Facts::register_generated(d)

@@ -41,9 +41,9 @@ module Modules
     if (modules)
       @module_list[:default] = MrUtils::enforce_enumerable(modules)
     else
-      Vuppeteer::say('Notice: Using default Puppet Modules','prep')
+      Vuppeteer::say('Notice: Using default Puppet Modules', :prep)
     end
-    Vuppeteer::say('Notice: No Puppet Modules configured','prep') if @module_list[:default].length == 0
+    Vuppeteer::say('Notice: No Puppet Modules configured', :prep) if @module_list[:default].length == 0
   end
 
   def self.processCommands(group = :default) 
@@ -73,16 +73,16 @@ module Modules
       if (m.include?(' OR '))
         m_for = m_alias ? " for module #{m_alias}" : ''
         m_parts = m.split(' OR ')
-        #Vuppeteer::say("Notice: Scanning options#{m_for} in #{m_parts.to_s}", 'prep')
+        #Vuppeteer::say("Notice: Scanning options#{m_for} in #{m_parts.to_s}", :prep)
         m_parts.each() do |p|
           if (File.exist?(p))
-            Vuppeteer::say("Notice: Selecting #{p} from #{m_parts.to_s}#{m_for}", 'prep')
+            Vuppeteer::say("Notice: Selecting #{p} from #{m_parts.to_s}#{m_for}", :prep)
             m = p
             break
           end
         end
         if (m.include?(' OR ')) 
-          Vuppeteer::say("Error: no options from #{m_parts.to_s}#{m_for} found... defaulting to first option (which may not exist???)", 'prep')
+          Vuppeteer::say("Error: no options from #{m_parts.to_s}#{m_for} found... defaulting to first option (which probably doesn't exist?!?)", :prep)
           m = m_parts[0]
         end
       end

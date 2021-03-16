@@ -27,7 +27,7 @@ module Manifests
   def self.generate()
     ldm_file = FileManager::tokened_file("#{@output_path}/#{@manifest}", [@build_token])
     if (ldm_file) #TODO more edge case testing around missing/unwritable ldm target
-      Vuppeteer::say("building #{@manifest}", 'prep')
+      Vuppeteer::say("building #{@manifest}", :prep)
       ldm_file.truncate(ldm_file.pos + 1)
       ppp_final = Vuppeteer::get_stack() + ["#{FileManager::localize_token()}.instance"]
       required_modules = Hiera::required_modules()
@@ -46,7 +46,7 @@ module Manifests
       #self._appendix()
       ldm_file.close
     else
-        Vuppeteer::say("Notice: Proceeding with manually written #{@manifest} !!!", 'prep')
+        Vuppeteer::say("Notice: Proceeding with manually written #{@manifest} !!!", :prep)
     end
   end
 
@@ -122,7 +122,7 @@ module Manifests
       end
     end
     if (defer_to_hiera)
-      Vuppeteer::report('manifest', s, 'hiera')
+      Vuppeteer::report('hiera', s, 'hiera') #TODO this is moving
       ldm_file.write("\n\r# #{s} handled in hiera \n\r")
       modules = Hiera::scan_modules(s)
       modules.each do |m|

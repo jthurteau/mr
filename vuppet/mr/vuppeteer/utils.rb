@@ -101,6 +101,13 @@ module VuppeteerUtils
     ['*_pat','*_pass', '*_password', '*_key', '*_secret']
   end
 
+  def self.meditate(message, critical = false, trigger = :prep)
+    fatal = critical && critical.class == TrueClass
+    label = fatal ? 'Error' : (critical.class == String ? critical : 'Notice')
+    Vuppeteer::shutdown("#{label}: #{message}", -5) if fatal
+    Vuppeteer::say("#{label}: #{message}", trigger)
+  end
+
   def self.valid?(v, criteria = nil)
     return false
   end
@@ -153,11 +160,11 @@ module VuppeteerUtils
   #   @derived.each() do |d,f|
   #     if (self.fact?(f) && !self.fact?(d))
   #       @facts[d] = @facts[f]
-  #       Vuppeteer::say("Setting derived fact #{d} from #{f}", 'prep')
+  #       Vuppeteer::say("Setting derived fact #{d} from #{f}", :prep)
   #     elsif (!self.fact?(f))
-  #       Vuppeteer::say("Cannot set derived fact #{d}, #{f} not set", 'prep')
+  #       Vuppeteer::say("Cannot set derived fact #{d}, #{f} not set", :prep)
   #     else
-  #       Vuppeteer::say("Skipping derived fact #{d}, already set", 'prep')
+  #       Vuppeteer::say("Skipping derived fact #{d}, already set", :prep)
   #     end
   #   end
   end

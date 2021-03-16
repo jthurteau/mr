@@ -45,13 +45,6 @@ module MrUtils
     file
   end
 
-  def self.meditate(message, critical = false, trigger = 'prep')
-    fatal = critical && critical.class == TrueClass
-    label = fatal ? 'Error' : (critical.class == String ? critical : 'Notice')
-    Vuppeteer::shutdown("#{label}: #{message}", -5) if fatal
-    Vuppeteer::say("#{label}: #{message}", trigger)
-  end
-
   def self.search(matches, search, throws = false)
     matches = [matches] if !matches.is_a?(Array)
     while matches.length > 0

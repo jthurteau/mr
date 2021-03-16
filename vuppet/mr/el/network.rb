@@ -21,14 +21,14 @@ module Network
   #TODO, support network throttling https://www.virtualbox.org/manual/ch06.html#network_bandwidth_limit
 
   def self.pass(trigger, vm)
-    Vuppeteer::say('Enabling NAT DNS Host Resolver for VirtualBox Guest Network 1','prep')
+    Vuppeteer::say('Enabling NAT DNS Host Resolver for VirtualBox Guest Network 1', :prep)
     vm.provider :virtualbox do |vb|
       #NOTE this runs once for each master image
       vb.customize ['modifyvm', :id, '--natdnshostresolver1', 'on']
     end
 
     if (@throttle)
-      Vuppeteer::say("Throttling VirtualBox Guest Network 1 to #{@throttle}",'prep')
+      Vuppeteer::say("Throttling VirtualBox Guest Network 1 to #{@throttle}", :prep)
       vm.provider :virtualbox do |vb|
         vb.customize ['bandwidthctl', :id, 'add', 'Limit', '--type', 'network', '--limit', "#{@throttle}"]
         vb.customize ['modifyvm', :id, '--nicbandwidthgroup1', 'Limit']

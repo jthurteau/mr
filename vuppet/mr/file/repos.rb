@@ -11,7 +11,7 @@ module Repos
   def self.setup(repos)
     self._init() if !@initialized
     return if repos.nil?
-    Vuppeteer::say("Notice: Updating local project repos...", 'prep')
+    Vuppeteer::say("Notice: Updating local project repos...", :prep)
     MrUtils::enforce_enumerable(repos).each() do |r|
       r_alias = nil #TODO consolidate this pattern with module directive parsing
       if (r.include?(' AS '))
@@ -24,36 +24,36 @@ module Repos
       end
       no_alias_warning = 'Warning: Multiple souces specified for a repo, but no alias is set. This can lead to unpredictable behavior: Always use the AS directive with OR.'
       if (r_uri.include?(' OR '))
-        Vuppeteer::say(no_alias_warning, 'prep')  if !r_alias
+        Vuppeteer::say(no_alias_warning, :prep)  if !r_alias
         r_for = r_alias ? " for repo #{r_alias}" : ''
         r_parts = r_uri.split(' OR ')
         r_parts.each() do |p|
           if ( self.remote_repo_uri(p) || File.exist?(p)) #TODO NOTE, for now we don't test remote repos (e.g. 40X errors)
-            Vuppeteer::say("Notice: Selecting #{p} from #{r_parts.to_s}#{r_for}", 'prep')
+            Vuppeteer::say("Notice: Selecting #{p} from #{r_parts.to_s}#{r_for}", :prep)
             r_uri = p
             r_alias = self.repo_project_name(p) if !r_alias
             break
           end
         end
         if (r_uri.include?(' OR ')) 
-          Vuppeteer::say("Error: no options from #{r_parts.to_s}#{r_for} found... defaulting to first option (which may not exist???)", 'prep')
+          Vuppeteer::say("Error: no options from #{r_parts.to_s}#{r_for} found... defaulting to first option (which may not exist???)", :prep)
           r_uri = r_parts[0]
           r_alias = self.repo_project_name(r_uri) if !r_alias
         end
       else
         r_alias = self.repo_project_name(r_uri) if !r_alias
       end
-      Vuppeteer::say("project repos: #{r_uri} > #{r_alias}", 'prep')
+      Vuppeteer::say("project repos: #{r_uri} > #{r_alias}", :prep)
       project_repo_path = "#{Mr::active_path()}/#{self.host_repo_path()}/project_repos/#{r_alias}"
       FileManager::path_ensure(project_repo_path, FileManager::allow_dir_creation?)
       if (!self.remote_repo_uri?(r_uri))
         #TODO add a setting to allow updaing of local repos?
         #Vuppeteer::perform_host_commands(["git clone #{self.secure_repo_uri(r)} #{project_repo_path}"])
         Vuppeteer::perform_host_commands([
-          {cmd: "rm -Rf #{project_repo_path}/*", when:'prep'},
-          {cmd: "cp -r #{r_uri}/* #{project_repo_path}", when:'prep'}
+          {cmd: "rm -Rf #{project_repo_path}/*", when: :prep},
+          {cmd: "cp -r #{r_uri}/* #{project_repo_path}", when: :prep}
         ])
-        Vuppeteer::say("#{r_uri} project repo, is not managed by mr_rogers (perform pull, branch, ect. manually).", 'prep')
+        Vuppeteer::say("#{r_uri} project repo, is not managed by mr_rogers (perform pull, branch, ect. manually).", :prep)
       elsif (self.clean_path?(project_repo_path))
         Vuppeteer::perform_host_commands([
           {cmd:"git clone #{self.secure_repo_uri(r_uri)} #{project_repo_path}"}
@@ -61,9 +61,9 @@ module Repos
         self.branch(project_repo_path, self.repo_uri_branch(r_uri)) if (self.repo_uri_branch(r_uri) != '')
       elsif (self.repo_path?(project_repo_path)) 
         self.branch(project_repo_path, self.repo_uri_branch(r_uri)) if (self.repo_uri_branch(r_uri) != '')
-        Vuppeteer::perform_host_commands([{path: project_repo_path, cmd:'git pull', when:'prep'}])
+        Vuppeteer::perform_host_commands([{path: project_repo_path, cmd:'git pull', when: :prep}])
       else
-        Vuppeteer::say("Cannot setup #{r_alias} (#{r_uri} > #{project_repo_path}) project repo, target directory is non-empty, and not a working-copy.", 'prep')
+        Vuppeteer::say("Cannot setup #{r_alias} (#{r_uri} > #{project_repo_path}) project repo, target directory is non-empty, and not a working-copy.", :prep)
       end
     end
   end
@@ -112,7 +112,7 @@ module Repos
 
   def self.branch(repo_path, branch)
     #Vuppeteer::perform_host_commands([{path: repo_path, cmd: "git checkout -b #{branch} origin/#{branch}"}])
-    Vuppeteer::perform_host_commands([{path: repo_path, cmd: "git checkout #{branch}", when:'prep'}])
+    Vuppeteer::perform_host_commands([{path: repo_path, cmd: "git checkout #{branch}", when: :prep}])
   end
 
   def self.repo_path?(path)

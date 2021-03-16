@@ -207,7 +207,7 @@ module ElManager
           c = Vuppeteer::load_facts("#{Mr::active_path}/#{c}", "VM Config #{c}") if c.class == String
           v = c.class = Hash && c.has_key?('vm_name') ? c['vm_name'] : FileManager::facet_split(c)[0].gsub('/', '-')
           if self.has?(v)
-            Vuppeteer.say("Warning: duplicate vm build generated for #{v}", 'prep')
+            Vuppeteer.say("Warning: duplicate vm build generated for #{v}", :prep)
             next            
           end
           self.add(v, c) if c.class = Hash && c.has_key?('enabled') && c['enabled']
@@ -226,10 +226,11 @@ module ElManager
     vms = VagrantManager::get_vm_configs(vms) if vms.class == Array
     Vuppeteer::trace('registering vms...')
     vms.each() do |n, v|
-      Vuppeteer::trace('registering', n)
+      Vuppeteer::trace('processing', n)
       cors = Vuppeteer::get_fact('org_domain') #TODO this could be different per VM
       Network::register(cors)#app = nil, developer = nil #self._register(Vuppeteer::get_fact('org_domain'))
       if (self.is_it?(n))
+        Vuppeteer::trace('registering', n, VagrantManager::plugin_managing?(:registration))
         self._box_destroy_prep()
         if (VagrantManager::plugin_managing?(:registration))
           VagrantManager::plugin(:setup_registration)
@@ -238,6 +239,7 @@ module ElManager
           end
         else
           v.provision 'register', type: :shell do |s|
+            s.inline = self.setup_script()
           end
         end
         registration_update_inline = self.update_script()
@@ -352,7 +354,7 @@ module ElManager
   def self._validate(ident)
     return {} if @box[:default] == @fallbox
     if !ident
-      Vuppeteer::say('Warning: No license detected...', 'prep') 
+      Vuppeteer::say('Warning: No license detected...', :prep) 
       return {}
     end
     incomplete_config_text = "Warning: license data is incomplete"
@@ -363,7 +365,7 @@ module ElManager
       @cred_types[@cred_type] = new_cred
     end
     if !@cred_type
-      Vuppeteer::say(incomplete_config_text, 'prep')
+      Vuppeteer::say(incomplete_config_text, :prep)
       return {}
     end
     ident

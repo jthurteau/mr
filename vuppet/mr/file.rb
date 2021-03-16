@@ -129,16 +129,16 @@ module FileManager
     facet = parts.length > 1  && parts[1] != '' ? parts[1] : nil
     # Vuppeteer::trace(path,facet,critical)
     if (!File.exist?(path))
-      MrUtils::meditate("facts \"#{path}\" not available", critical, 'prep')
+      VuppeteerUtils::meditate("facts \"#{path}\" not available", critical, :prep)
       return nil
     end
     begin
       y = YAML.load_file(path)
     rescue SystemCallError => e #TODO handle yaml parse errors
-      MrUtils::meditate("unable to load facts in \"#{path}\"", critical, 'prep')
+      VuppeteerUtils::meditate("unable to load facts in \"#{path}\"", critical, :prep)
     end
-    MrUtils::meditate("empty facts in \"#{path}\"", critical, 'prep') if (y.nil?)
-    MrUtils::meditate("invalid facts in \"#{path}\"", critical, 'prep') if (!y.nil? && y.class != Hash)
+    VuppeteerUtils::meditate("empty facts in \"#{path}\"", critical, :prep) if (y.nil?)
+    VuppeteerUtils::meditate("invalid facts in \"#{path}\"", critical, :prep) if (!y.nil? && y.class != Hash)
     y.class == Hash ? (facet.nil? ? y : (y.has_key?(facet) ? y[facet] : nil) ) : nil
   end
 
@@ -148,7 +148,7 @@ module FileManager
     f.rewind
     if (!f.eof? && f.readline.start_with?("# @protected"))
       f.close
-      Vuppeteer::say("Error: attempted to save to protected config file #{path}", 'prep');
+      Vuppeteer::say("Error: attempted to save to protected config file #{path}", :prep);
       return false
     end
     begin
@@ -159,7 +159,7 @@ module FileManager
       f.write("#{tag}\n#{wrapped}")
       f.close
     rescue => e
-      Vuppeteer::say("Error: failed to write to config file #{path} #{e.to_s}", 'prep');
+      Vuppeteer::say("Error: failed to write to config file #{path} #{e.to_s}", :prep);
       f.close
       return false
     end

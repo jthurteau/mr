@@ -70,9 +70,7 @@ module Facts
 
   def self.post_stack_init() #NOTE additional steps that have to happen after stack init
     self._stack_facts() if Vuppeteer::enabled?(:stack)
-    Vuppeteer::say('','prep') #NOTE adds a formatted line
     self.ensure_facts(@generate)
-    Vuppeteer::say('','prep')
     self._validate_requirements()
   end
 
@@ -131,7 +129,7 @@ module Facts
   end
 
   def self.set(f, source = nil)
-    return Vuppeteer::say(@invalid_facts_message, 'prep') if !f.class == Hash
+    return Vuppeteer::say(@invalid_facts_message, :prep) if !f.class == Hash
     @facts = {} if !@facts
     f.each do |k, v|
       sensitive = VuppeteerUtils::sensitive_fact?(k)
@@ -141,9 +139,9 @@ module Facts
       has_fact = @facts.has_key?(k)
       if (rooted)
         self._set_as(:block, k, v)
-        Vuppeteer::say("Notice: New fact #{s}#{k} is rooted...", 'prep')
+        Vuppeteer::say("Notice: New fact #{s}#{k} is rooted...", :prep)
       elsif (!rooted && has_fact)
-        Vuppeteer::say("Notice: New fact #{s}#{k} already set...", 'prep')
+        Vuppeteer::say("Notice: New fact #{s}#{k} already set...", :prep)
         self._set_as(:alts, k, @facts[k], source)
       else
         @facts[k] = v
@@ -164,9 +162,9 @@ module Facts
       if (!self.fact?(k))
         missing[k] = c
         storable.push(k) if VuppeteerUtils::storable?(c)
-        Vuppeteer.say(["testing fact #{k}... missing","  ... generating fact #{k}"], 'prep') if v
+        Vuppeteer.say(["testing fact #{k}... missing","  ... generating fact #{k}"], :prep) if v
       else
-        Vuppeteer.say("testing fact #{k}... provided", 'prep') if v
+        Vuppeteer.say("testing fact #{k}... provided", :prep) if v
       end
     end
     new_facts = VuppeteerUtils::generate(missing)
@@ -200,7 +198,7 @@ module Facts
         dev_fact = @developer_facts.include?(f) ? ' either developer facts or' : ''
         local_fact_options = " , or move it to#{dev_fact} #{FileManager::localize_token}.yaml..."
         solution = "#{solution}#{local_fact_options}" if solution != '' && !@option_only_facts.include?(f)
-        Vuppeteer::say("#{skipped}, #{solution}", 'prep')
+        Vuppeteer::say("#{skipped}, #{solution}", :prep)
         self::_set_as(:rdtd, f, facts[f])
         facts.delete(f) 
       end
@@ -221,7 +219,7 @@ module Facts
   def self._project_facts()
     file_facts = FileManager::load_fact_yaml("#{Mr::active_path}/#{Mr::build}", false)
     return if !file_facts
-    Vuppeteer::report('facts', '_main', 'build')
+    Vuppeteer::report('facts', '_main', 'project')
     filters = @local_only_facts + @developer_facts + @option_only_facts
     self.set(self._filter(file_facts, filters), true)
   end
@@ -239,11 +237,12 @@ module Facts
   end
 
   def self._stack_facts()
-    Vuppeteer::say("Loading stack puppet facts:", 'prep')
+    Vuppeteer::say("Loading stack puppet facts:", :prep)
     fact_sources = Vuppeteer::get_stack(:fact)
     fact_sources.each do |f|
       self._handle(f)
     end
+    Vuppeteer::say(Vuppeteer::report('stack'), :prep)
   end
 
   def self._instance_facts()
@@ -254,7 +253,7 @@ module Facts
     if (i_facts)
       self.set(i_facts, true)
     else
-      Vuppeteer::say('Notice: no instance facts loaded (file was empty or invalid)', 'prep')
+      Vuppeteer::say('Notice: no instance facts loaded (file was empty or invalid)', :prep)
     end
     return i_facts
   end
@@ -285,12 +284,12 @@ module Facts
     if (File.file?(fact_file) && File.readable?(fact_file))
       new_facts = FileManager::load_fact_yaml(fact_file, false)
       if new_facts.nil?
-        Vuppeteer::report('facts', s, "invlid.#{type}")
+        Vuppeteer::report('stack', s, "invlid.#{type}")
         return
       end
       self.set(new_facts, "#{s}.yaml") #TODO #1.1.0 handle stack merge flags before passing?
     end
-    Vuppeteer::report('facts', s, type)
+    Vuppeteer::report('stack', s, type)
   end
 
 end

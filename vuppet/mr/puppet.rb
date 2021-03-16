@@ -37,7 +37,7 @@ module PuppetManager
       Vuppeteer::add_derived(@conf['derived_facts']) if @conf['derived_facts']
     else
       @conf = {}
-      Vuppeteer::say("Notice: No puppet config provided (default version/options etc. are in place)", 'prep')
+      Vuppeteer::say("Notice: No puppet config provided (default version/options etc. are in place)", :prep)
     end
     self.disable() if Vuppeteer::fact?('bypass_puppet')
     Modules::init(Vuppeteer::get_fact('puppet_modules'))
@@ -178,7 +178,9 @@ module PuppetManager
       s.inline = sync_command_string
     end
 
-    Vuppeteer::say("Notice (VM #{vm_name}): Puppet options \"#{run_options['out_options']} --logdest #{run_options['log_to']}\"", 'prep') if ('console' != run_options['log_to'])
+    opt_notice = "\"#{run_options['out_options']} --logdest #{run_options['log_to']}\""
+    vm_notice = "(VM #{vm_name}): Puppet options #{opt_notice}"
+    Vuppeteer::say("Notice #{vm_notice}", :prep) if ('console' != run_options['log_to'])
 
     vm_facts = {
       'vagrant_root' => @guest_root,
@@ -186,7 +188,7 @@ module PuppetManager
     }
     puppet_facts = Vuppeteer::facts().merge!(vm_facts) #TODO make a facter filter method?
     if (self.disabled?)
-      Vuppeteer::say("Notice: Bypassing main Puppet provisioning", 'prep')
+      Vuppeteer::say("Notice: Bypassing main Puppet provisioning", :prep)
     else
       vm.provision 'puppet', type: :puppet, run: when_enabled do |puppet|
         puppet.manifests_path = Manifests::path()

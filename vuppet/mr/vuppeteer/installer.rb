@@ -75,10 +75,10 @@ module Installer
   #     if (!File.exist?("#{active}/#{f}"))
   #       global_f = Vuppeteer::external? ? "#{global}/#{f}" : "#{global}#{f}"
   #       if File.exist?(global_f)
-  #         Vuppeteer::say("Migrating external file #{f}", 'prep')
+  #         Vuppeteer::say("Migrating external file #{f}", :prep)
   #         FileUtils.cp(global_f, "#{active}/#{f}")  if File.exist?(global_f)
   #       else 
-  #         Vuppeteer::say(missing_text, 'prep')
+  #         Vuppeteer::say(missing_text, :prep)
   #         #TODO setup a trigger to stop install in this case
   #         #Vuppeteer::shutdown(missing_text) if !File.exist?(global_f)
   #       end

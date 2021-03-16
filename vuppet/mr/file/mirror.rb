@@ -28,35 +28,35 @@ module FileMirror
         self.path_ensure(target_parent, self.allow_dir_creation?, false) if f.include?('/')
         #Vuppeteer::trace(dir_mode, source, "#{target_parent}", target)
         if ( dir_mode && (non_recursive || conditional))
-          #Vuppeteer::say("cleanup #{target}", 'prep')
+          #Vuppeteer::say("cleanup #{target}", :prep)
           self.path_ensure(target, self.allow_dir_creation?, false)
           Dir.foreach(source) do |c| #TODO each_child not supported yet
             if (!['.','..'].include?(c))
               condition = c.split('.').first()
-              #Vuppeteer::say("inspecting #{source}#{c}", 'prep')
+              #Vuppeteer::say("inspecting #{source}#{c}", :prep)
               #if non-recursive, copy if not a directory
               if (File.file?("#{source}#{c}") && non_recursive)
-                #Vuppeteer::say("shallow file #{source}#{c} #{target}#{c}", 'prep')
+                #Vuppeteer::say("shallow file #{source}#{c} #{target}#{c}", :prep)
                 FileUtils.cp("#{source}#{c}", "#{target}#{c}")
                 #Vuppeteer::shutdown("copy to #{target}#{c} failed") if !File.exist?("#{target}#{c}")
               elsif (conditional && Vuppeteer::get_stack('+optional-extensions').include?(condition))
                 c_dir_mode = File.directory?("#{source}#{c}")
-                #Vuppeteer::say("conditional #{condition} #{source}#{c} #{target}#{c}", 'prep') if !c_dir_mode
-                #Vuppeteer::say("conditional dir #{condition} #{source}#{c} #{target}", 'prep') if c_dir_mode
+                #Vuppeteer::say("conditional #{condition} #{source}#{c} #{target}#{c}", :prep) if !c_dir_mode
+                #Vuppeteer::say("conditional dir #{condition} #{source}#{c} #{target}", :prep) if c_dir_mode
                 FileUtils.cp_r("#{source}#{c}", (c_dir_mode ? ("#{target}") : ("#{target}#{c}")), {:remove_destination => true})
               end
             end
           end
         elsif (no_replace && File.exist?(finaltarget))
-          Vuppeteer::say("Notice: skipping install file #{prefix}#{f}, it already exists",'prep')
+          Vuppeteer::say("Notice: skipping install file #{prefix}#{f}, it already exists", :prep)
           #TODO maybe copy but with an extra prefix e.g. example.
           #FileUtils.cp_r(source, (dir_mode ? ("#{target_parent}") : (target)), {:remove_destination => true})
         else
-          #Vuppeteer::say("reset copy #{source} #{target} #{finaltarget}", 'prep')
+          #Vuppeteer::say("reset copy #{source} #{target} #{finaltarget}", :prep)
           FileUtils.cp_r(source, (dir_mode ? ("#{target_parent}") : (target)), {:remove_destination => true})
         end
       else
-        Vuppeteer::say("Notice: unable to mirror install file #{prefix}#{f}",'prep')
+        Vuppeteer::say("Notice: unable to mirror install file #{prefix}#{f}", :prep)
       end
     end
   end
@@ -94,7 +94,7 @@ module FileMirror
           #TODO need to ignore .git, .gitignore, local-dev.* files...
           FileUtils.cp_r(source, to_path, {:remove_destination => true})
         else
-          Vuppeteer::say("Notice: #{source} unavailable for import", 'prep') #TODO detect if it has been imported and indicate that
+          Vuppeteer::say("Notice: #{source} unavailable for import", :prep) #TODO detect if it has been imported and indicate that
         end 
       end
       #FileUtils.cp_r(source, (dir_mode ? ("#{to_parent}") : (to_path)), {:remove_destination => true})

@@ -108,7 +108,7 @@ module Hiera
 
   def self.generate()
     if (PuppetManager::disabled?(:hiera)) 
-      Vuppeteer::say('Notice: Hiera support disabled', 'prep')
+      Vuppeteer::say('Notice: Hiera support disabled', :prep)
       return nil
     end
     FileManager::clear!(@local_path)
@@ -146,12 +146,12 @@ module Hiera
     end
     erb_source = FileManager::path(:template, @source_template)
     if (!File.exist?("#{erb_source}/#{@source_template}")) 
-      Vuppeteer::say('Error: Could not build Hiera Config, template unavailable!', 'prep')
+      Vuppeteer::say('Error: Could not build Hiera Config, template unavailable!', :prep)
       return
     end
     #FileUtils.rm("#{self.config_path()}") if (File.exist?("#{self.config_path()}"))
     #FileUtils.cp("#{path}/#{@file_source}", "#{self.config_path()}")
-    Vuppeteer::say("Notice: Building Hiera Data #{@remote_path}/#{@file}", 'prep')
+    Vuppeteer::say("Notice: Building Hiera Data #{@remote_path}/#{@file}", :prep)
     source = File.read("#{erb_source}/#{@source_template}")
     view = self.view(files)
     contents = ERB.new(source).result(view)
