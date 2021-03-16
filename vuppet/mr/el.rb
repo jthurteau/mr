@@ -204,7 +204,7 @@ module ElManager
       vms = MrUtils::enforce_enumerable(self.get('vms'))
       if (vms.class == Array) 
         vms.each() do |c|
-          c = FileManager::load_fact_yaml(c, false) if c.class == String
+          c = Vuppeteer::load_facts("#{Mr::active_path}/#{c}", "VM Config #{c}") if c.class == String
           v = c.class = Hash && c.has_key?('vm_name') ? c['vm_name'] : FileManager::facet_split(c)[0].gsub('/', '-')
           if self.has?(v)
             Vuppeteer.say("Warning: duplicate vm build generated for #{v}", 'prep')
@@ -214,7 +214,7 @@ module ElManager
         end
       else
         vms.each() do |v, c|
-          c = FileManager::load_fact_yaml(c, false) if c.class == String
+          c = Vuppeteer::load_facts("#{Mr::active_path}/#{c}", "VM Config #{v}") if c.class == String
           self.add(v, c) if c.class = Hash && c.has_key?('enabled') && c['enabled']
         end
       end
@@ -307,7 +307,8 @@ module ElManager
   #################################################################
 
   def self._detect_ident()
-    @el_data = Vuppeteer::load_facts(@el_data_source, 'Notice:(EL Configuration)')
+    source = @el_data_source.start_with?('::') ? @el_data_source : "#{Mr::active_path}/#{@el_data_source}"
+    @el_data = Vuppeteer::load_facts(source, 'Notice:(EL Configuration)')
     license = self._negotiate()
     el_license = @el_data && license && @el_data.has_key?(license) ? @el_data[license] : nil
     # if(!el_license)

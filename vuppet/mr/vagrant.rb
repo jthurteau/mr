@@ -33,7 +33,8 @@ module VagrantManager
     @vagrant = singleton
     @version = Vagrant::VERSION
     @ruby_version = RUBY_VERSION
-    @setup[:default] = Vuppeteer::load_facts(@conf_source, 'Notice:(Vagrant Configuration)')
+    source = @conf_source.start_with?('::') ? @conf_source : "#{Mr::active_path}/#{@conf_source}"
+    @setup[:default] = Vuppeteer::load_facts(source, 'Notice:(Vagrant Configuration)')
     @setup[:default] = @setup[:null].clone if @setup[:default].nil?
     return if !Mr::enabled?
     Vuppeteer::say('')

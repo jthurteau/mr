@@ -124,8 +124,10 @@ module FileManager
   # loads a yaml file, if it exists and has hash keys
   def self.load_fact_yaml(path, critical = true)
     parts = self.facet_split(path)
-    path = parts[0].end_with?('.yaml') ? parts[0] : "#{parts[0]}.yaml" 
+    path = parts[0].end_with?('.yaml') ? parts[0] : "#{parts[0]}.yaml"
+    path = Mr::path(path) if !Paths::absolute?(path) 
     facet = parts.length > 1  && parts[1] != '' ? parts[1] : nil
+    # Vuppeteer::trace(path,facet,critical)
     if (!File.exist?(path))
       MrUtils::meditate("facts \"#{path}\" not available", critical, 'prep')
       return nil

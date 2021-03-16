@@ -24,14 +24,15 @@ module PuppetManager
   @opt = {}
 
   def self.init()
-    @conf = Vuppeteer::load_facts(@conf_source, 'Notice:(Puppet Configuration)')
+    source = @conf_source.start_with?('::') ? @conf_source : "#{Mr::active_path}/#{@conf_source}"
+    @conf = Vuppeteer::load_facts(source, 'Notice:(Puppet Configuration)')
     if @conf
       @guest_path = @conf['guest_path'] if @conf['guest_path']
       @version[:default] = @conf['version'] if @conf['version']
       ['verbose', 'debug', 'output', 'log_format'].each do |o|
         @opt[o] = @conf[o] if @conf.has_key?(o)
       end
-      mv = @conf.has_key?['module_versions'] && @conf['module_versions'].class == Hash
+      mv = @conf.has_key?('module_versions') && @conf['module_versions'].class == Hash
       Modules::set_versions(@conf['module_versions']) if mv
       Vuppeteer::add_derived(@conf['derived_facts']) if @conf['derived_facts']
     else
