@@ -20,7 +20,7 @@ module ElManager
   @fallbox = 'generic/fedora28'
   @ident = {default: nil}
   @sc = {default: nil}  
-
+  @fedora_translate = {'8' => '28', '7' => '24'}
   @scripts = {
     default: {
       sc: nil,
@@ -48,19 +48,16 @@ module ElManager
   # @box_options = []
   # @el_options = []
 
-  def self.multi_vm()
-    @multibuild = true if @multibuild.nil?
-  end
-
   def self.init()
     @multibuild = false if @multibuild.nil?
     detected = self._detect_ident()
     @ident[:default] = detected ? self._validate(detected) : {}
-    self._detect_version()
     self._detect_box()
+    self._detect_version()
     @ident[:default]['el_version'] = @el_version[:default]
     @ident[:default]['box'] = @box[:default]
-    @singletons[:default] = Realm.new(@ident[:default])
+    @ident[:default]['flavor'] = 'fedora' if @ident[:default]['box'] == @fallbox
+    @singletons[:default] = Realm.new(@ident[:default], PuppetManager::version())
     # @cred_types.each() do |t, r|
     #   s = r.map {|c| "#{@cred_prefix}#{c}"}
     # end
@@ -68,7 +65,7 @@ module ElManager
     VagrantManager::halt_vb_guest() if @el_version[:default] == '8' #TODO this should be in plugin-manager? right now it's vb middle ware, so not a "plugin"?
     @scripts[:default][:destroy] = 'rhel_destroy' #if self.is_it? #TODO this whouldn't be set when in Centos/Nomad mode...
     # if ident_hash['software_collection'] #TODO make this more robusty
-    #   Vuppeteer::set_facts({'software_collection' => ident_hash['software_collection']}, true)
+    #   @ident[:fefault]['sc'] = ident_hash['software_collection']
     # end
     @scripts[:null].keys().each() do |s|
       k ="custom_#{s.to_s}"
@@ -192,6 +189,38 @@ module ElManager
     @singletons[w] != nil
   end
 
+  def self.validate_vms(facts)
+    vm_suffix = facts.fetch('standalone', false) ? '' : '#{s}'
+    if facts.has_key?('project')
+      p = facts['project']
+      self.add("#{p}#{vm_suffix}")
+    elsif facts.has_key?('app')
+      a = facts['app']
+      self.add("#{a}#{vm_suffix}")
+    elseif self.fact?('vm_name')
+      self.add(self.get('vm_name'))
+    elseif self.fact?('vms') && !self.get('standalone', false)
+      @multibuild = true if @multibuild.nil?
+      vms = MrUtils::enforce_enumerable(self.get('vms'))
+      if (vms.class == Array) 
+        vms.each() do |c|
+          c = FileManager::load_fact_yaml(c, false) if c.class == String
+          v = c.class = Hash && c.has_key?('vm_name') ? c['vm_name'] : FileManager::facet_split(c)[0].gsub('/', '-')
+          if self.has?(v)
+            Vuppeteer.say("Warning: duplicate vm build generated for #{v}", 'prep')
+            next            
+          end
+          self.add(v, c) if c.class = Hash && c.has_key?('enabled') && c['enabled']
+        end
+      else
+        vms.each() do |v, c|
+          c = FileManager::load_fact_yaml(c, false) if c.class == String
+          self.add(v, c) if c.class = Hash && c.has_key?('enabled') && c['enabled']
+        end
+      end
+    end
+  end
+
   def self.register(vms = nil)
     vms = MrUtils::enforce_enumerable(vms)
     vms = VagrantManager::get_vm_configs(vms) if vms.class == Array
@@ -269,6 +298,10 @@ module ElManager
     return Boxes::get(n)
   end
 
+  def self.puppet_install_script(vm_name)
+    FileManager::bash('puppet_prep', Collections::credentials())
+  end
+
   #################################################################
   private
   #################################################################
@@ -311,7 +344,8 @@ module ElManager
   end
 
   def self._detect_version()
-    @el_version = Vuppeteer::get_fact('el_version') if Vuppeteer::fact?('el_version')
+    @el_version[:default] = Vuppeteer::get_fact('el_version') if Vuppeteer::fact?('el_version')
+    @el_version[:default] = @fedora_translate[@el_version[:default]] if @box[:default] == @fallbox
   end
 
   def self._validate(ident)
@@ -373,8 +407,10 @@ module ElManager
     @dev_tools = true
     @man_attach = false
     @el_version = '7'
+    @el_flavor = nil
+    @puppet_version = '6'
 
-    def initialize(hash)
+    def initialize(hash, puppet = nil)
         p = ElManager::cred_prefix
         @rhel_user = hash["#{p}user"] if hash&.include?("#{p}user")
         @rhel_pass = hash["#{p}pass"] if hash&.include?("#{p}pass")
@@ -385,6 +421,8 @@ module ElManager
         @dev_tools = Vuppeteer::get_fact('dev_tools') if hash&.include?('dev_tools')
         @man_attach = hash['manual_attach'] if hash&.include?('manual_attach')
         @el_version = hash['el_version'] if hash&.include?('el_version')
+        @el_flavor = 'fedora' if hash.has_key?('flavor')
+        @puppet_version = puppet if puppet
     end
 
     def view()

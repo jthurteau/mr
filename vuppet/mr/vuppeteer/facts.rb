@@ -14,7 +14,6 @@ module Facts
     rdtd: ['__rdtd__', 'Redacted'],
     block: ['__hblk__', 'Locked'],
     alts: ['__alts__', 'Duplicate'],
-    orig: ['__orig__', 'Replaced'],
   }
 
   ##
@@ -39,7 +38,7 @@ module Facts
   # facts that can only be defined in Vagrantfile options or local fact files
   # local fact files include, in order of loading:
   # {localize_token}.facts and developer_facts_file (~/.mr/developer.yaml)
-  @local_developer_facts = [
+  @developer_facts = [
     'pref_license_ident',
     'git_developer','ghc_developer','ghe_developer',
     'ghc_pat',
@@ -53,6 +52,8 @@ module Facts
     'helpers' => true,
   }
 
+  @invalid_facts_message = 'Notice: Additional facts not a hash, skipping...'
+
   ##
   # load the inital facts file, remove invalid keys, and merge it in with root_facts
   def self.init()
@@ -62,27 +63,8 @@ module Facts
       @facts = {}
     end
     FileManager::path_ensure("#{Mr::active_path}/facts", FileManager::allow_dir_creation?)
-    file_facts = FileManager::load_fact_yaml("#{Mr::active_path}/#{Mr::build}", false)
-    if (file_facts && file_facts.class == Hash) 
-      Vuppeteer::report('facts', '_main', 'build')
-      (@local_only_facts + @local_developer_facts + @option_only_facts).each do |f|
-        if file_facts.has_key?(f)
-          why = @option_only_facts.include?(f) ? 'option_only_fact' : 'local_only_fact'  
-          skipped = "Warning: fact #{f} skipped because it is a #{why}"
-          solution = "pass this value from the Vagrantfile"
-          dev_fact = @local_developer_facts.include?(f) ? ' either developer facts or' : ''
-          local_fact_options = " , or move it to#{dev_fact} #{FileManager::localize_token}.yaml..."
-          solution = "#{solution}#{local_fact_options}" if !@option_only_facts.include?(f)
-          Vuppeteer::say("#{skipped}, #{solution}", 'prep')
-          self::_set_as(:rdtd, f, file_facts[f])
-          file_facts.delete(f) 
-        end
-      end
-      file_facts.each do |f,v|
-        self._set_fact(f,v)
-      end
-    end
     self._local_facts() if Vuppeteer::enabled?(:local)
+    self._project_facts()
     self._developer_facts() if Vuppeteer::enabled?(:developer)
   end
 
@@ -148,39 +130,24 @@ module Facts
     @requirements
   end
 
-  def self.set(f, merge = false)
-    e = f.class.include?(Enumerable)
-    Vuppeteer::shutdown('Error: Cannot redefine facts once set', -3) if !@facts.nil? && !merge
-    Vuppeteer::shutdown('Error: Initial facts must be a hash', -3) if !e && !merge
-    if (merge) 
-      @facts = {} if !@facts
-      if (!e)
-        Vuppeteer::say('Notice: Additional facts not a hash, skipping...', 'prep')
+  def self.set(f, source = nil)
+    return Vuppeteer::say(@invalid_facts_message, 'prep') if !f.class == Hash
+    @facts = {} if !@facts
+    f.each do |k, v|
+      sensitive = VuppeteerUtils::sensitive_fact?(k)
+      s = source ? "#{source}::" : ''
+      Vuppeteer::mark_sensitive(v) if Vuppeteer::enabled?(:autofilter) && sensitive
+      rooted = @root_facts.any? {|r| r == k }
+      has_fact = @facts.has_key?(k)
+      if (rooted)
+        self._set_as(:block, k, v)
+        Vuppeteer::say("Notice: New fact #{s}#{k} is rooted...", 'prep')
+      elsif (!rooted && has_fact)
+        Vuppeteer::say("Notice: New fact #{s}#{k} already set...", 'prep')
+        self._set_as(:alts, k, @facts[k], source)
       else
-        f.each do |k, v|
-          rooted = @root_facts.any? {|r| r == k }
-          has_fact = @facts.has_key?(k)
-          if (!rooted && has_fact && (merge.class == TrueClass || merge == :replace))
-            self._set_as(:orig, k, @facts[k])
-            self._set_fact(k, v) 
-          # elsif (!rooted && has_fact && merge.class == ) #TODO support merge :union, :deep, and :shallow
-          #   Vuppeteer::say("Notice: New fact #{k} not flagged for merge...", 'prep')
-          #   next
-          elsif (!rooted && has_fact)
-            Vuppeteer::say("Notice: New fact #{k} not flagged for merge...", 'prep')
-            next
-          elsif (rooted && has_fact)
-            Vuppeteer::say("Notice: New fact #{k} is already rooted and cannot be set...", 'prep')
-            next
-          else #NOTE these match false and :new
-            self._set_fact(k, v)
-          end
-        end
+        @facts[k] = v
       end
-    elsif (@facts.nil?)
-      @facts = f
-    else
-      Vuppeteer::say("Warning: New facts rejected, merge not requested and initial facts set.", 'prep')
     end
   end
 
@@ -216,65 +183,66 @@ module Facts
   private
 #################################################################
 
-  def self._set_fact(k, v) #TODO #1.0.0 implement @merge_facts
-    Vuppeteer::mark_sensitive(v) if Vuppeteer::enabled?(:autofilter) && VuppeteerUtils::sensitive_fact?(k)
-    if @root_facts.any? {|r| r == k }
-      self._set_as(:block, k, v)
-    else
-      @facts[k] = v
-    end
-  end
-
   def self._set_as(type, key, value, source = nil)
     @facts[@meta_facets[type][0]] = {} if !@facts.has_key?(@meta_facets[type][0])
     @facts[@meta_facets[type][0]][source] = {} if !source.nil? && !@facts[@meta_facets[type][0]].has_key?(source)
     @facts[@meta_facets[type][0]][source.nil? ? key : source] = source.nil? ? value : {key => value}
   end
 
+  def self._filter(facts, filtered)
+    filtered.each do |f|
+      if facts.has_key?(f)
+        why = @option_only_facts.include?(f) ? 'option_only_fact' : nil
+        why = @local_only_facts.include?(f) ? 'local_only_fact' : nil if why.nil?
+        why = @developer_facts.include?(f) ? 'developer_only_fact' : 'filtered_fact' if why.nil?
+        skipped = "Warning: fact #{f} skipped because it is a #{why}"
+        solution = why != 'filtered_fact' ? "pass this value from the Vagrantfile" : ''
+        dev_fact = @developer_facts.include?(f) ? ' either developer facts or' : ''
+        local_fact_options = " , or move it to#{dev_fact} #{FileManager::localize_token}.yaml..."
+        solution = "#{solution}#{local_fact_options}" if solution != '' && !@option_only_facts.include?(f)
+        Vuppeteer::say("#{skipped}, #{solution}", 'prep')
+        self::_set_as(:rdtd, f, facts[f])
+        facts.delete(f) 
+      end
+    end
+    facts
+  end
+
   def self._local_facts()
-    parts = "#{Mr::active_path}/#{FileManager::localize_token}.#{Mr::build}"
+    local_file = "#{Mr::active_path}/#{FileManager::localize_token}.#{Mr::build}"
+    parts = FileManager::facet_split(local_file)
     facet = parts.length > 1  && parts[1] != '' ? "::#{parts[1]}" : ''
-    return nil if !File.exist?("#{parts[0]}.yaml") #NOTE this file is always optional, so don't even warn if it is missing
+    return if !File.exist?("#{parts[0]}.yaml") #NOTE this file is always optional, so don't even warn if it is missing
     Vuppeteer::report('facts', '_main', 'local')
     supplemental_facts = FileManager::load_fact_yaml("#{parts[0]}#{facet}", false)
-    if (supplemental_facts)
-      self.set(supplemental_facts, true)
-    else
-      Vuppeteer::say('Notice: supplemental (local) facts file present, but invalid', 'prep')
-    end
+    self.set(self._filter(supplemental_facts, @option_only_facts), true)
+  end
+
+  def self._project_facts()
+    file_facts = FileManager::load_fact_yaml("#{Mr::active_path}/#{Mr::build}", false)
+    return if !file_facts
+    Vuppeteer::report('facts', '_main', 'build')
+    filters = @local_only_facts + @developer_facts + @option_only_facts
+    self.set(self._filter(file_facts, filters), true)
   end
 
   def self._developer_facts()
     parts = FileManager::facet_split("#{File.expand_path(Mr::developer_facts)}")
     facet = parts.length > 1 && parts[1] != '' ? "::#{parts[1]}" : ''
     extra = ": #{parts[0]}.yaml"
-    Vuppeteer::shutdown("Invalid path for developer_facts, outside of writable path#{extra}") if !FileManager::may?(:read, "#{parts[0]}.yaml")
-    Vuppeteer::report('facts', '_main', '~developer')
+    can_read = FileManager::may?(:read, "#{parts[0]}.yaml")
+    Vuppeteer::shutdown("Path for developer_facts outside of writable path#{extra}") if !can_read
     user_facts = FileManager::load_fact_yaml("#{parts[0]}#{facet}", false)
-    if (user_facts)
-      self.set(user_facts, true)
-    else
-      Vuppeteer::say('Notice: developer facts file present, but invalid', 'prep')
-    end
+    return if !user_facts
+    Vuppeteer::report('facts', '_main', '~developer')
+    self.set(self._filter(user_facts, @local_only_facts + @option_only_facts), true)
   end
 
   def self._stack_facts()
     Vuppeteer::say("Loading stack puppet facts:", 'prep')
-    fact_sources = Vuppeteer::get_stack()
+    fact_sources = Vuppeteer::get_stack(:fact)
     fact_sources.each do |f|
-      next if f.include?('.') && !f.end_with?('.yaml') #NOTE old
-      next if f.include?('/') && !f.start_with?('facts/') #NOTE new
-      if (f.start_with?('facts/'))
-        y = f[6..-1]
-      else
-        y = f.end_with?('.yaml') ? f[0..-6] : f
-      end
-      if y.end_with?('.hiera') #NOTE this is moving to /hiera
-        PuppetManager::inform_hiera(y[0..-7])
-        next
-      else
-        self._handle(y)
-      end
+      self._handle(f)
     end
   end
 
@@ -302,39 +270,11 @@ module Facts
     error_label = errors.length > 2 ? 'validation errors' : 'valication error'
     additional = errors.length > 1 ? " (+#{errors.length - 1} more #{error_label})" : ''
     Vuppeteer::shutdown(Vuppeteer::enabled?(:verbose) ? errors : (errors[0] + additional)) if errors.length > 0
-    vm_suffix = self.get('standalone', false) ? '' : '#{s}'
-    if self.fact?('project')
-      p = self.get('project')
-      ElManager.add("#{p}#{vm_suffix}")
-    elsif self.fact?('app')
-      a = self.get('app')
-      ElManager.add("#{a}#{vm_suffix}")
-    elseif self.fact?('vm_name')
-      ElManager.add(self.get('vm_name'))
-    elseif self.fact?('vms') && !self.get('standalone', false)
-      ElManager::multi_vm
-      vms = MrUtils::enforce_enumerable(self.get('vms'))
-      if (vms.class == Array) 
-        vms.each() do |c|
-          c = FileManager::load_fact_yaml(c, false) if c.class == String
-          v = c.class = Hash && c.has_key?('vm_name') ? c['vm_name'] : FileManager::facet_split(c)[0].gsub('/', '-')
-          if ElManager.has?(v)
-            Vuppeteer.say("Warning: duplicate vm build generated for #{v}", 'prep')
-            next            
-          end
-          ElManager.add(v, c) if c.class = Hash && c.has_key?('enabled') && c['enabled']
-        end
-      else
-        vms.each() do |v, c|
-          c = FileManager::load_fact_yaml(c, false) if c.class == String
-          ElManager.add(v, c) if c.class = Hash && c.has_key?('enabled') && c['enabled']
-        end
-      end
-    end
+    ElManager::validate_vms(@facts)
   end
 
   def self._handle(s)
-    blocked_facts = @option_only_facts + @local_only_facts + @local_developer_facts 
+    blocked_facts = @option_only_facts + @local_only_facts + @developer_facts 
     path = Mr::active_path()
     fact_path = FileManager::path(:fact, "#{s}.yaml")
     fact_file = "#{fact_path}/#{s}.yaml"
@@ -348,15 +288,7 @@ module Facts
         Vuppeteer::report('facts', s, "invlid.#{type}")
         return
       end
-      new_facts.each do |k,v|
-        if blocked_facts.include?(k)
-          self._set_as(:block, k, v, "#{s}.yaml")
-        elsif (@facts.has_key?(k)) 
-          self._set_as(:alts, k, v, "#{s}.yaml")
-        else #TODO #1.1.0 handle stack merge flags
-          self._set_fact(k, v)
-        end
-      end
+      self.set(new_facts, "#{s}.yaml") #TODO #1.1.0 handle stack merge flags before passing?
     end
     Vuppeteer::report('facts', s, type)
   end

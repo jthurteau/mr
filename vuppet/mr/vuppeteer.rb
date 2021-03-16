@@ -266,11 +266,11 @@ module Vuppeteer
     def self.get_fact(f, default = nil)
       Facts::get(f, default)
     end
-  
-    def self.set_facts(f, m = false)
-      Facts::set(f, m)
-    end
 
+    def self.get_stack(options = nil)
+      return Stack::get(options)
+    end
+    
     def self.facts(list = nil)
       Facts::facts()
     end
@@ -299,9 +299,7 @@ module Vuppeteer
   # gateway methods
   #################################################################
 
-    def self.get_stack(options = nil)
-      return Stack::get(options)
-    end
+
 
     def self.add_asserts(v)
       Facts::asserts(v)

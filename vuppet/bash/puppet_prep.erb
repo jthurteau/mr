@@ -1,18 +1,21 @@
 yum install git -y
-<%- if @el_flavor -%>
+<% if @el_flavor -%>
 rpm -Uvh https://yum.puppetlabs.com/puppet<%= @puppet_version %>/puppet<%= @puppet_version %>-release-<%= @el_flavor %>-<%= @el_version %>.noarch.rpm
-<%- else -%>
+yum install puppet -y
+<% else -%>
 rpm -Uvh https://yum.puppetlabs.com/puppet<%= @puppet_version %>/puppet<%= @puppet_version %>-release-el-<%= @el_version %>.noarch.rpm
-<%- end - %>
 yum install epel-release puppet -y
-yum update -y <% if (@el_version == '8') %> --nobest <% end %>
+<% end -%>
+yum update -y <% if (@el_version == '8' ||  @el_flavor ) %> --nobest <% end %>
+<% if !@el_flavor -%>
 if [ ! -e /usr/bin/puppet ]
 then
     echo "linking puppet binary..."
     ln -s /opt/puppetlabs/bin/puppet /usr/bin/puppet
 fi
-<%- if @el_version == '8' && !@el_flavor -%>
+<% end -%>
+<% if @el_version == '8' && !@el_flavor -%>
 mkdir /etc/puppetlabs/code/environments
 mkdir /etc/puppetlabs/code/environments/production
 mkdir /etc/puppetlabs/code/environments/production/modules
-<%- end - %>
+<% end -%>

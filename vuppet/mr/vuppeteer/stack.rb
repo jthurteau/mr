@@ -19,15 +19,32 @@ module Stack
     end
   end
 
-  def self.get(options = false)
-    if (options)
+  def self.get(options = false) #TODO the extention
+    filter = []
+    if (options && !options.class == Symbol && !options.class == Array)
       extension_free = options.class === TrueClass || options.include?('-extensions')
       mixin_optional = !(options.class === TrueClass) && options.include?('+optional')
+    elsif (options.class == Symbol || options.class == Array)
+      options = MrUtils::enforce_enumerable(options)
+      extension_free = false
+      mixin_optional = false
+      options.each() do |o|
+        case o
+        when :optional
+          mixin_optional = true
+        when :fact
+          filter += ['facts/']
+        when :manifest
+          filter += ['manifest/']
+        when :hiera
+          filter += ['hiera/']
+        end
+      end
     else
       extension_free = true
       mixin_optional = false
     end
-    search = mixin_optional ? (@ppp + Vuppeteer.get_fact('stack_optional', [])) : (@ppp)
+    search = mixin_optional ? (@ppp + self.optional()) : (@ppp)
     if (extension_free)
       extension_free = []
       search.each do |p|
@@ -35,13 +52,17 @@ module Stack
       end
       return extension_free
     end
-    search
+    if (filter.length > 0)
+      search.filter!() {|s| !s.include?('/') || filter.any() {|f| s.start_with?(f)}}
+    end
+    self._base(search)
   end
 
   def self.add(items, after = true)
     items = MrUtils::enforce_enumerable(items)
     items.reverse!() if after.class == FalseClass
-    after = (items.include?(after) ? items.index(after) : true) if ![TrueClass, FalseClass, Integer].include?(after.class)
+    indexable = [TrueClass, FalseClass, Integer]
+    after = (items.include?(after) ? items.index(after) : true) if !indexable.include?(after.class)
     items.each do |i|
       if (after.class == TrueClass)
         @ppp.push(i)
@@ -53,10 +74,20 @@ module Stack
     end
   end
 
+  def self.optional()
+    Vuppeteer.get_fact('stack_optional', [])
+  end
+
 #################################################################
   private
 #################################################################
 
-
+  def self._base(stack)
+    result = []
+    stack.each() do |s|
+      result.push(s.split('/')[-1])
+    end
+    result
+  end
 
 end

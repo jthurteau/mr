@@ -39,7 +39,6 @@ module PuppetManager
       Vuppeteer::say("Notice: No puppet config provided (default version/options etc. are in place)", 'prep')
     end
     self.disable() if Vuppeteer::fact?('bypass_puppet')
-    Vuppeteer::set_facts({'puppet_files' => @guest_path}, true)
     Modules::init(Vuppeteer::get_fact('puppet_modules'))
     Manifests::init()
     Hiera::init(@guest_path) if (!self.disabled?(:hiera))
@@ -56,12 +55,11 @@ module PuppetManager
   end
 
   def self.apply(vm_names = :all, options = nil)
-    return Vuppeteer::say('Notice: puppet_apply skipped, puppet is disabled') if self.disabled?
     run_options = self::_setup(options)
     vms = Vuppeteer::resolve(vm_names)
     #Vuppeteer::trace(vm_names, vms)
     vms.each() do |v|
-      self._apply(run_options, v) #VagrantManager::config().vm
+      self._apply(run_options, v)
     end
   end
 
@@ -88,6 +86,10 @@ module PuppetManager
       end
     end
     command_string
+  end
+
+  def self.version(w = nil)
+    @version[w.nil? || !@version.has_key?(w) ? :default : w]
   end
 
   #################################################################
@@ -157,7 +159,7 @@ module PuppetManager
     prep_command_string = self.translate_guest_commands(Modules::get_commands(['status', 'install', 'additional']))
     sync_command_string = self.translate_guest_commands(Modules::get_commands(['dev_sync']))
     reset_command_string = self.translate_guest_commands(Modules::get_commands(['remove']))
-    install_puppet_string = FileManager::bash('puppet_prep', CollectionManager::credentials())
+    install_puppet_string = ElManager::puppet_install_script(vm_name)
 
     vm.provision 'puppet-reset', type: :shell, run: 'never' do |s|
       s.inline = "#{reset_command_string}"
@@ -177,7 +179,11 @@ module PuppetManager
 
     Vuppeteer::say("Notice (VM #{vm_name}): Puppet options \"#{run_options['out_options']} --logdest #{run_options['log_to']}\"", 'prep') if ('console' != run_options['log_to'])
 
-    puppet_facts = Vuppeteer::facts().merge!({'vagrant_root' => guest_root}) #TODO make a facter filter method?
+    vm_facts = {
+      'vagrant_root' => @guest_root,
+      'guest_path' => @guest_path,
+    }
+    puppet_facts = Vuppeteer::facts().merge!(vm_facts) #TODO make a facter filter method?
     if (self.disabled?)
       Vuppeteer::say("Notice: Bypassing main Puppet provisioning", 'prep')
     else

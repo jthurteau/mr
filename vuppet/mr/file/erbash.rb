@@ -32,7 +32,7 @@ module ErBash
     # end
     return contents if(!view)
     #TODO catch and handle parse errors
-    return ERB.new(contents).result(view);
+    return ERB.new(contents, nil, '-').result(view);
   end
   
   #################################################################

@@ -13,6 +13,7 @@ module Hiera
   @node_target = 'common.yaml'
   @deferred_manifests = []
   @required_modules = []
+  @hiera_data = {default:{},}
 
   def self.init(remote_puppet)
     if (Vuppeteer::get_fact('hiera_disabled', false))
@@ -26,7 +27,7 @@ module Hiera
     end
     @local_path = "#{Mr::active_path()}/#{FileManager::path(:temp)}hiera"
     @remote_path = "#{remote_puppet}/#{FileManager::path(:temp)}hiera"
-    hiera = Vuppeteer::get_fact('hiera', {})
+    hiera = @hiera_data[:default]
     requires = MrUtils::dig(hiera, 'requires')
     @required_modules = MrUtils::enforce_enumerable(requires) if requires
   end
@@ -121,7 +122,7 @@ module Hiera
       file = self.source(f)
       #Vuppeteer::say("Notice : Hiera #{file} #{self.local_override?(facet).to_s }for #{f}")
       Vuppeteer::say("Warning: unable to source Hiera data for #{f}") if !file
-      Vuppeteer::set_facts({'hiera': {}}, true) if file && !Vuppeteer::fact?('hiera')
+      
       copied_files = FileMirror::copy_unique_files(file, "#{data_path}/#{f}")
       # print copied_files.to_s + "\n"
       copied_files.each() do |c|
