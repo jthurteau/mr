@@ -7,7 +7,8 @@
 # https://www.vagrantup.com/docs/
 #
 # You do not need Ruby on the guest for this module.
-# You should not need Ruby installed on the host, aside from the runtime Vagrant uses
+# You should not need Ruby installed on the host, 
+# aside from the runtime built into Vagrant
 # see ../Vagrantfile for how this module is used
 #
 
@@ -31,7 +32,7 @@ module Mr
 
   ##
   # active_path is where mr builds and aquires local/project recipes
-  # for an "external" mr project build, my_path and active_path are the different
+  # for an "external" mr project build, my_path and active_path are different
   @active_path = 'vuppet'
 
   ##
@@ -39,8 +40,10 @@ module Mr
   @prepped = nil
 
   ##
-  # the yaml file to use for mr, vuppet, build configuration
-  # other yaml sources (puppet, vagrant, etc) can be a separate file, or '::x' to map to 'x' in build_facts_file
+  # the yaml file to use for mr/vuppeteer build configuration
+  # other yaml sources (puppet, vagrant, etc) can be:
+  # - a separate file, or 
+  # - '::x' to map to 'x' in build_facts_file
   @build_facts_file = 'vuppeteer'
 
   ##
@@ -50,47 +53,49 @@ module Mr
 
   @once_warning = 'Warning: Mr::vagrant can only be called once, second entry detected'
   @bypass_message = 'Notice: Mr is DISABLED, normal provisioning and triggers bypassed'
+  @not_initialized_message = 'Error: attempting to manage puppet before initialization'
 
   ##
-  # Performs all of the setup on the provided vagrant config up to the puppet-prep stage
-  # vagrant is vagrant config referece
-  # options may be a hash, string, or nil
+  # Performs all of the setup on the provided vagrant config up to the puppet-apply stage
+  # 'vagrant' is vagrant config referece
+  # 'options' may be a hash, string, or nil
   # nil has the same effect as an empty hash (default options)
   # if a string is provided it is mapped to a Hash, {assert: {'project' => [string]}}
   def self.vagrant(vagrant, options = {})
     if !@prepped.nil?
       Vuppeteer::say(@once_warning)
-      Vuppeteer::trace('Second entry at:')
+      Vuppeteer::deep_trace('Second entry at:')
       return
     end
     self._config(options)
     FileManager::init(File.dirname(MrUtils::caller_file(caller)))
     Vuppeteer::init(@active_path == @my_path ? nil : @my_path)
     ElManager::init()
-    PuppetManager::init()
+    PuppetManager::init() #TODO is there a reason this is before Vagrant?
     VagrantManager::init(vagrant)
     @prepped = false
     Vuppeteer::start()
     return Vuppeteer::say(@bypass_message) if !Vuppeteer::enabled?(:mr)
-    Vuppeteer::prep()
-    @prepped = true #TODO set this based on the return of ::prep
+    @prepped = Vuppeteer::prep()
   end 
 
   ##
   # Ensures prep steps have been applied and then sets up the puppet_apply provisioner
-  def self.puppet_apply(which = nil, options = nil)
+  def self.puppet_apply(which_vms = nil, options = nil)
     return if !Vuppeteer::enabled?(:mr)
     if (!@prepped)
-      Vuppeteer::shutdown('Error: attempting to manage puppet before initialization') if @prepped.nil?
-      Vuppeteer::prep()
-      @prepped = true #TODO set this based on the return of ::prep
+      Vuppeteer::shutdown(@not_initialized_message) if @prepped.nil?
+      @prepped = Vuppeteer::prep()
     end
-    PuppetManager::apply(which, options)
-    # Vuppeteer::post_process() taking this out until ordered provisioners are standard, use ::helpers explicitly
+    PuppetManager::apply(which_vms, options)
+    # Vuppeteer::post_process() taking this out until ordered provisioners are standard, 
+    # use ::helpers explicitly for now
   end
 
-  def self.helpers(h = nil, which = nil)
-    Vuppeteer::helpers(which, h)
+  ##
+  # Setups specific helpers, or the default if no parameters are passed
+  def self.helpers(helpers = nil, which_vms = nil)
+    Vuppeteer::helpers(which_vms, helpers)
   end
 
   ##
