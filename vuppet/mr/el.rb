@@ -44,6 +44,7 @@ module ElManager
     user: ['user', 'pass'],
   }
 
+  @when_to_reregister = :never
   # @known_box_prefixes = ['generic/rhel'];
   # @box_options = []
   # @el_options = []
