@@ -7,9 +7,9 @@
 module ElManager
   extend self
 
-  require_relative 'el/boxes'
-  require_relative 'el/network'
-  require_relative 'el/collections'
+  require_relative 'boxes'
+  require_relative 'network'
+  require_relative 'collections'
   
   @singletons = {}
   @multibuild = nil

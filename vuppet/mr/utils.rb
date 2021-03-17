@@ -5,6 +5,7 @@
 module MrUtils
   extend self
 
+
   require 'pp'
 
   @splitter = '::'
@@ -94,5 +95,6 @@ module MrUtils
     end
     ''
   end
+
 
 end

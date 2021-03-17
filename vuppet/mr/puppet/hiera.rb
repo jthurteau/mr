@@ -37,7 +37,7 @@ module Hiera
   end
 
   def self.local_override?(facet)
-    return false if PuppetManager::disabled?(:hiera)
+    return false if !Vuppeteer::enabled?(:hiera)
     l = "#{Mr::active_path()}/#{FileManager::localize_token}.facts/#{facet}.hiera"
     [l, "#{l}.yaml"].each do |f|
       return true if File.exist?(f)
@@ -46,7 +46,7 @@ module Hiera
   end
 
   def self.project_override?(facet)
-    return false if PuppetManager::disabled?(:hiera)
+    return false if !Vuppeteer::enabled?(:hiera)
     p = "#{Mr::active_path()}/facts/#{facet}.hiera"
     [p, "#{p}.yaml"].each do |f|
       return true if File.exist?(f)
@@ -55,7 +55,7 @@ module Hiera
   end
 
   def self.global_override?(facet)
-    return false if PuppetManager::disabled?(:hiera) || Vuppeteer::external?()
+    return false if !Vuppeteer::enabled?(:hiera) || Vuppeteer::external?()
     g = "#{Mr::active_path()}/global.facts/#{facet}.hiera"
     path = 
     [g, "#{g}.yaml"].each do |f|
@@ -65,7 +65,7 @@ module Hiera
   end
 
   def self.external_override?(facet)
-    return false if PuppetManager::disabled?(:hiera) || !Vuppeteer::external?()
+    return false if !Vuppeteer::enabled?(:hiera) || !Vuppeteer::external?()
     e = "#{Vuppeteer::external_path}/facts/#{facet}.hiera"
     [e, "#{e}.yaml"].each do |f|
       #Vuppeteer::say("checking for #{facet}, #{f}")
@@ -107,7 +107,7 @@ module Hiera
   end
 
   def self.generate()
-    if (PuppetManager::disabled?(:hiera)) 
+    if (!Vuppeteer::enabled?(:hiera)) 
       Vuppeteer::say('Notice: Hiera support disabled', :prep)
       return nil
     end

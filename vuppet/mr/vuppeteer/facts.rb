@@ -1,5 +1,5 @@
 ## 
-# Manages Puppet Facts for Mr
+# Manages Build and Puppet Facts for Mr
 #
 
 module Facts
@@ -23,23 +23,15 @@ module Facts
   @option_only_facts = [
     'mr_path',
     'root_path',
-    'allowed_read_path',
-    'allowed_write_path',
-    'localize_token',
-    'override_token',
-  ]
-
-  ##
-  # facts that can only be defined in Vagrantfile options or {localize_token}
-  @local_only_facts = [
-    'developer_facts_file',
-    'load_developer_facts',
+    'allowed_read_path', 'allowed_write_path',
+    'localize_token', 'override_token',
   ]
 
   ##
   # facts that can only be defined in Vagrantfile options or local fact files
   # local fact files include, in order of loading:
-  # {localize_token}.facts and developer_facts_file (~/.mr/developer.yaml)
+  # - {localize_token}.{build_facts_file}.yaml and 
+  # - developer_facts_file (~/.mr/developer.yaml)
   @developer_facts = [
     'pref_license_ident',
     'git_developer','ghc_developer','ghe_developer',
@@ -49,12 +41,29 @@ module Facts
   ]
 
   ##
-  #
-  @merge_facts = {
-    'helpers' => true,
-  }
+  # facts that can only be defined in Vagrantfile options 
+  # or non-developer local facts
+  @local_only_facts = [
+    'developer_facts_file',
+    'load_developer_facts',
+  ]
+
+  # ##
+  # #
+  # @merge_facts = {
+  #   'helpers' => true,
+  # }
 
   @invalid_facts_message = 'Notice: Additional facts not a hash, skipping...'
+
+  ##
+  # sets root facts, must be done before ::init
+  def self.roots(f)
+    Vuppeteer::shutdown('Error: Cannot define root facts once any are set.', -1) if !@facts.nil?
+    Vuppeteer::shutdown('Error: Non-hash passed as root facts.' -1) if !f.respond_to?(:to_h)
+    @facts = f.to_h
+    @root_facts = @facts.keys()
+  end
 
   ##
   # load the inital facts file, remove invalid keys, and merge it in with root_facts
@@ -117,12 +126,7 @@ module Facts
     return !result.nil? ? result : default
   end
 
-  def self.roots(f)
-    Vuppeteer::shutdown('Error: Cannot define root facts once any are set.', -1) if !@facts.nil?
-    Vuppeteer::shutdown('Error: Non-hash passed as root facts.' -1) if !f.respond_to?(:to_h)
-    @facts = f.to_h
-    @root_facts = @facts.keys()
-  end
+
 
   def self.asserts(f) #TODO support additional types of asserts (like in/include, not_nil, class etc.)
     Vuppeteer::shutdown('Error: Non-hash passed as asserts.', -1) if !f&.respond_to?(:to_h)
@@ -174,6 +178,16 @@ module Facts
     Vuppeteer::update_instance(storable_new_facts, true) if storable_new_facts.length > 0
   end
 
+  def self.expose()
+    Vuppeteer::say(Report::pop('facts'), :prep)
+    Vuppeteer::say(
+      [
+        'Processed Facts:',
+        MrUtils::inspect(self.facts(), true), 
+        '----------------',
+      ], :prep
+    )
+  end
 #################################################################
   private
 #################################################################
@@ -202,7 +216,6 @@ module Facts
     end
   end
 
-
   def self._set_as(type, key, value, source = nil)
     @facts[@meta_facets[type][0]] = {} if !@facts.has_key?(@meta_facets[type][0])
     @facts[@meta_facets[type][0]][source] = {} if !source.nil? && !@facts[@meta_facets[type][0]].has_key?(source)
@@ -226,6 +239,20 @@ module Facts
       end
     end
     facts
+  end
+
+  def self._instance_facts() #TODO filter instance facts?
+    instance_file = Vuppeteer::instance()
+    return if instance_file.class != String || !File.exist?(instance_file)
+    Vuppeteer::report('facts', '_main', 'instance')
+    i_facts = FileManager::load_fact_yaml(instance_file, false)
+    if (i_facts)
+      @instance_facts = i_facts.keys()
+      self._set(i_facts, 'instance')
+    else
+      Vuppeteer::say('Notice: no instance facts loaded (file was empty or invalid)', :prep)
+    end
+    return i_facts
   end
 
   def self._local_facts()
@@ -265,20 +292,6 @@ module Facts
       self._handle(f)
     end
     Vuppeteer::say(Vuppeteer::report('stack'), :prep)
-  end
-
-  def self._instance_facts()
-    instance_file = Vuppeteer::instance()
-    return if instance_file.class != String || !File.exist?(instance_file)
-    Vuppeteer::report('facts', '_main', 'instance')
-    i_facts = FileManager::load_fact_yaml(instance_file, false)
-    if (i_facts)
-      @instance_facts = i_facts.keys()
-      self._set(i_facts, 'instance')
-    else
-      Vuppeteer::say('Notice: no instance facts loaded (file was empty or invalid)', :prep)
-    end
-    return i_facts
   end
 
   def self._validate_requirements()

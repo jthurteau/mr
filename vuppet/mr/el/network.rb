@@ -58,7 +58,7 @@ module Network
   end
 
   def self.on_destroy(vm_name = nil, e = nil, m = nil)
-    Vuppeteer::trace('network on destroy', vm_name)
+    #Vuppeteer::trace('network on destroy', vm_name)
     return if @lock_instance_throttle
     Vuppeteer::update_instance({'vbox_throttle' => nil}, true)
     @lock_instance_throttle = true

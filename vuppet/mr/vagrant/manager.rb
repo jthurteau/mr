@@ -5,9 +5,9 @@
 module VagrantManager
   extend self
 
-  require_relative 'vagrant/triggers'
-  require_relative 'vagrant/plugins'
-  require_relative 'vagrant/helpers'
+  require_relative 'triggers'
+  require_relative 'plugins'
+  require_relative 'helpers'
 
   @vagrant = nil
   @version = nil

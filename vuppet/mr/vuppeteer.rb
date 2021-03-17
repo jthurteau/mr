@@ -12,6 +12,10 @@ module Vuppeteer
   require_relative 'vuppeteer/installer'
   require_relative 'vuppeteer/report'
 
+  require_relative 'vagrant/manager'
+  require_relative 'el/manager'
+  require_relative 'puppet/manager'
+
   ##
   # indicates ::init has alread been called
   @initialized = false
@@ -19,17 +23,6 @@ module Vuppeteer
   ##
   # indicates the path to external mr, if any
   @external_path = nil
-
-  ##
-  # values from the instance_facts at session start
-  @instance = nil
-
-  ##
-  # indicates something changed the instance during this session
-  @instance_changed = false
-
-  # #   @timezone = 'America/New_York' #TODO   
-  # #   @when_to_reregister = ['never', 'always'][0] 
 
   @features = {
     mr: true,
@@ -42,35 +35,36 @@ module Vuppeteer
     instance: true,
     installer: false,
     autofilter: true,
+    puppet: true,
+    hiera: true,
   }
 
-  def self.init(path = nil)
+  def self.init(vagrant, path = nil)
     return if @initialized
     @external_path = path
     @initialized = true
     if (self.external?)
-      self.say("External Mr #{external_path} managing build.", :prep)
+      Report::say("External Mr #{external_path} managing build.", :prep)
       @features[:installer] = true
     end
-    @features[:instance] = "#{Mr::active_path}/#{FileManager::localize_token}.instance.yaml" if @features[:instance] == true
+    instance_file = "#{Mr::active_path}/#{FileManager::localize_token}.instance.yaml"
+    @features[:instance] = instance_file if @features[:instance] == true
     Facts::init()
-    @instance = Facts::instance()
-    was = @features[:debug]
-    @features[:debug] = Facts::get('debug')
-    @features[:mr] = false if Facts::get('disabled')
-    @features[:verbose] = @features[:debug] || Facts::get('verbose')
-    self.say('Notice: Debug Mode enabled' + (!was && @features[:debug] ? '... flushing trigger buffers.' : ''))
-    VagrantManager::flush_trigger_buffer() if !was && @features[:debug]
+    Host::init(Facts::instance())
+    self._settings_check()
     Stack::init()
     Facts::post_stack_init()
+    ElManager::init()
+    PuppetManager::init() #TODO is there a reason this is before Vagrant?
+    VagrantManager::init(vagrant)
   end
 
   def self.start()
-    self.expose_facts() if Facts::get('verbose_facts') || @features[:verbose]
-    self.say("Vuppeteer Features: #{@features.to_s}") if @features[:debug]
+    Facts::expose() if Facts::get('verbose_facts') || @features[:verbose]
+    Report::say("Vuppeteer Features: #{@features.to_s}") if @features[:debug]
     Installer::prep() if self.external? && @features[:installer]
-    self.save_instance(true)
-    FileManager::setup_repos(Facts::get('project_repos'))
+    Host::save(@features[:verbose])
+    Repos::setup(Facts::get('project_repos'))
   end
 
   def self.prep()
@@ -92,6 +86,10 @@ module Vuppeteer
     @features.has_key?(o) && @features[o]
   end
 
+  def self.feature(o)
+    @features[o] if @features.has_key?(o) 
+  end
+
   def self.external?
     return !@external_path.nil?
   end
@@ -100,69 +98,16 @@ module Vuppeteer
     return @external_path
   end
 
-  def self.instance(key = nil)
-    return key.nil? ? @features[:instance] : (@instance && @instance.has_key?(key) ? @instance[key] : nil)
+  def self.get(what, which = nil) #TODO trim down some delegations #TODO support getting vagrant configs
+
   end
 
-  ##
-  # updates the instance facts
-  # if passed a key and value, it will "lazy_save" which may result in loss of data
-  # if the current process fails
-  # pass a hash and true to force immediate state changes
-  def self.update_instance(k, v = nil?)
-    #Vuppeteer::trace('updating instance', k, v)
-    @instance = {} if @instance.nil? && (k.class == Hash || !v.nil?)
-    if (k.class == Hash) 
-      k.each() do |hk, hv|
-        self.update_instance(hk, hv)
-      end
-      self.save_instance(true) if v
-      return
-    end
-    if (!v.nil? && (!@instance.has_key?(k) || v != @instance[k]))
-      #Vuppeteer::trace('updating add', k, v)
-      @instance[k] = v
-      Facts::promote(k, v)
-      @instance_changed = true
-    elsif (!@instance.nil? && @instance.has_key?(k) && v.nil?)
-      #Vuppeteer::trace('updating removing', k)
-      Facts::demote(k)
-      @instance_changed = true
-      @instance.delete(k)
-    end
-  end
+  def self.add() #TODO trim down some delegations
 
-  def self.save_instance(verbose = false)
-    #Vuppeteer::trace('saving instance', @instance)
-    return if @features[:instance].class != String || !@instance_changed
-    saved = FileManager::save_yaml(@features[:instance], @instance)
-    @instance_changed = false if @instance_changed && saved
-    Vuppeteer::say('Notice: Updated the instance facts file') if saved && verbose
-  end
-
-  def self.expose_facts() #TODO gateway this to facts?
-    self.say(Report::pop('facts'), :prep)
-    self.say(
-      [
-        'Processed Facts:',
-        MrUtils::inspect(Facts::facts(), true), 
-        '----------------',
-      ], :prep
-    )
-  end
-
-  def self.trace(*s)
-    c = MrUtils::caller_file(caller, :line)
-    self.say("TRACE #{c} #{s.to_s}", @features[:verbose] ? :now : :debug)
-  end
-
-  def self.deep_trace(*s)
-    c = MrUtils::enforce_enumerable(caller)
-    self.say(["#{s.to_s}","TRACE - - - -"] + c + ["- - - - TRACE"], @features[:verbose] ? :now : :debug)
   end
 
   def self.bow
-    self.save_instance() if @instance_changed
+    Host::save() if @instance_changed
   end
 
   #################################################################
@@ -179,6 +124,10 @@ module Vuppeteer
 
   def self.root(f)
     Facts::roots(f)
+  end
+
+  def self.import_files()
+    return Facts::get('import', [])
   end
 
   def self.get_fact(f, default = nil)
@@ -205,8 +154,13 @@ module Vuppeteer
     end
   end
 
-  def self.import_files()
-    return Facts::get('import', [])
+  def self.perform_host_commands(commands)
+    return if commands.nil?
+    current_dir = Dir.pwd()
+    commands.each do |c|
+      Host::command(c)
+    end
+    Dir.chdir(current_dir)
   end
 
   def self.add_derived(d)
@@ -229,13 +183,8 @@ module Vuppeteer
     Facts::register_generated(v)
   end
 
-  def self.perform_host_commands(commands)
-    return if commands.nil?
-    current_dir = Dir.pwd()
-    commands.each do |c|
-      Host::command(c)
-    end
-    Dir.chdir(current_dir)
+  def self.manifest(m)
+    PuppetManager.set_manifest(m)
   end
 
   def self.get_vm(name)
@@ -248,6 +197,14 @@ module Vuppeteer
 
   def self.helpers(which = nil, h = nil)
     VagrantManager::setup_helpers(which, h)
+  end
+
+  def self.instance(key = nil)
+    Host::instance(key)
+  end
+
+  def self.update_instance(k, v = nil?)
+    Host::update(k,v)
   end
 
   #################################################################
@@ -270,6 +227,16 @@ module Vuppeteer
     Report::say(output, trigger, formatting)
   end
 
+  def self.trace(*s)
+    c = MrUtils::caller_file(caller, :line)
+    Report::say("TRACE #{c} #{s.to_s}", @features[:verbose] ? :now : :debug)
+  end
+
+  def self.deep_trace(*s)
+    c = MrUtils::enforce_enumerable(caller)
+    Report::say(["#{s.to_s}","TRACE - - - -"] + c + ["- - - - TRACE"], @features[:verbose] ? :now : :debug)
+  end
+
   def self.remember(output)
     Report::remember(output)
   end
@@ -290,6 +257,19 @@ module Vuppeteer
     Report::get_sensitive()
   end
 
+  def self.apply(which_vms, options)
+    PuppetManager::apply(which_vms, options)
+  end
+
+  def self.add_provisioners(name, config, props, which = nil)
+    #TODO support multi-vm
+    VagrantManager::config().vm.provision name, MrUtils::sym_keys(config) do |p|
+      props.each do |h, v|
+        p.send(h + '=', v)
+      end
+    end
+  end
+
   #################################################################
   private
   #################################################################
@@ -300,7 +280,17 @@ module Vuppeteer
     VagrantManager::build(which) #TODO, handle multi vm situations
     #Vuppeteer::trace(which,VagrantManager::get_vm_configs(:all))
     ElManager::register(VagrantManager::get_vm_configs(:all))
-    VagrantManager::config_vms(which) #TODO, handle multi vm situations
+    VagrantManager::config_vms(which)
   end
   
+  def self._settings_check()
+    was = @features[:debug]
+    @features[:debug] = Facts::get('debug')
+    @features[:mr] = false if Facts::get('disabled')
+    @features[:verbose] = @features[:debug] || Facts::get('verbose')
+    flush = !was && @features[:debug] ? '... flushing trigger buffers.' : ''
+    Report::say("Notice: Debug Mode enabled#{flush}")
+    VagrantManager::flush_trigger_buffer() if !was && @features[:debug]
+  end
+
 end

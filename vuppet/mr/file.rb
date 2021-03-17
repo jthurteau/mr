@@ -7,7 +7,6 @@ module FileManager
 
   require_relative 'file/paths'
   require_relative 'file/mirror'
-  require_relative 'file/erbash'
   require_relative 'file/repos'
   #TODO require_relative 'file/cache'
 
@@ -184,12 +183,8 @@ module FileManager
   # delegations
   #################################################################
 
-  def self.setup_repos(r)
-    Repos::setup(r)
-  end
-
   def self.bash(s, v = nil)
-    ErBash::script(s, v)
+    VuppeteerUtils::script(s, v)
   end
 
   def self.clear!(p)

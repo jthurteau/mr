@@ -5,17 +5,12 @@
 module PuppetManager
   extend self
 
-  require_relative 'puppet/manifests'
-  require_relative 'puppet/modules'
-  require_relative 'puppet/hiera'
+  require_relative 'manifests'
+  require_relative 'modules'
+  require_relative 'hiera'
 
   @conf_source = ['puppet','::puppet'][0]
   @conf = nil
-  @disabled = false
-  @features = {
-    puppet: true,
-    hiera: true,
-  }
 
   @guest_path = 'vuppet'
   @guest_root = {default: '/vagrant', null: '/vagrant'}
@@ -39,20 +34,10 @@ module PuppetManager
       @conf = {}
       Vuppeteer::say("Notice: No puppet config provided (default version/options etc. are in place)", :prep)
     end
-    self.disable() if Vuppeteer::fact?('bypass_puppet')
+    Vuppeteer.disable(:puppet) if Vuppeteer::fact?('bypass_puppet')
     Modules::init(Vuppeteer::get_fact('puppet_modules'))
     Manifests::init()
-    Hiera::init(@guest_path) if (!self.disabled?(:hiera))
-  end
-
-  def self.disabled?(what = :puppet)
-    return !@features[what] if @features.include?(what)
-    true
-  end
-
-  def self.disable(what = :puppet)
-    @features[what] = false if @features.include?(what)
-    Vuppeteer::say("Unsupported option for PuppetManager::disable #{what}") if !@features.include?(what)
+    Hiera::init(@guest_path) if (Vuppeteer::enabled?(:hiera))
   end
 
   def self.apply(vm_names = :all, options = nil)
@@ -148,7 +133,7 @@ module PuppetManager
       Vuppeteer::shutdown('Attempting to puppet apply to an undefined vm')
     end
     run_options = self._setup(options.nil? ? @opt : options)
-    when_enabled = @features[:puppet] && true ? 'once' : 'never' #TODO detect puppet_bypass on individual VMs
+    when_enabled = Vuppeteer::enabled?(:puppet) && true ? 'once' : 'never' #TODO detect puppet_bypass on individual VMs
     guest_root = @guest_root.has_key?(vm_name) ? @guest_root[vm_name] : @guest_root[:default]
     puppet_group = @groups.has_key?(vm_name) ? @groups[vm_name] : nil
     puppet_group = @version.has_key?(vm_name) ? @version[vm_name] : @version[:default] if !puppet_group
@@ -187,7 +172,7 @@ module PuppetManager
       'guest_path' => @guest_path,
     }
     puppet_facts = Vuppeteer::facts().merge!(vm_facts) #TODO make a facter filter method?
-    if (self.disabled?)
+    if (!Vuppeteer::enabled?(:puppet))
       Vuppeteer::say("Notice: Bypassing main Puppet provisioning", :prep)
     else
       vm.provision 'puppet', type: :puppet, run: when_enabled do |puppet|
@@ -195,7 +180,7 @@ module PuppetManager
         puppet.manifest_file = Manifests::file()
         puppet.options = "#{run_options['out_options']} --logdest #{run_options['log_to']}"
         puppet.facter = puppet_facts 
-        puppet.hiera_config_path = Hiera::config_path() if !self.disabled?(:hiera)
+        puppet.hiera_config_path = Hiera::config_path() if Vuppeteer::enabled?(:hiera)
       end
     end
 
@@ -204,7 +189,7 @@ module PuppetManager
       puppet.manifest_file = Manifests::file()
       puppet.options = "--verbose --debug --write-catalog-summary --logdest #{run_options['log_to']}"
       puppet.facter = puppet_facts
-      puppet.hiera_config_path = Hiera::config_path() if !self.disabled?(:hiera)
+      puppet.hiera_config_path = Hiera::config_path() if Vuppeteer::enabled?(:hiera)
     end
   end
 

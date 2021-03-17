@@ -21,9 +21,6 @@ module Mr
   require_relative 'mr/utils'
   require_relative 'mr/file'
   require_relative 'mr/vuppeteer'
-  require_relative 'mr/vagrant'
-  require_relative 'mr/el'
-  require_relative 'mr/puppet'
 
   ##
   # where mr runs from and aquires global(for intneral)/external recipes
@@ -69,10 +66,7 @@ module Mr
     end
     self._config(options)
     FileManager::init(File.dirname(MrUtils::caller_file(caller)))
-    Vuppeteer::init(@active_path == @my_path ? nil : @my_path)
-    ElManager::init()
-    PuppetManager::init() #TODO is there a reason this is before Vagrant?
-    VagrantManager::init(vagrant)
+    Vuppeteer::init(vagrant, @active_path == @my_path ? nil : @my_path)
     @prepped = false
     Vuppeteer::start()
     return Vuppeteer::say(@bypass_message) if !Vuppeteer::enabled?(:mr)
@@ -87,26 +81,24 @@ module Mr
       Vuppeteer::shutdown(@not_initialized_message) if @prepped.nil?
       @prepped = Vuppeteer::prep()
     end
-    PuppetManager::apply(which_vms, options)
+    Vuppeteer::apply(which_vms, options)
     # Vuppeteer::post_process() taking this out until ordered provisioners are standard, 
     # use ::helpers explicitly for now
   end
 
   ##
   # Setups specific helpers, or the default if no parameters are passed
+  # this method allows vm targeting, while add_provisioner does not currently
   def self.helpers(helpers = nil, which_vms = nil)
     Vuppeteer::helpers(which_vms, helpers)
   end
 
+
+
   ##
-  # Registers a provisioner
-  def self.add_provisioner(provisioner_name, config = nil, props = nil)
-    return VagrantManager::add_helpers([provisioner_name]) if config.nil?() || props.nil?()
-    VagrantManager::config().vm.provision provisioner_name , MrUtils::sym_keys(config) do |p|
-      props.each do |h, v|
-        p.send(h + '=', v)
-      end
-    end
+  # Gets vagrant config object
+  def self.get(name, which_vms = nil)
+    return Vuppeteer::get(name, which_vms)
   end
 
   ##
@@ -134,6 +126,18 @@ module Mr
 
   def self.developer_facts
     return @developer_facts_file
+  end
+
+  #################################################################
+  # deprecations
+  #################################################################
+
+  ##
+  # Registers a provisioner
+  # Note, with the addition of ::get, this might be unnessesary (and the syntax is less combersome)
+  def self.add_provisioner(name, config = nil, props = nil, which_vms = nil) #todo add multi-vm support
+    return Vuppeteer::helpers(nil, helpers) if config.nil?() || props.nil?()
+    Vuppeteer::add_provisioner(name, config, props, which_vms)
   end
 
   ##
@@ -209,12 +213,12 @@ module Mr
             @developer_facts_file = v
           end
         when :target_manifest
-          PuppetManager::set_manifest(v)
+          Vuppeteer::manifest(v)
         when :stack
           roots['stack'] = v
         when :disable_hiera
           roots['hiera_disabled'] = v
-          PuppetManager::disable(:hiera) if v
+          Vuppeteer::disable(:hiera) if v
         when :verbose
           roots['verbose'] = v
           Vuppeteer::enable(:verbose) if v
