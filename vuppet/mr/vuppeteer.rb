@@ -183,7 +183,13 @@ module Vuppeteer
       return key.nil? ? @features[:instance] : (@instance && @instance.has_key?(key) ? @instance[key] : nil)
     end
 
+    ##
+    # updates the instance facts
+    # if passed a key and value, it will "lazy_save" which may result in loss of data
+    # if the current process fails
+    # pass a hash and true to force immediate state changes
     def self.update_instance(k, v = nil?)
+      #Vuppeteer::trace('updating instance', k, v)
       @instance = {} if @instance.nil? && (k.class == Hash || !v.nil?)
       if (k.class == Hash) 
         k.each() do |hk, hv|
@@ -192,17 +198,21 @@ module Vuppeteer
         self.save_instance(true) if v
         return
       end
-      self.set_facts({k => v}, true)
       if (!v.nil? && (!@instance.has_key?(k) || v != @instance[k]))
+        #Vuppeteer::trace('updating add', k, v)
         @instance[k] = v
+        Facts::promote(k, v)
         @instance_changed = true
-      elsif (!@instance.nil? && @instance.has_key?(k))
+      elsif (!@instance.nil? && @instance.has_key?(k) && v.nil?)
+        #Vuppeteer::trace('updating removing', k)
+        Facts::demote(k)
         @instance_changed = true
         @instance.delete(k)
       end
     end
   
     def self.save_instance(verbose = false)
+      #Vuppeteer::trace('saving instance', @instance)
       return if @features[:instance].class != String || !@instance_changed
       saved = FileManager::save_yaml(@features[:instance], @instance)
       @instance_changed = false if @instance_changed && saved

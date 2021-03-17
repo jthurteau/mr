@@ -57,10 +57,9 @@ module ElManager
     @ident[:default]['el_version'] = @el_version[:default]
     @ident[:default]['box'] = @box[:default]
     @ident[:default]['flavor'] = 'fedora' if @ident[:default]['box'] == @fallbox
+    @ident[:default][:prefix] = @cred_prefix
     @singletons[:default] = Realm.new(@ident[:default], PuppetManager::version())
-    # @cred_types.each() do |t, r|
-    #   s = r.map {|c| "#{@cred_prefix}#{c}"}
-    # end
+    self._load_credentials(:default)
     #TODO Vuppeteer::mark_sensitive([sensitive ident keys])
     VagrantManager::halt_vb_guest() if @el_version[:default] == '8' #TODO this should be in plugin-manager? right now it's vb middle ware, so not a "plugin"?
     @scripts[:default][:destroy] = 'rhel_destroy' #if self.is_it? #TODO this whouldn't be set when in Centos/Nomad mode...
@@ -74,7 +73,7 @@ module ElManager
   end
 
   def self.el_version(w = :default)
-    @el_version[w]
+    @el_version.has_key?(w) ? @el_version[w] : @el_version[:default]
   end
 
   def self.box(w = :default)
@@ -122,25 +121,30 @@ module ElManager
   end
 
   def self.ready_to_register(ident = nil, validation = nil)
-    ident = @ident if ident.nil?
+    #Vuppeteer::trace('testing ready_to_register', ident, validation, @ident)
+    ident = @ident[ident] if ident.class == Symbol || ident.class == String
+    ident = @ident[:default] if ident.nil?
     p = validation.nil? ? @cred_prefix : ''
     validation = @cred_types if validation.nil?
     validation = {custom: validation} if validation.class == Array
+    #Vuppeteer::trace('tests', p, validation)
     validation.each() do |t, r|
       requires = r.map {|k| "#{p}#{k}"}
-      return t if requires.all? { |k| ident.include?(k)}
+      #Vuppeteer::trace('testing', t, requires, ident)
+      return t if requires.all? { |k| ident.include?(k.to_sym)}
     end
+    false
   end
 
   def self.script(w, flavor = :default)
     return @scripts[flavor].has_key?(w) ? @scripts[flavor][w] : nil
   end
 
-  def self.sc_commands()
+  def self.sc_commands(w = :default)
     #TODO lookup os flavor for self.scripts
     has_sc_repos = Collections::repos().length() > 0
-    return FileManager::bash(self.script(:sc), self.credentials()) if self.script(:sc)
-    return FileManager::bash('rhel_dev_sc', self.credentials()) if has_sc_repos
+    return FileManager::bash(self.script(:sc), self.credentials(w)) if self.script(:sc)
+    return FileManager::bash('rhel_dev_sc', self.credentials(w)) if has_sc_repos
     return <<-SHELL
         echo Including the software_collections...
         echo none configured...
@@ -149,43 +153,47 @@ module ElManager
         # subscription-manager repos --enable rhel-7-server-optional-rpms
   end
 
-  def self.setup_script()
+  def self.setup_script(w = :default)
     setup_script = self.script(:setup) ? self.script(:setup) : self._detect_setup_script()
     begin
       #return FileManager::bash(self.script(:setup), self.credentials()) 
-      FileManager::bash(setup_script, self.credentials())
+      FileManager::bash(setup_script, self.credentials(w))
     rescue => e
       return "echo 'unable to load setup script #{setup_script}'"
     end
   end
 
-  def self.update_script()
+  def self.update_script(w = :default)
     begin
       return FileManager::bash(self.script(:update), self.credentials()) if self.script(:update)
-      FileManager::bash('rhel_update', self.credentials())
+      FileManager::bash('rhel_update', self.credentials(w))
     rescue => e
       return "echo 'unable to load update script rhel_update'"
     end
   end
 
-  def self.unregister_script()
+  def self.unregister_script(w = :default)
     begin
-      FileManager::bash(self.script(:destroy), self.credentials())
+      FileManager::bash(self.script(:destroy), self.credentials(w))
     rescue => e
       return "echo 'unable to load unregister script #{self.script(:destroy)}'"
     end
     
   end
 
-  def self.collection_manifest()
-    self.is_it? ? '' : '-sc:centos'
+  def self.collection_manifest(w = :default) #TODO deprecated?
+    self.is_it?(w) ? '' : '-sc:centos'
   end
 
   def self.credentials(w = :default)
-    @singletons[w]&.view()
+    return @singletons[w]&.view() if @singletons.has_key?(w)
+    @singletons[:default].view()
   end
 
   def self.is_it?(w = :default)
+    #Vuppeteer::trace('testing rhel status', w, @singletons.has_key?(w))
+    w = :default if !@singletons.has_key?(w)
+    #Vuppeteer::trace('rhel status', w,  @singletons, @singletons.has_key?(w))
     @singletons[w] != nil
   end
 
@@ -224,16 +232,20 @@ module ElManager
   def self.register(vms = nil)
     vms = MrUtils::enforce_enumerable(vms)
     vms = VagrantManager::get_vm_configs(vms) if vms.class == Array
-    Vuppeteer::trace('registering vms...')
+    #Vuppeteer::trace('registering vms...')
     vms.each() do |n, v|
       Vuppeteer::trace('processing', n)
       cors = Vuppeteer::get_fact('org_domain') #TODO this could be different per VM
-      Network::register(cors)#app = nil, developer = nil #self._register(Vuppeteer::get_fact('org_domain'))
+      app = ''
+      developer = ''
+      Network::throttle_set(Vuppeteer::get_fact('guest_throttle', nil))
+      Network::cors_set(cors) #app = nil, developer = nil #self._register(Vuppeteer::get_fact('org_domain'))
+      Network::passthrough_host(v, VagrantManager::get(:trigger), app, developer)
+      self._box_destroy_prep(n, self.is_it?(n))
       if (self.is_it?(n))
-        Vuppeteer::trace('registering', n, VagrantManager::plugin_managing?(:registration))
-        self._box_destroy_prep()
-        if (VagrantManager::plugin_managing?(:registration))
-          VagrantManager::plugin(:setup_registration)
+        #Vuppeteer::trace('registering', n, VagrantManager::plugin_managing?(:registration, n))
+        if (VagrantManager::plugin_managing?(:registration, n))
+          VagrantManager::plugin(:registration, n)
           v.provision 'register', type: :shell, run: 'never' do |s|
             s.inline = 'echo Vagrant plugin is managing registration'
           end
@@ -281,19 +293,33 @@ module ElManager
     @cred_prefix
   end
 
-  def self.configure_plugin(plugin, name)
-    #TODO case name #we only support one plugin right now...
-    mode = self.ready_to_register()
-    case mode
-    when :user
-      plugin.username = @ident[:user] #Vuppeteer::get_fact('rhsm_user')
-      plugin.password = @ident[:pass] #Vuppeteer::get_fact('rhsm_pass')
-    when :org
-      plugin.org = @ident[:org] #Vuppeteer::get_fact('rhsm_org')
-      plugin.activationkey = @ident[:key] #Vuppeteer::get_fact('rhsm_key')
+  def self.configure_plugin(name, plugin, which)
+    Vuppeteer::trace('configuring plugin', name, which)
+    case name
+    when :registration
+      ident = MrUtils::sym_keys(@ident.has_key?(which) ? @ident[which] : @ident[:default])
+      mode = self.ready_to_register(ident)
+      Vuppeteer::trace('configuring', mode, ident)
+      prefix = ident.has_key?(:prefix) ? ident[:prefix] : ''
+      case mode
+      when :user
+        Vuppeteer::say('Configuring Registration Plugin for Developer Credentials', :prep)
+        #Vuppeteer::trace('plugin', name, 'with', mode, prefix.to_s + 'user', ident, ident[(prefix.to_s + 'user').to_sym])
+        plugin.username = ident[(prefix.to_s + 'user').to_sym] #Vuppeteer::get_fact('rhsm_user')
+        plugin.password = ident[(prefix.to_s + 'pass').to_sym] #Vuppeteer::get_fact('rhsm_pass')
+      when :org
+        Vuppeteer::say('Configuring Registration Plugin for Organization Credentials', :prep)
+        #Vuppeteer::trace('plugin', name, 'with', mode, ident[(prefix.to_s + 'org').to_sym])
+        plugin.org = ident[(prefix.to_s + 'org').to_sym] #Vuppeteer::get_fact('rhsm_org')
+        plugin.activationkey = ident[(prefix.to_s + 'key').to_sym] #Vuppeteer::get_fact('rhsm_key')
+      else
+        Vuppeteer::say("Warning: Unable to register with VM's configured ident")
+      end
+      plugin.skip = false
+      #p.auto_attach = false if @ident.has_key?(:manual_attach) && @ident[:manual_attach] # only do this on dev?
+    else
+      Vuppeteer::say("Notice: plugin negotiation failed for: #{name.to_s}")
     end
-    plugin.skip = false
-    #p.auto_attach = false if @ident.has_key?(:manual_attach) && @ident[:manual_attach] # only do this on dev?
   end
 
   def self.get_vms(n)
@@ -301,7 +327,7 @@ module ElManager
   end
 
   def self.puppet_install_script(vm_name)
-    FileManager::bash('puppet_prep', Collections::credentials())
+    FileManager::bash('puppet_prep', Collections::credentials(vm_name))
   end
 
   #################################################################
@@ -351,6 +377,14 @@ module ElManager
     @el_version[:default] = @fedora_translate[@el_version[:default]] if @box[:default] == @fallbox
   end
 
+  def self._load_credentials(w)
+    @ident[w] = @ident[:null].clone if !@ident.has_key?(w)
+    c = @cred_keys.map {|s| "#{@cred_prefix}#{s}"}
+    c.each() do |f|
+      @ident[w][f] = Vuppeteer::get_fact(f) if Vuppeteer::fact?(f) 
+    end
+  end
+
   def self._validate(ident)
     return {} if @box[:default] == @fallbox
     if !ident
@@ -385,9 +419,19 @@ module ElManager
     #Vuppeteer::trace(p,Boxes::get(:all))
   end
 
-  def self._box_destroy_prep() #TODO #1.0.0 multi-vm support?
-    return if !self.script(:destroy)
-    VagrantManager::set_destroy_trigger(self.script(:destroy))
+  def self._box_destroy_prep(vm_name = nil, is_rhel) #TODO #1.0.0 multi-vm support
+    return if !Mr::enabled?
+    script = self.script(:destroy)
+    trigger = VagrantManager::get(:trigger).before [:destroy] do |trigger|
+      trigger.warn = 'Attempting to unregister this box before destroying...'
+      trigger.on_error = :continue
+      trigger.run_remote = {
+        inline: script
+      } if script
+      trigger.ruby do |env, machine|
+        Network::on_destroy(vm_name, env, machine)
+      end
+    end
   end
 
   def self._suffix(data)

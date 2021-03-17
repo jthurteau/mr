@@ -21,7 +21,7 @@ module Collections
     #TODO add source? even if @collections_added?
     if (@collections_requested && !@collections_added)
         v.provision "software_collections", type: :shell, run: self.run_when() do |s|
-          s.inline = ElManager::is_it? ? ElManager::sc_commands() : self.commands()
+          s.inline = ElManager::is_it?() ? ElManager::sc_commands() : self.commands()
         end
         self.retire()
     end
@@ -58,13 +58,13 @@ module Collections
     return @when_to_install_sc
   end
 
-  def package_view(name)
+  def self.package_view(name)
     return Package.new(name).view()
   end
 
-  def credentials() #TODO make a CentosManager instead?
-    return ElManager::credentials() if ElManager::is_it?
-    return Credentials.new().view()
+  def self.credentials(w = :default)
+    return ElManager::credentials(w) #if ElManager::is_it?(w)
+    #return Credentials.new().view()
   end
 
   def self.repos()
@@ -90,14 +90,14 @@ module Collections
     end
   end
 
-  class Credentials
-    @el_version = '7'
-    def initialize()
-    end
+  # class Credentials #TODO this should be deprecated, or replace ElManager::Realm
+  #   @el_version = '7'
+  #   def initialize()
+  #   end
 
-    def view()
-      return binding()
-    end
-  end
+  #   def view()
+  #     return binding()
+  #   end
+  # end
 
 end

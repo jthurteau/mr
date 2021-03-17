@@ -157,12 +157,14 @@ module Triggers
   end
 
   def self.flush()
+    distinct = []
     @notices.each() do |o, c|
       c.each() do |t, b|
-        o = b.shift()
-        Vuppeteer.say("* #{o}") if o
+        s = b.shift()
+        distinct.push("*  #{s}") if s && !distinct.include?("*  #{s}")
       end
     end
+    Vuppeteer.say(distinct)
   end
 
 end

@@ -7,13 +7,15 @@ module Facts
 
   @facts = nil
   @root_facts = []
+  @instance_facts = []
   @requirements = []
   @generate = {}
 
   @meta_facets = {
     rdtd: ['__rdtd__', 'Redacted'],
-    block: ['__hblk__', 'Locked'],
+    blok: ['__hblk__', 'Locked'],
     alts: ['__alts__', 'Duplicate'],
+    updt: ['__updt__', 'Updated'],
   }
 
   ##
@@ -63,6 +65,7 @@ module Facts
       @facts = {}
     end
     FileManager::path_ensure("#{Mr::active_path}/facts", FileManager::allow_dir_creation?)
+    self._instance_facts() if Vuppeteer::enabled?(:instance)
     self._local_facts() if Vuppeteer::enabled?(:local)
     self._project_facts()
     self._developer_facts() if Vuppeteer::enabled?(:developer)
@@ -79,7 +82,22 @@ module Facts
   end
 
   def self.instance()
-    self._instance_facts() if Vuppeteer::enabled?(:instance)
+    #self._instance_facts() if Vuppeteer::enabled?(:instance)
+    result = {}
+    @instance_facts.each() do |f|
+      result[f] = @facts[f] if @facts.has_key?(f)
+    end
+    result
+  end
+
+  def self.promote(f, v = nil)
+    @instance_facts.push(f) if !@instance_facts.include?(f)
+    #TODO update it in facts as well?
+  end
+
+  def self.demote(f)
+    @instance_facts.delete(f)
+    #TODO delete it from facts as well?
   end
 
   def self.fact?(match)
@@ -128,27 +146,6 @@ module Facts
     @requirements
   end
 
-  def self.set(f, source = nil)
-    return Vuppeteer::say(@invalid_facts_message, :prep) if !f.class == Hash
-    @facts = {} if !@facts
-    f.each do |k, v|
-      sensitive = VuppeteerUtils::sensitive_fact?(k)
-      s = source ? "#{source}::" : ''
-      Vuppeteer::mark_sensitive(v) if Vuppeteer::enabled?(:autofilter) && sensitive
-      rooted = @root_facts.any? {|r| r == k }
-      has_fact = @facts.has_key?(k)
-      if (rooted)
-        self._set_as(:block, k, v)
-        Vuppeteer::say("Notice: New fact #{s}#{k} is rooted...", :prep)
-      elsif (!rooted && has_fact)
-        Vuppeteer::say("Notice: New fact #{s}#{k} already set...", :prep)
-        self._set_as(:alts, k, @facts[k], source)
-      else
-        @facts[k] = v
-      end
-    end
-  end
-
   def self.register_generated(f)
     @generate = @generate.merge(f)
   end
@@ -168,7 +165,7 @@ module Facts
       end
     end
     new_facts = VuppeteerUtils::generate(missing)
-    self.set(new_facts, :new)
+    self._set(new_facts, 'generated')
     storable_new_facts = {}
     storable.each do |k|
       storable_new_facts[k] = new_facts[k]
@@ -180,6 +177,31 @@ module Facts
 #################################################################
   private
 #################################################################
+  def self._set(f, source = nil)
+    return Vuppeteer::say(@invalid_facts_message, :prep) if !f.class == Hash
+    @facts = {} if !@facts
+    f.each do |k, v|
+      sensitive = VuppeteerUtils::sensitive_fact?(k)
+      s = source ? "#{source}::" : ''
+      Vuppeteer::mark_sensitive(v) if Vuppeteer::enabled?(:autofilter) && sensitive
+      rooted = @root_facts.any? {|r| r == k }
+      has_fact = @facts.has_key?(k)
+      if (rooted)
+        Vuppeteer::say("Notice: New fact #{s}#{k} is rooted...", :prep)
+        self._set_as(:blok, k, v)
+      elsif (@instance_facts.any?(k))
+        Vuppeteer::say("Notice: Updating instance fact #{s}#{k} ...", :prep) if @facts.has_key?(k)
+        self._set_as(:updt, k, @facts[k]) if @facts.has_key?(k)
+        @facts[k] = v
+      elsif (!rooted && has_fact)
+        Vuppeteer::say("Notice: New fact #{s}#{k} already set...", :prep)
+        self._set_as(:alts, k, @facts[k], source)
+      else
+        @facts[k] = v
+      end
+    end
+  end
+
 
   def self._set_as(type, key, value, source = nil)
     @facts[@meta_facets[type][0]] = {} if !@facts.has_key?(@meta_facets[type][0])
@@ -213,7 +235,7 @@ module Facts
     return if !File.exist?("#{parts[0]}.yaml") #NOTE this file is always optional, so don't even warn if it is missing
     Vuppeteer::report('facts', '_main', 'local')
     supplemental_facts = FileManager::load_fact_yaml("#{parts[0]}#{facet}", false)
-    self.set(self._filter(supplemental_facts, @option_only_facts), true)
+    self._set(self._filter(supplemental_facts, @option_only_facts), 'local')
   end
 
   def self._project_facts()
@@ -221,7 +243,7 @@ module Facts
     return if !file_facts
     Vuppeteer::report('facts', '_main', 'project')
     filters = @local_only_facts + @developer_facts + @option_only_facts
-    self.set(self._filter(file_facts, filters), true)
+    self._set(self._filter(file_facts, filters), 'project')
   end
 
   def self._developer_facts()
@@ -233,7 +255,7 @@ module Facts
     user_facts = FileManager::load_fact_yaml("#{parts[0]}#{facet}", false)
     return if !user_facts
     Vuppeteer::report('facts', '_main', '~developer')
-    self.set(self._filter(user_facts, @local_only_facts + @option_only_facts), true)
+    self._set(self._filter(user_facts, @local_only_facts + @option_only_facts), '~developer')
   end
 
   def self._stack_facts()
@@ -251,7 +273,8 @@ module Facts
     Vuppeteer::report('facts', '_main', 'instance')
     i_facts = FileManager::load_fact_yaml(instance_file, false)
     if (i_facts)
-      self.set(i_facts, true)
+      @instance_facts = i_facts.keys()
+      self._set(i_facts, 'instance')
     else
       Vuppeteer::say('Notice: no instance facts loaded (file was empty or invalid)', :prep)
     end
@@ -287,7 +310,7 @@ module Facts
         Vuppeteer::report('stack', s, "invlid.#{type}")
         return
       end
-      self.set(new_facts, "#{s}.yaml") #TODO #1.1.0 handle stack merge flags before passing?
+      self._set(new_facts, "#{s}.yaml") #TODO #1.1.0 handle stack merge flags before passing?
     end
     Vuppeteer::report('stack', s, type)
   end

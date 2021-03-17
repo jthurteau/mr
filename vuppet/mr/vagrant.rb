@@ -49,7 +49,8 @@ module VagrantManager
     # end
   end
 
-  def self.get()
+  def self.get(w = nil)
+      return @vagrant.trigger if w == :trigger
       @vagrant
   end
 
@@ -71,7 +72,7 @@ module VagrantManager
     current_vm = vms.pop()
     multi_vm = false
     if (current_vm)
-      Vuppeteer::trace('build VMs', current_vm, vms)
+      #Vuppeteer::trace('build VMs', current_vm, vms)
       @vagrant.vm.box = ElManager::box(:default)
       self._build(@vagrant.vm, current_vm)
       loop do
@@ -84,7 +85,7 @@ module VagrantManager
         #   @vm_configs[current_vm] = c
         # end
         current_vm = vms.pop()
-        Vuppeteer::trace('additional VMs', current_vm)
+        #Vuppeteer::trace('additional VMs', current_vm)
         Vuppeteer::shutdown('temporarily blocking multi-vm', -2) if !multi_vm && !current_vm.nil?
         break if !multi_vm || current_vm.nil?
         Vuppeteer::trace('build VM', current_vm)
@@ -115,17 +116,6 @@ module VagrantManager
   def self.register_triggers!()
     Triggers::register!(@vagrant) if Mr::enabled?
   end
-
-  def self.set_destroy_trigger(script)
-    return if !Mr::enabled?
-    @vagrant.trigger.before [:destroy] do |trigger|
-      trigger.warn = 'Attempting to unregister this box before destroying...'
-      trigger.run_remote = {
-        inline: script
-      }
-      trigger.on_error = :continue
-    end
-  end
   
   def self.host_pre_puppet_triggers()
     return if !Mr::enabled?
@@ -138,11 +128,12 @@ module VagrantManager
     end
   end
 
-  def self.store_say(s, t)
+  #TODO does it make sense for this to stay here? pass trigger back to vuppeteer?
+  def self.store_say(s, t) 
     if Triggers::triggered?(t)
       print s
     else
-      Triggers::store_say(s,t)
+      Triggers::store_say(s, t)
     end
   end
 
@@ -155,12 +146,12 @@ module VagrantManager
     Plugins::init()
   end
 
-  def self.plugin_managing?(p)
-    Plugins::managing?(p)
+  def self.plugin_managing?(p, v)
+    Plugins::managing?(p, v)
   end
 
-  def self.plugin(p)
-    Plugins::setup(p) if Mr::enabled?
+  def self.plugin(p, v)
+    Plugins::setup(p, v) if Mr::enabled?
   end
 
   def self.setup_helpers(h = nil, v = nil)

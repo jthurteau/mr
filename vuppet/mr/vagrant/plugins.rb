@@ -26,21 +26,26 @@ module Plugins
     end
   end
 
-  def self.managing?(what)
-    return false if !@plugins.has_key?(what)
-    case what
+  def self.managing?(plugin, what = :default)
+    return false if !@plugins.has_key?(plugin)
+    #Vuppeteer::trace('testing plugin', plugin, what, ElManager.is_it?(what), ElManager::el_version(what), '8' == ElManager::el_version(what), ElManager::ready_to_register(what))
+    case plugin
     when :registration
-      return ElManager.is_it?() && '8' == ElManager::el_version() && ElManager::ready_to_register()
+      return ElManager.is_it?(what) && '8' == ElManager::el_version(what) # && ElManager::ready_to_register(what)
     end
+    false
   end
 
-  def self.setup(what)
-    return if !@plugins.has_key?(what) || Vagrant.has_plugin?(@plugins[what][:name])
-    v = VagrantManager::get()
+  def self.setup(what, which)
+    #Vuppeteer.trace('testing plugin compatability', what, which, @plugins, @plugins[what],@plugins[what][:name],Vagrant.has_plugin?(@plugins[what][:name]))
+    if !@plugins.has_key?(what) || !Vagrant.has_plugin?(@plugins[what][:name])
+      Vuppeteer::say("Notice: attempting to setup unregistered plugin: #{what.to_s}")
+      return
+    end
     case what
     when :registration
-      p =  v.registration 
-      ElManager::configure_plugin(what, p)
+      p =  VagrantManager::get().registration 
+      ElManager::configure_plugin(what, p, which)
     end
   end
 
