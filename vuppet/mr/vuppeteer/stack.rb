@@ -10,9 +10,9 @@ module Stack
   def self.init()
     stack = Vuppeteer::get_fact('stack')
     if stack.nil?
-      Vuppeteer::shutdown('Error: No stack provided in facts')
+      Vuppeteer::say('Warning: No stack provided in facts')
+      return
     end
-    #Vuppeteer::trace(stack,stack.class)
     stack.each do |s|
       next if !s || s.strip() == ''
       @ppp.push(s);

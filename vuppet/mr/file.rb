@@ -6,7 +6,6 @@ module FileManager
   extend self
 
   require_relative 'file/paths'
-  require_relative 'file/mirror'
   require_relative 'file/repos'
   #TODO require_relative 'file/cache'
 
@@ -211,9 +210,48 @@ module FileManager
     Repos::host_repo_path()
   end
 
+  def self.copy_unique(from, to)
+    self._copy_unique(from, to) #TODO this has been moved around a lot, so clean up?
+  end
+
   #################################################################
     private
   #################################################################
+
+  def self._copy_unique(from, to, max_back = 2)
+    create_files = []
+    use_base = false
+    if !from.class.include?(Enumerable)
+      if File.directory?(from)
+        use_base = true
+        from_path = from
+        f = Dir.children(from)
+        from = []
+        f.each do |c| #TODO there is definately a more rubic way to do this
+          from.push("#{from_path}/#{c}")
+        end
+      else
+        from = [from]
+      end
+    end
+    #to += '/' if !to.end_with?('/')
+    from.each do |f|
+      ext = File.extname(f)
+      base = File.basename(f,'.*')
+      rest = File.dirname(f).split('/').last(max_back)
+      unique = use_base ? ".#{base}" : ''
+      while (File.exist?("#{to}#{unique}#{ext}"))
+        additional = rest.pop()
+        additional = 'x' if additional.nil?
+        unique += ".#{additional}"
+      end
+      #Vuppeteer.say("normally I would cp #{f} to #{to}#{unique}#{ext}")
+      FileUtils.cp_r(f,"#{to}#{unique}#{ext}")
+      to_base = File.basename(to)
+      create_files.push("#{to_base}#{unique}#{ext}")
+    end
+    create_files
+  end
 
   def self._backup(path)
     unique = '' #TODO this is quick and dirty

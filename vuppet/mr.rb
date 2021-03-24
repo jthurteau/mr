@@ -220,10 +220,10 @@ module Mr
           roots['hiera_disabled'] = v
           Vuppeteer::disable(:hiera) if v
         when :verbose
-          roots['verbose'] = v
+          roots['verbose'] = v if v
           Vuppeteer::enable(:verbose) if v
         when :debug
-          roots['debug'] = v
+          roots['debug'] = v if v
           roots['verbose'] = v if v
           Vuppeteer::enable(:debug) if v
           Vuppeteer::enable(:verbose) if v

@@ -126,10 +126,6 @@ module Vuppeteer
     Facts::roots(f)
   end
 
-  def self.import_files()
-    return Facts::get('import', [])
-  end
-
   def self.get_fact(f, default = nil)
     Facts::get(f, default)
   end
@@ -207,17 +203,13 @@ module Vuppeteer
     Host::update(k,v)
   end
 
+  def self.copy_unique(from, to) #TODO move this back into FileManager?
+    Installer::copy_unique(from, to)
+  end
+
   #################################################################
   # gateway methods
   #################################################################
-
-  def self.install_files()
-    return Installer::install_files() if @features[:installer]
-  end
-
-  def self.global_install_files()
-    return Installer::global_install_files() if @features[:installer]
-  end
 
   def self.shutdown(s, e = 1)
     Report::shutdown(s, e)
@@ -285,11 +277,11 @@ module Vuppeteer
   
   def self._settings_check()
     was = @features[:debug]
-    @features[:debug] = Facts::get('debug')
+    @features[:debug] = Facts::get('debug', false)
+    @features[:verbose] = (@features[:debug] || Facts::get('verbose', false))
     @features[:mr] = false if Facts::get('disabled')
-    @features[:verbose] = @features[:debug] || Facts::get('verbose')
-    flush = !was && @features[:debug] ? '... flushing trigger buffers.' : ''
-    Report::say("Notice: Debug Mode enabled#{flush}")
+    flush = (!was && @features[:debug]) ? '... flushing trigger buffers.' : ''
+    Report::say("Notice: Debug Mode enabled#{flush}") if @features[:debug]
     VagrantManager::flush_trigger_buffer() if !was && @features[:debug]
   end
 

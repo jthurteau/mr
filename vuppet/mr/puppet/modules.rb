@@ -155,7 +155,7 @@ module Modules
     module_name = uri[(uri.index('/', 8) + 1)..-5].gsub('/','-') #TODO #issue-18
     #module_source = tokenize host name too for further differentiation when needed
     module_repo_path = "#{self.host_module_path()}/#{module_name}"
-    FileManager::path_ensure(module_repo_path, Vuppeteer::allow_dir_creation?)
+    FileManager::path_ensure(module_repo_path, FileManager::allow_dir_creation?)
     if (FileManager::clean_path?(module_repo_path))
       @commands[vm_group]['local_install'].push("git clone #{auth_uri} #{module_repo_path}")
     elsif (FileManager::repo_path?(module_repo_path)) 

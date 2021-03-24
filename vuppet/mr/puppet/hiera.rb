@@ -25,8 +25,8 @@ module Hiera
     else
       @conf = Vuppeteer::load_facts(@conf_source, 'Notice:(Puppet Hiera Configuration)')
     end
-    @local_path = "#{Mr::active_path()}/#{FileManager::path(:temp)}hiera"
-    @remote_path = "#{remote_puppet}/#{FileManager::path(:temp)}hiera"
+    @local_path = "#{Mr::active_path()}/#{FileManager::path(:temp)}/hiera"
+    @remote_path = "#{remote_puppet}/#{FileManager::path(:temp)}/hiera"
     hiera = @hiera_data[:default]
     requires = MrUtils::dig(hiera, 'requires')
     @required_modules = MrUtils::enforce_enumerable(requires) if requires
@@ -123,7 +123,7 @@ module Hiera
       #Vuppeteer::say("Notice : Hiera #{file} #{self.local_override?(facet).to_s }for #{f}")
       Vuppeteer::say("Warning: unable to source Hiera data for #{f}") if !file
       
-      copied_files = FileMirror::copy_unique_files(file, "#{data_path}/#{f}")
+      copied_files = FileManager::copy_unique(file, "#{data_path}/#{f}")
       # print copied_files.to_s + "\n"
       copied_files.each() do |c|
         c_ext = File.extname(c)
