@@ -103,12 +103,13 @@ module Mr
 
   ##
   # returns the path (dirname) to this file (aka my_path), or translates a path provided.
-  # translation converts from active_path to external vuppeteer path (my_path) when applicable 
+  # translation converts from active_paths and relative_paths to 
+  # external vuppeteer path (my_path) when applicable 
   def self.path(to_sub = nil)
+    #Vuppeteer::trace('Mr::path', to_sub, @active_path, @my_path)
     return @my_path if !to_sub
     return to_sub.sub(@active_path, @my_path) if to_sub.start_with?(@active_path)
-    return to_sub.sub('./puppet', @my_path) if to_sub.start_with?('./puppet/')
-    return to_sub.sub('puppet', @my_path) if to_sub.start_with?('puppet/')
+    return "#{@my_path}/#{to_sub}" if !FileManager::absolute?(to_sub)
     return to_sub 
   end
   

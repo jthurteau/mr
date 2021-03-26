@@ -6,8 +6,8 @@ module Installer
   extend self
 
   @install_files = [
-    'mr_rogers.rb', 
-    'mr_rogers',
+    'mr.rb', 
+    'mr',
     '+el.yaml',
     '+puppet.yaml',
     '+vagrant.yaml',
@@ -82,7 +82,6 @@ module Installer
             if (!['.','..'].include?(c))
               condition = c.split('.').first()
               #Vuppeteer::say("inspecting #{source}#{c}", :prep)
-              #if non-recursive, copy if not a directory
               if (File.file?("#{source}#{c}") && non_recursive)
                 #Vuppeteer::say("shallow file #{source}#{c} #{target}#{c}", :prep)
                 FileUtils.cp("#{source}#{c}", "#{target}#{c}")

@@ -123,7 +123,9 @@ module FileManager
   def self.load_fact_yaml(path, critical = true)
     parts = self.facet_split(path)
     path = parts[0].end_with?('.yaml') ? parts[0] : "#{parts[0]}.yaml"
+    #Vuppeteer::trace('FileManager::load_fact_yaml', path)
     path = Mr::path(path) if !Paths::absolute?(path) 
+    #Vuppeteer::trace('FileManager::load_fact_yaml', path)
     facet = parts.length > 1  && parts[1] != '' ? parts[1] : nil
     # Vuppeteer::trace(path,facet,critical)
     if (!File.exist?(path))
@@ -188,6 +190,10 @@ module FileManager
 
   def self.clear!(p)
     Paths::clear!(p)
+  end
+
+  def self.absolute?(p)
+    Paths::absolute?(p)
   end
 
   #################################################################

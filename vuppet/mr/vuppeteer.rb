@@ -143,10 +143,18 @@ module Vuppeteer
   end
 
   def self.load_facts(source, flag = nil)
+    if (source.class == Array) 
+      source.each() do |s|
+        f = self.load_facts(s, flag)
+        return f if f
+      end
+      return nil
+    end
     begin
       source.start_with?(MrUtils::splitter) ? Facts::get(source[2..-1], nil, true) : FileManager::load_fact_yaml(source, flag)
     rescue => e
       VuppeteerUtils::meditate("#{e} for \"#{source}\"", flag, :prep)
+      false
     end
   end
 

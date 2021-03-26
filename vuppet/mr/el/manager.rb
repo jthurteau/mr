@@ -13,7 +13,7 @@ module ElManager
   
   @singletons = {}
   @multibuild = nil
-  @el_data_source = 'el'
+  @conf_source = 'el'
   @el_data = nil
   @el_version = {default: '8', null: '8'}
   @box = {default: 'generic/rhel8', null: 'generic/rhel8'}
@@ -213,7 +213,7 @@ module ElManager
       vms = MrUtils::enforce_enumerable(self.get('vms'))
       if (vms.class == Array) 
         vms.each() do |c|
-          c = Vuppeteer::load_facts("#{Mr::active_path}/#{c}", "VM Config #{c}") if c.class == String
+          c = Vuppeteer::load_facts(c, "VM Config #{c}") if c.class == String
           v = c.class = Hash && c.has_key?('vm_name') ? c['vm_name'] : FileManager::facet_split(c)[0].gsub('/', '-')
           if self.has?(v)
             Vuppeteer.say("Warning: duplicate vm build generated for #{v}", :prep)
@@ -223,7 +223,7 @@ module ElManager
         end
       else
         vms.each() do |v, c|
-          c = Vuppeteer::load_facts("#{Mr::active_path}/#{c}", "VM Config #{v}") if c.class == String
+          c = Vuppeteer::load_facts(c, "VM Config #{v}") if c.class == String
           self.add(v, c) if c.class = Hash && c.has_key?('enabled') && c['enabled']
         end
       end
@@ -240,7 +240,7 @@ module ElManager
       app = ''
       developer = ''
       Network::throttle_set(Vuppeteer::get_fact('guest_throttle', nil))
-      Network::cors_set(cors) #app = nil, developer = nil #self._register(Vuppeteer::get_fact('org_domain'))
+      Network::cors_set(cors) #app = nil, developer = nil
       Network::passthrough_host(v, VagrantManager::get(:trigger), app, developer)
       self._box_destroy_prep(n, self.is_it?(n))
       if (self.is_it?(n))
@@ -336,14 +336,9 @@ module ElManager
   #################################################################
 
   def self._detect_ident()
-    source = @el_data_source.start_with?('::') ? @el_data_source : "#{Mr::active_path}/#{@el_data_source}"
-    @el_data = Vuppeteer::load_facts(source, 'Notice:(EL Configuration)')
+    @el_data = Vuppeteer::load_facts(@conf_source, 'Notice:(EL Configuration)')
     license = self._negotiate()
     el_license = @el_data && license && @el_data.has_key?(license) ? @el_data[license] : nil
-    # if(!el_license)
-    #   el_data = Vuppeteer::load_facts("#{FileManager::localize_token}.el.yaml", false)
-    #   el_license = el_data && license && el_data.has_key?(license) ? el_data[license] : nil
-    # end
     # if(!el_license)
     #   el_data = Vuppeteer::load_facts('::licenses', false)
     #   el_license = el_data && license && el_data.has_key?(license) el_data[license] ? : nil

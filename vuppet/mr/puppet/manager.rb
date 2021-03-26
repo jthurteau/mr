@@ -19,8 +19,7 @@ module PuppetManager
   @opt = {}
 
   def self.init()
-    source = @conf_source.start_with?('::') ? @conf_source : "#{Mr::active_path}/#{@conf_source}"
-    @conf = Vuppeteer::load_facts(source, 'Notice:(Puppet Configuration)')
+    @conf = Vuppeteer::load_facts(@conf_source, 'Notice:(Puppet Configuration)')
     if @conf
       @guest_path = @conf['guest_path'] if @conf['guest_path']
       @version[:default] = @conf['version'] if @conf['version']

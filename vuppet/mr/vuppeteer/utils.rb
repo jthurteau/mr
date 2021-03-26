@@ -212,6 +212,7 @@ module VuppeteerUtils
 
   
   def self.script(script_name, view = nil)
+    Vuppeteer::shutdown("attempting to load script #{script_name}")
     type = view ? 'erb' : 'sh'
     base_path = Mr::active_path()
     #TODO filter out funny path navigations in script_name

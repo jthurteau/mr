@@ -1,0 +1,24 @@
+# This YAML file is a sample for local project build facts
+---
+##
+# common settings
+load_developer_facts: true #NOTE defaults to ~/.mr when enabled
+# load_developer_facts: ~/.altpath #NOTE any path specified must be in the read_path
+##
+# other less common use-cases
+###
+## these values are normally defined in developer_facts, but may be local
+# developer values
+# developer: username
+# ghe_pat: pat_here
+# ghe_host: github.host.name
+# helpers: ['nano','os','net']
+##
+# organizational values
+# license_ident: rhel8 #NOTE matches an entry in el.yaml
+# rhel_org: id_here
+# rhel_key: key_here
+###
+## sensitive values that are project specific
+# sample_db_password: foo
+...

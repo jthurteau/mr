@@ -1,0 +1,21 @@
+
+# This YAML file is a sample for project build facts
+# it can be overlayed by local-dev.vuppeteer.yaml and
+# developer_facts
+---
+##
+# project settings
+# project: name # NOTE specifies a project name to build
+# app: name # NOTE alternative to project, specifies an applicaiton name to build
+# standalone: true # NOTE simplifies the vm_name based on project/app name
+##
+# stack, the stack indicates what recipes mr loads to build a project
+# stack: [
+#   #TODO
+# ]
+##
+# global files, additional files to copy during installation as "global"
+# global_files: [
+#   'templates/php/info.php',
+# ]
+...
