@@ -26,7 +26,7 @@ module PuppetManager
       ['verbose', 'debug', 'output', 'log_format'].each do |o|
         @opt[o] = @conf[o] if @conf.has_key?(o)
       end
-      mv = @conf.has_key?('module_versions') && @conf['module_versions'].class == Hash
+      mv = @conf.has_key?('module_versions') && @conf['module_versions'].is_a?(Hash)
       Modules::set_versions(@conf['module_versions']) if mv
       Vuppeteer::add_derived(@conf['derived_facts']) if @conf['derived_facts']
     else
@@ -162,9 +162,9 @@ module PuppetManager
       s.inline = sync_command_string
     end
 
-    opt_notice = "\"#{run_options['out_options']} --logdest #{run_options['log_to']}\""
+    opt_notice = "\"#{run_options['out_options']} --logdest #{run_options['out_log_to']}\""
     vm_notice = "(VM #{vm_name}): Puppet options #{opt_notice}"
-    Vuppeteer::say("Notice #{vm_notice}", :prep) if ('console' != run_options['log_to'])
+    Vuppeteer::say("Notice #{vm_notice}", :prep) if ('console' != run_options['out_log_to'])
 
     vm_facts = {
       'vagrant_root' => @guest_root,
@@ -177,19 +177,21 @@ module PuppetManager
       vm.provision 'puppet', type: :puppet, run: when_enabled do |puppet|
         puppet.manifests_path = Manifests::path()
         puppet.manifest_file = Manifests::file()
-        puppet.options = "#{run_options['out_options']} --logdest #{run_options['log_to']}"
+        puppet.options = "#{run_options['out_options']} --logdest #{run_options['out_log_to']}"
         puppet.facter = puppet_facts 
-        puppet.hiera_config_path = Hiera::config_path() if Vuppeteer::enabled?(:hiera)
+        puppet.hiera_config_path = Hiera::config_path() if Vuppeteer::enabled?(:hiera) 
       end
+      #TODO ^there may be an Mr or Vagrant/Puppet bug where Vagrant decides to destroy the VM when hiera is misconfigured and the specified file is missing...
     end
 
-    vm.provision 'puppet-debug', type: :puppet, run: 'never' do |puppet|
+    vm.provision 'puppet-debug', type: :puppet, run: :never do |puppet|
       puppet.manifests_path = Manifests::path()
       puppet.manifest_file = Manifests::file()
-      puppet.options = "--verbose --debug --write-catalog-summary --logdest #{run_options['log_to']}"
+      puppet.options = "--verbose --debug --write-catalog-summary --logdest #{run_options['out_log_to']}"
       puppet.facter = puppet_facts
       puppet.hiera_config_path = Hiera::config_path() if Vuppeteer::enabled?(:hiera)
     end
+    #TODO ^there may be an Mr or Vagrant/Puppet bug where Vagrant decides to destroy the VM when hiera is misconfigured and the specified file is missing...
   end
 
 end

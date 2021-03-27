@@ -115,7 +115,7 @@ module Paths
       if (!initial_skip && !File.directory?(current_path))
         if (create && self.may_write?(current_path))
           verbose_string = "attempting to create directory #{p} in #{confirmed_path}"
-          Vuppeteer::say(verbose.class == TrueClass ? verbose_string : verbose, :prep) if verbose
+          Vuppeteer::say(verbose.is_a?(TrueClass) ? verbose_string : verbose, :prep) if verbose
           Dir.mkdir(current_path, 0755)
           confirmed_path += initial_skip ? p : "/#{p}"
         else
@@ -129,7 +129,7 @@ module Paths
   end
 
   def self.temp()
-    "#{FileManager::localize_token}.tmp/"
+    "#{FileManager::localize_token}.tmp"
   end
 
   def self.x_path(type, file = nil)
@@ -163,6 +163,14 @@ module Paths
   def self.external(type, file = nil)
     file = file ? "/#{file}" : ''
     Vuppeteer::external? ? "#{Vuppeteer::external_path}/#{type}#{file}" : nil
+  end
+
+  def self.type(path)
+    return 'external' if Vuppeteer::external? && path.start_with?("#{Vuppeteer::external_path}")
+    return 'global' if !Vuppeteer::external? && path.start_with?("#{Mr::active_path()}/global.")
+    return 'local' if path.start_with?("#{Mr::active_path()}/#{FileManager::localize_token}.")
+    return 'project' if path.start_with?("#{Mr::active_path()}/")
+    return 'unknown'
   end
 
 #################################################################

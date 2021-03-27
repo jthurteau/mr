@@ -22,7 +22,9 @@
 'rhel8':
   box_suffix: 'rh8'
   box: 'generic/rhel8'
+  plugin_registration: true
 'rhel8-dev':
   box_suffix: 'rh8dev'
   box: 'generic/rhel8'
   manual_attach: true
+  plugin_registration: false

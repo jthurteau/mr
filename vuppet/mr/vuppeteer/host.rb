@@ -44,8 +44,8 @@ module Host
   # pass a hash and true to force immediate state changes
   def self.update(k, v = nil?)
     #Vuppeteer::trace('updating instance', k, v)
-    @instance = {} if @instance.nil? && (k.class == Hash || !v.nil?)
-    if (k.class == Hash) 
+    @instance = {} if @instance.nil? && (k.is_a?(Hash) || !v.nil?)
+    if (k.is_a?(Hash)) 
       k.each() do |hk, hv|
         self.update(hk, hv)
       end
@@ -67,7 +67,7 @@ module Host
 
   def self.save(verbose = false)
     #Vuppeteer::trace('saving instance', @instance)
-    return if Vuppeteer::feature(:instance).class != String || !@instance_changed
+    return if !Vuppeteer::feature(:instance).is_a?(String) || !@instance_changed
     saved = FileManager::save_yaml(Vuppeteer::feature(:instance), @instance)
     @instance_changed = false if @instance_changed && saved
     Vuppeteer::say('Notice: Updated the instance facts file') if saved && verbose

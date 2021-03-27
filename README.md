@@ -54,7 +54,7 @@ Each is added automatically, as runs :once unless otherwise specified
 
 A hash of configuration options can be passed into the inital Mr::vagrant call from the Vagrantfile, these are generally intended to be things that should be disclosed to anyone running the build and not burried in the details of the project recipes. 
 
-Options that can only be set in this way, include:
+Options that can only be set in this way ("Vagrantfile Options"), include:
 
  - root_path
    - Defaults to '.', being a relative reference to the folder containing the Vagrantfile
@@ -134,6 +134,28 @@ Other options can be passed in the Vagrantfile, or set during the initialization
    - increases a variety of error outputs, and tends to increase verbosity to sub-components (e.g. Puppet)
  - debug
    - turns on verbosity and prevents a variety of outputs from being buffered by triggers 
+
+## Mr Configuration Sources
+
+All of the components of Mr (Vuppeteer, FileManager, VagrantManager, PuppetManager, ElManager) are designed to be configurable. Except for FileManager, the components take some or all configuration from optional YAML files distributed with a project. FileManager configuration is only possible in Vagrantfile Options.
+
+In a future version, they will also be configurable to allow for single configfile support by specifying paths within YAML files as the configuration source.
+
+Mr's default configuration uses several rules for determining where to look for configuration:
+
+Vuppeteer (loading the core project build facts) looks for local-dev.vuppeteer.yaml, and then vuppeteer.yaml in the active_path only. It can be configured not to use "local facts" by setting the Vagrantfile option "load_local_facts" to false (which applies to any local-dev.\*.yaml file source). It can also be configured to look for a different source file in the active path by specifying a string for the "facts" Vagrantfile option. 
+
+In a future version, a new separate option will allow specifying a different source file along with providing a hash of facts to the "facts" option.
+
+Vuppeteer configuration must come from a file in the active_path (not the my_path of external provisioners), but it may traverse to a specific value in the YAML using the '::' operator, e.g.:
+
+options = {facts: 'project::php::widget'}
+
+Would map to \[php]\[widget] in vuppet/project.yaml
+
+The configuration sources for VagrantManager (defaults to vagrant.yaml), PuppetManager (defaults to puppet.yaml), and ElManager (defaults to el.yaml) will load from the active_path if available, and fallback to a copy provided by the external provisioner if they are not present in active_path. This fallback behavior is only available when Mr is running as an external provisioner. An installed provisioner will not look outside of active_path for any facts.
+
+In a future version these managers will be configurable to allow specifying a fact source to traverse within the loaded project/local facts, and also specify alternative file sources in the active_path.
 
 ## Mr Stack
 

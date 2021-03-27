@@ -24,9 +24,9 @@ module Report
         self.say(o, trigger, formatting)
       end
     else
-      supress_endline = formatting && (formatting.class == FalseClass || formatting == :no_end)
-      suppress_linetab = formatting && (formatting.class == FalseClass || formatting == :no_indent)
-      tab_multi = formatting && formatting.class == Integer ? formatting : 1
+      supress_endline = formatting && (formatting.is_a?(FalseClass) || formatting == :no_end)
+      suppress_linetab = formatting && (formatting.is_a?(FalseClass) || formatting == :no_indent)
+      tab_multi = formatting && formatting.is_a?(Integer) ? formatting : 1
       end_line = supress_endline ? '' : "\n\r"
       line_tab = suppress_linetab ? '' : (VuppeteerUtils::Tabs * tab_multi)
       full_output = VuppeteerUtils::filter_sensitive("#{line_tab}#{output}#{end_line}", @sensitive)
@@ -43,8 +43,8 @@ module Report
   # status code e defaults to 1
   # if e is negative, a stack trace is printed before exiting with the absolute value of e
   def self.shutdown(s, e = 1)
-    s[s.length() - 1] += ', shutting Down.' if s.class == Array
-    self.say(s.class == Array ? s : (s + ', shutting Down.'))
+    s[s.length() - 1] += ', shutting Down.' if s.is_a?(Array)
+    self.say(s.is_a?(Array) ? s : (s + ', shutting Down.'))
     if e < 0
       self.say('Mr Shutdown Trace:')
       self.say(MrUtils::trace(), :now, 2)

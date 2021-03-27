@@ -28,7 +28,8 @@ module Manifests
     ldm_file = FileManager::tokened_file("#{@output_path}/#{@manifest}", [@build_token])
     if (ldm_file) #TODO more edge case testing around missing/unwritable ldm target
       Vuppeteer::say("building #{@manifest}", :prep)
-      ldm_file.truncate(ldm_file.pos + 1)
+      #ldm_file.truncate(ldm_file.pos + 1)
+      ldm_file.truncate(ldm_file.pos)
       ppp_final = Vuppeteer::get_stack() + ["#{FileManager::localize_token()}.instance"]
       required_modules = Hiera::required_modules()
       needed_modules = []     

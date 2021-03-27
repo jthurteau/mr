@@ -88,7 +88,7 @@ module Helpers
   #     end
 
       end
-  #     #TODO? pass in @puppet_file_path to merge changes to /vagrant/vuppet ??
+  #     #TODO? pass in @guest_path to merge changes to /vagrant/vuppet ??
       install_script = Vuppeteer::external? ? FileManager::bash('helper_install', FileManager::fs_view()) : "echo \"***Cannot install from an internal copy of MrRogers...\"\nexit 1" 
       vm.provision "mr-install", type: :shell, run: 'never' do |s|
         s.inline = install_script

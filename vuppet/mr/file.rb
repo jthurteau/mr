@@ -57,7 +57,7 @@ module FileManager
     when :bash
       return Paths::x_path('bash', p)
     when :template
-      return Paths::x_path('template', p)
+      return Paths::x_path('templates', p)
     when :global
       return p.nil? ? false : Paths::global(p, f)
     when :local
@@ -68,6 +68,10 @@ module FileManager
       return p.nil? ? false : Paths::external(p, f)
     end
     false
+  end
+
+  def self.path_type(p)
+    Paths::type(p)
   end
 
   def self.first_match(files)
@@ -129,17 +133,17 @@ module FileManager
     facet = parts.length > 1  && parts[1] != '' ? parts[1] : nil
     # Vuppeteer::trace(path,facet,critical)
     if (!File.exist?(path))
-      VuppeteerUtils::meditate("facts \"#{path}\" not available", critical, :prep)
+      VuppeteerUtils::meditate("Facts \"#{path}\" not available", critical, :prep)
       return nil
     end
     begin
       y = YAML.load_file(path)
     rescue SystemCallError => e #TODO handle yaml parse errors
-      VuppeteerUtils::meditate("unable to load facts in \"#{path}\"", critical, :prep)
+      VuppeteerUtils::meditate("Unable to load facts in \"#{path}\"", critical, :prep)
     end
-    VuppeteerUtils::meditate("empty facts in \"#{path}\"", critical, :prep) if (y.nil?)
-    VuppeteerUtils::meditate("invalid facts in \"#{path}\"", critical, :prep) if (!y.nil? && y.class != Hash)
-    y.class == Hash ? (facet.nil? ? y : (y.has_key?(facet) ? y[facet] : nil) ) : nil
+    VuppeteerUtils::meditate("Empty facts in \"#{path}\"", critical, :prep) if (y.nil?)
+    VuppeteerUtils::meditate("Invalid facts in \"#{path}\"", critical, :prep) if (!y.nil? && !y.is_a?(Hash))
+    y.is_a?(Hash) ? (facet.nil? ? y : (y.has_key?(facet) ? y[facet] : nil) ) : nil
   end
 
   def self.save_yaml(path, data, backup = false)
@@ -280,6 +284,11 @@ module FileManager
     def localize_token()
       return FileManager::localize_token()
     end
+
+    def puppet_guest_path()
+      PuppetManager::guest_path()
+    end
+
   end
 
 end

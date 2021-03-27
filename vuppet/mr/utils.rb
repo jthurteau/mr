@@ -47,11 +47,11 @@ module MrUtils
   end
 
   def self.search(matches, search, throws = false)
-    matches = [matches] if !matches.is_a?(Array)
-    while matches.length > 0
-      m = matches.shift
-      #Vuppeteer::trace(matches,search,m)
-      t = self.traversable(m) ? self.traverse(m, search, throws) : nil 
+    remaining = self.enforce_enumerable(matches).clone()
+    while remaining.length > 0
+      m = remaining.shift
+      #Vuppeteer::trace(remaining,search,m)
+      t = self.traversable?(m) ? self.traverse(m, search, throws) : nil 
       return t if !t.nil?
       h = search.is_a?(Hash) && search.has_key?(m)
       a = search.is_a?(Array) && m.is_a?(Integer) && m < search.length
@@ -63,7 +63,7 @@ module MrUtils
 
   def self.traverse(index, search, throws = false)
     return search if index == @splitter
-    indexes = self.traversable(index) ? index.split(@splitter) : self.enforce_enumerable(index)
+    indexes = self.traversable?(index) ? index.split(@splitter) : self.enforce_enumerable(index)
     n = indexes.shift
     n = n.to_i if n.match(/^[0-9]*$/)
     indexes = indexes.join(@splitter)
@@ -76,16 +76,16 @@ module MrUtils
     return nil
   end
 
-  def self.traversable(index)
-    return index.class == String && index.include?(@splitter)
+  def self.traversable?(index)
+    return index.is_a?(String) && index.include?(@splitter)
   end
   
   def self.dig(h, k)
-    h && h.class == Hash && h.has_key?(k) ? h[k] : nil
+    h && h.is_a?(Hash) && h.has_key?(k) ? h[k] : nil
   end
 
   def self.clean_whitespace(a)
-    return if a.class == String
+    return if a.is_a(String)
     if a.class.include?(Enumerable)
       n = []
       a.each do |l|

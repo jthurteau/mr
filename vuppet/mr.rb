@@ -106,7 +106,7 @@ module Mr
   # translation converts from active_paths and relative_paths to 
   # external vuppeteer path (my_path) when applicable 
   def self.path(to_sub = nil)
-    #Vuppeteer::trace('Mr::path', to_sub, @active_path, @my_path)
+    #Vuppeteer::trace('Mr::path', to_sub, @active_path, @my_path, to_sub.start_with?(@active_path))
     return @my_path if !to_sub
     return to_sub.sub(@active_path, @my_path) if to_sub.start_with?(@active_path)
     return "#{@my_path}/#{to_sub}" if !FileManager::absolute?(to_sub)
@@ -167,7 +167,7 @@ module Mr
     configured_active_path = @active_path
     roots = {}
     option_roots = {}
-    if (config.class.include?(Enumerable))
+    if (config.is_a?(Hash))
       MrUtils::sym_keys(config).each do |k, v|
         case k
         when :mr_path
@@ -187,7 +187,7 @@ module Mr
           roots['safe_mount'] = v
           Vuppeteer::say("Notice: Safe Mount option invoked, but it is not implemented yet", :prep)
         when :facts
-          if (v.class == String)
+          if (v.is_a?(String))
             @build_facts_file = (y.end_with?('.yaml') ? v[0..-4] : v)
             valid_build_file = FileManager::facet_split(v)[0].length > 0
             Vuppeteer::shutdown("Error: Invalid build facts file provided #{v}") if !valid_build_file
@@ -199,7 +199,8 @@ module Mr
         when :generated
           Vuppeteer::register_generated(v)
         when :assert
-          Vuppeteer::add_asserts(v)
+          Vuppeteer::add_asserts(v) if !v.is_a?(String)
+          Vuppeteer::add_asserts({'project' => v}) if v.is_a?(String)
         when :require
           Vuppeteer::add_requirements(v)
         when :load_stack_facts
@@ -210,7 +211,7 @@ module Mr
           Vuppeteer::disable(:instance) if !v
         when :load_developer_facts
           Vuppeteer::enable(:developer) if v
-          if (v.class == String)
+          if (v.is_a?(String))
             @developer_facts_file = v
           end
         when :target_manifest
@@ -233,7 +234,7 @@ module Mr
         end
       end   
     elsif(!config.nil?)
-      Vuppeteer::add_asserts({'project' => config.to_s})
+      Vuppeteer::add_asserts({'project' => config.to_s}) #TODO handle array case?
     end
     option_roots.each do |r, v|
       if !roots.has_key?(r)

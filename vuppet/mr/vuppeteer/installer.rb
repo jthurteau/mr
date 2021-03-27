@@ -95,7 +95,7 @@ module Installer
             end
           end
         elsif (no_replace && File.exist?(finaltarget))
-          Vuppeteer::say("Notice: skipping install file #{prefix}#{f}, it already exists", :prep)
+          Vuppeteer::say("Notice: skipping install file #{prefix}#{f}, it already exists", :prep) if Vuppeteer::enabled?(:verbose)
           #TODO maybe copy but with an extra prefix e.g. example.
           #FileUtils.cp_r(source, (dir_mode ? ("#{target_parent}") : (target)), {:remove_destination => true})
         else

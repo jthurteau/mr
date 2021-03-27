@@ -31,7 +31,7 @@ module Plugins
     #Vuppeteer::trace('testing plugin', plugin, what, ElManager.is_it?(what), ElManager::el_version(what), '8' == ElManager::el_version(what), ElManager::ready_to_register(what))
     case plugin
     when :registration
-      return ElManager.is_it?(what) && '8' == ElManager::el_version(what) # && ElManager::ready_to_register(what)
+      return ElManager.use_registration_plugin(what) # && ElManager::ready_to_register(what)
     end
     false
   end

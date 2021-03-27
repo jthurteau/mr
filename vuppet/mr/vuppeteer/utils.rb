@@ -52,14 +52,12 @@ module VuppeteerUtils
   ]
 
   @storable = [:random]
-
-  @internal_only = false #TODO clean this up File::may?
   
   def self.rand(conf = {})
     length = conf&.dig('length')
     length = 16 if length.nil? || length < 1
     set = conf&.has_key?('set') ? conf['set'] : :alnum
-    if (set.class == Symbol)
+    if (set.is_a?(Symbol))
       set_string = set.to_s
       set = ''
       sets = @char_sets.clone
@@ -106,8 +104,8 @@ module VuppeteerUtils
   end
 
   def self.meditate(message, critical = false, trigger = :prep)
-    fatal = critical && critical.class == TrueClass
-    label = fatal ? 'Error' : (critical.class == String ? critical : 'Notice')
+    fatal = critical && critical.is_a?(TrueClass)
+    label = fatal ? 'Error' : (critical.is_a?(String) ? critical : 'Notice')
     Vuppeteer::shutdown("#{label}: #{message}", -5) if fatal
     Vuppeteer::say("#{label}: #{message}", trigger)
   end
@@ -118,22 +116,22 @@ module VuppeteerUtils
 
   def self.storable?(method)
     #Vuppeteer::trace(method)
-    return method.class == Hash || @storable.include?(method)
+    return method.is_a?(Hash) || @storable.include?(method)
   end
 
   def self.verify(list, check, checked = [])
     #Vuppeteer::trace(list, list.class, check, checked)
     errors = []
     list.each do |r|
-        if (r.class == Hash)
+        if (r.is_a?(Hash))
           r.each do |k, v|
             result = check.has_key?(k) && v == check[k] #Facts::get(k) != v
             # raise "Error: duplicate conflicting assert for #{k}." if
-            errors.push("Error: missing asserted fact, does not match expected value \"#{v}\" during boxing") if !result && !check.has_key?(k)
+            errors.push("Error: missing asserted fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if !result && !check.has_key?(k)
             errors.push("Error: fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if !result && check.has_key?(k)
             checked.push(k)
           end
-        elsif (r.class == Array)
+        elsif (r.is_a?(Array))
           errors += self.verify(r, check, checked)
         elsif ([String, Symbol].include? r.class)
           errors.push("Error: missing asserted fact: \"#{r}\" during boxing") if !check.has_key?(r)
@@ -174,21 +172,21 @@ module VuppeteerUtils
   end
 
   def self.filter_sensitive(s, f)
-    return self.filter_sentitive_string(s, f) if s.class == String
+    return self.filter_sentitive_string(s, f) if s.is_a?(String)
     r = s.class.new
-    if (s.class == Hash) 
+    if (s.is_a?(Hash))
       s.each() do |k,v| 
         v = self.stringify(v)
-        if(v.class == String)
+        if(v.is_a?(String))
           r[k] = self.filter_sentitive_string(v, f)
         else
           r[k] = v.class.include?(Enumerable) ? self.filter_sensitive(v, f) : v
         end
       end
-    elsif (s.class == Array)
+    elsif (s.is_a?(Array))
       s.each() do |v| 
         v = self.stringify(v)
-        if(v.class == String)
+        if(v.is_a?(String))
           r.push(self.filter_sentitive_string(v, f))
         else
           r.push(v.class.include?(Enumerable) ? self.filter_sensitive(v, f) : v)
@@ -212,24 +210,17 @@ module VuppeteerUtils
 
   
   def self.script(script_name, view = nil)
-    Vuppeteer::shutdown("attempting to load script #{script_name}")
     type = view ? 'erb' : 'sh'
-    base_path = Mr::active_path()
     #TODO filter out funny path navigations in script_name
     #TODO error when if statement is the first line? error when first line is blank?
     file_name = "#{script_name}.#{type}"
-    effective_path = FileManager::path(:bash, file_name)
-    if (!@internal_only && !File.readable?("#{effective_path}/#{file_name}"))
-#      Vuppeteer::say("Loaded external script #{script_name}...", :prep)
-      effective_path = Mr::path(effective_path) #'bash') #TODO eventually use an absolute path rather than rely on effective_path
-      Vuppeteer::report('bash',script_name, 'external')
-    else
-      Vuppeteer::report('bash',script_name, 'internal')
-    end #TODO add error handling for the not globally available case
-    raise "Unable to load script #{file_name}  #{effective_path}/#{file_name}" if !File.readable?("#{effective_path}/#{file_name}")
-    contents = File.read("#{effective_path}/#{file_name}")
+    path = FileManager::path(:bash, file_name)
+    source = FileManager::path_type(path)
+    Vuppeteer::report('bash', source, script_name)
+    raise "Unable to load script #{file_name}  #{path}/#{file_name}" if !File.readable?("#{path}/#{file_name}")
+    #Vuppeteer::shutdown("failed to load script #{script_name}", -5)
+    contents = File.read("#{path}/#{file_name}")
     # if(contents.include?("\r"))
-
     #   Vuppeteer::trace('no',contents.include?("\r"),contents.include?("\r\n"));
     #   exit
     # end
@@ -244,7 +235,7 @@ module VuppeteerUtils
   
     def self._generate(m, c = {})
       #Vuppeteer::trace('generate', m, c)
-      if (m.class == Hash)
+      if (m.is_a?(Hash))
         result = c
         m.each() do |k, v|
            result[k] = self._calculate(v, k)
@@ -263,10 +254,10 @@ module VuppeteerUtils
 
     def self._calculate(m, k)
       #Vuppeteer::trace('calculate', m, k)
-      return Vuppeteer::get_fact(m) if m.class == String
-      return self._generate(m) if m.class == Symbol
-      return self._generate(m[0], m[1..-1]) if m.class == Array
-      if (m.class == Hash)
+      return Vuppeteer::get_fact(m) if m.is_a?(String)
+      return self._generate(m) if m.is_a?(Symbol)
+      return self._generate(m[0], m[1..-1]) if m.is_a?(Array)
+      if (m.is_a?(Hash))
         n = MrUtils::sym_keys(m)
         return self._generate(n.has_key?(:method) ? n[:method] : :random, m)
       end

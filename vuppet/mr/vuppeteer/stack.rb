@@ -21,10 +21,10 @@ module Stack
 
   def self.get(options = false) #TODO the extention
     filter = []
-    if (options && !options.class == Symbol && !options.class == Array)
-      extension_free = options.class === TrueClass || options.include?('-extensions')
-      mixin_optional = !(options.class === TrueClass) && options.include?('+optional')
-    elsif (options.class == Symbol || options.class == Array)
+    if (options && !options.is_a?(Symbol) && !options.is_a?(Array))
+      extension_free = options.is_a?(TrueClass) || options.include?('-extensions')
+      mixin_optional = !options.is_a?(TrueClass) && options.include?('+optional')
+    elsif (options.is_a?(Symbol) || options.is_a?(Array))
       options = MrUtils::enforce_enumerable(options)
       extension_free = false
       mixin_optional = false
@@ -60,13 +60,13 @@ module Stack
 
   def self.add(items, after = true)
     items = MrUtils::enforce_enumerable(items)
-    items.reverse!() if after.class == FalseClass
+    items.reverse!() if after.is_a?(FalseClass)
     indexable = [TrueClass, FalseClass, Integer]
     after = (items.include?(after) ? items.index(after) : true) if !indexable.include?(after.class)
     items.each do |i|
-      if (after.class == TrueClass)
+      if (after.is_a?(TrueClass))
         @ppp.push(i)
-      elsif after.class != FalseClass
+      elsif !after.is_a?(FalseClass)
         @ppp.insert(after, *items)
       else
         @ppp.unshift(i)

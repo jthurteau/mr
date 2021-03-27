@@ -110,7 +110,7 @@ module Facts
   end
 
   def self.fact?(match)
-    return @facts&.has_key?(match) if !match.is_a?(Array) && !MrUtils::traversable(match)
+    return @facts&.has_key?(match) if !match.is_a?(Array) && !MrUtils::traversable?(match)
     begin
       MrUtils::search(match, @facts, true)
     rescue => e
@@ -192,7 +192,7 @@ module Facts
   private
 #################################################################
   def self._set(f, source = nil)
-    return Vuppeteer::say(@invalid_facts_message, :prep) if !f.class == Hash
+    return Vuppeteer::say(@invalid_facts_message, :prep) if !f.is_a?(Hash)
     @facts = {} if !@facts
     f.each do |k, v|
       sensitive = VuppeteerUtils::sensitive_fact?(k)
@@ -243,7 +243,7 @@ module Facts
 
   def self._instance_facts() #TODO filter instance facts?
     instance_file = Vuppeteer::instance()
-    return if instance_file.class != String || !File.exist?(instance_file)
+    return if !instance_file.is_a?(String) || !File.exist?(instance_file)
     Vuppeteer::report('facts', '_main', 'instance')
     i_facts = FileManager::load_fact_yaml(instance_file, false)
     if (i_facts)
@@ -299,7 +299,7 @@ module Facts
     begin
       errors = VuppeteerUtils::verify(@requirements, @facts)
     rescue => e
-      Vuppeteer::shutdown(e.class == String ? e : e.to_s, e.class == String ? 3 : -3)
+      Vuppeteer::shutdown(e.is_a(String) ? e : e.to_s, e.is_a?(String) ? 3 : -3)
     end
     #Vuppeteer::trace(errors) if errors.length > 0
     error_label = errors.length > 2 ? 'validation errors' : 'valication error'

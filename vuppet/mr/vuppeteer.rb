@@ -143,7 +143,7 @@ module Vuppeteer
   end
 
   def self.load_facts(source, flag = nil)
-    if (source.class == Array) 
+    if (source.is_a?(Array)) 
       source.each() do |s|
         f = self.load_facts(s, flag)
         return f if f
@@ -151,7 +151,16 @@ module Vuppeteer
       return nil
     end
     begin
-      source.start_with?(MrUtils::splitter) ? Facts::get(source[2..-1], nil, true) : FileManager::load_fact_yaml(source, flag)
+      return Facts::get(source[2..-1], nil, true) if source.start_with?(MrUtils::splitter)
+      parts = FileManager::facet_split(source)
+      path = parts[0].end_with?('.yaml') ? parts[0] : "#{parts[0]}.yaml"
+      if (File.exist?("#{Mr::active_path}/#{path}"))
+        internal_override = "External Mr using internal source for '#{source}' facts."
+        Vuppeteer::say(internal_override) if Vuppeteer::external? && Vuppeteer::enabled?(:verbose)
+        return FileManager::load_fact_yaml("#{Mr::active_path}/#{source}", flag)
+      else
+        return FileManager::load_fact_yaml(source, flag)
+      end
     rescue => e
       VuppeteerUtils::meditate("#{e} for \"#{source}\"", flag, :prep)
       false
@@ -168,7 +177,7 @@ module Vuppeteer
   end
 
   def self.add_derived(d)
-    if (d.class != Hash) 
+    if (!d.is_a?(Hash)) 
       Report::say("Warning: invalid derived facts sent during Puppet initialization", :prep)
       return
     end

@@ -17,6 +17,7 @@ module ElManager
   @el_data = nil
   @el_version = {default: '8', null: '8'}
   @box = {default: 'generic/rhel8', null: 'generic/rhel8'}
+  @cred_type = [nil, :org, :user][0] #TODO switch this for multi-vm
   @fallbox = 'generic/fedora28'
   @ident = {default: nil}
   @sc = {default: nil}  
@@ -38,7 +39,6 @@ module ElManager
 
   @cred_prefix = 'rhsm_'
   @cred_keys = ['org','key','user','pass','host']
-  @cred_type = [nil, :org, :user][0]
   @cred_types = {
     org: ['org', 'key'],
     user: ['user', 'pass'],
@@ -59,6 +59,7 @@ module ElManager
     @ident[:default]['box'] = @box[:default]
     @ident[:default]['flavor'] = 'fedora' if @ident[:default]['box'] == @fallbox
     @ident[:default][:prefix] = @cred_prefix
+#    @ident[:default]['plugin_registration'] = 
     @singletons[:default] = Realm.new(@ident[:default], PuppetManager::version())
     self._load_credentials(:default)
     #TODO Vuppeteer::mark_sensitive([sensitive ident keys])
@@ -123,11 +124,11 @@ module ElManager
 
   def self.ready_to_register(ident = nil, validation = nil)
     #Vuppeteer::trace('testing ready_to_register', ident, validation, @ident)
-    ident = @ident[ident] if ident.class == Symbol || ident.class == String
+    ident = @ident[ident] if ident.is_a?(Symbol) || ident.is_a?(String)
     ident = @ident[:default] if ident.nil?
     p = validation.nil? ? @cred_prefix : ''
     validation = @cred_types if validation.nil?
-    validation = {custom: validation} if validation.class == Array
+    validation = {custom: validation} if validation.is_a?(Array)
     #Vuppeteer::trace('tests', p, validation)
     validation.each() do |t, r|
       requires = r.map {|k| "#{p}#{k}"}
@@ -211,20 +212,20 @@ module ElManager
     elseif self.fact?('vms') && !self.get('standalone', false)
       @multibuild = true if @multibuild.nil?
       vms = MrUtils::enforce_enumerable(self.get('vms'))
-      if (vms.class == Array) 
+      if (vms.is_a?(Array)) 
         vms.each() do |c|
-          c = Vuppeteer::load_facts(c, "VM Config #{c}") if c.class == String
-          v = c.class = Hash && c.has_key?('vm_name') ? c['vm_name'] : FileManager::facet_split(c)[0].gsub('/', '-')
+          c = Vuppeteer::load_facts(c, "VM Config #{c}") if c.is_a(String)
+          v = c.is_a?(Hash) && c.has_key?('vm_name') ? c['vm_name'] : FileManager::facet_split(c)[0].gsub('/', '-')
           if self.has?(v)
             Vuppeteer.say("Warning: duplicate vm build generated for #{v}", :prep)
             next            
           end
-          self.add(v, c) if c.class = Hash && c.has_key?('enabled') && c['enabled']
+          self.add(v, c) if c.is_a?(Hash) && c.has_key?('enabled') && c['enabled']
         end
       else
         vms.each() do |v, c|
-          c = Vuppeteer::load_facts(c, "VM Config #{v}") if c.class == String
-          self.add(v, c) if c.class = Hash && c.has_key?('enabled') && c['enabled']
+          c = Vuppeteer::load_facts(c, "VM Config #{v}") if c.is_a?(String)
+          self.add(v, c) if c.is_a?(Hash) && c.has_key?('enabled') && c['enabled']
         end
       end
     end
@@ -232,7 +233,7 @@ module ElManager
 
   def self.register(vms = nil)
     vms = MrUtils::enforce_enumerable(vms)
-    vms = VagrantManager::get_vm_configs(vms) if vms.class == Array
+    vms = VagrantManager::get_vm_configs(vms) if vms.is_a?(Array)
     #Vuppeteer::trace('registering vms...')
     vms.each() do |n, v|
       Vuppeteer::trace('processing', n)
@@ -294,6 +295,13 @@ module ElManager
     @cred_prefix
   end
 
+  def self.use_registration_plugin(what = :default)
+    #Vuppeteer::trace('El Manager checking registration settings', what, @ident)
+    what = :default if !@ident.has_key?(what)
+    @ident[what].has_key?('plugin_registration') && @ident[what]['plugin_registration']
+    #self.is_it?(what) && '8' == self.el_version(what)
+  end
+
   def self.configure_plugin(name, plugin, which)
     Vuppeteer::trace('configuring plugin', name, which)
     case name
@@ -343,6 +351,8 @@ module ElManager
     #   el_data = Vuppeteer::load_facts('::licenses', false)
     #   el_license = el_data && license && el_data.has_key?(license) el_data[license] ? : nil
     # end
+    self._sign(el_license)
+    @ident[license] = el_license if !el_license.nil?
     el_license
   end 
 
@@ -350,6 +360,11 @@ module ElManager
     license_important = Vuppeteer::get_fact('license_important', false)
     l = Vuppeteer::get_fact('el_license')
     d = Vuppeteer::get_fact('el_developer_license')
+    r = license_important ? 'requires' : 'suggests'
+    if (Vuppeteer::enabled?(:verbose)) 
+      Vuppeteer::say("ElManager: Project #{r} license #{l}", :prep) if l
+      Vuppeteer::say("ElManager: Project prefers license #{d}", :prep) if d
+    end
     #
     # x = Vuppeteer::get_fact('license')
     # x = Vuppeteer::get_fact('developer_license')
@@ -358,7 +373,19 @@ module ElManager
     # x = Vuppeteer::get_fact('developer_licenses')
     # x = Vuppeteer::get_fact('box_hit')
     # x = Vuppeteer::get_fact('license')
-    license_important && l ? l : (d ? d : l)
+    s = license_important && l ? l : (d ? d : l)
+    Vuppeteer::say("ElManager: Selected license #{s}", :prep) if Vuppeteer::enabled?(:verbose)
+    s
+  end
+
+  def self._sign(l)
+    prefix = l.has_key?('cred_prefix') ? l['cred_prefix'] : @cred_prefix
+    custom_keys = l.has_key?('cred_keys') ? MrUtils::enforce_enumerable(l['cred_keys']): nil
+    default_keys = custom_keys.nil? ? @cred_keys.map {|k| "#{prefix}#{k}"} : nil;
+    (custom_keys ? custom_keys : default_keys).each() do |k|
+      l[k.to_sym] = Vuppeteer::get_fact(k) if !l.has_key?(k.to_sym) && Vuppeteer::fact?(k) 
+    end
+    #Vuppeteer::trace("checking signature", l.to_s)
   end
 
   def self._detect_box()
@@ -391,7 +418,7 @@ module ElManager
     custom = ident.include?('custom_requirements') ? ident['custom_requirements'] : nil 
     @cred_type = self.ready_to_register(ident, custom)
     if (custom && @cred_type)
-      new_cred = custom.class == Array ? custom : custom[@cred_type] 
+      new_cred = custom.is_a?(Array) ? custom : custom[@cred_type] 
       @cred_types[@cred_type] = new_cred
     end
     if !@cred_type
@@ -402,6 +429,7 @@ module ElManager
   end
 
   def self._detect_setup_script() #TODO handle non-rhel
+    #Vuppeteer::trace('detecting setup script type', @cred_type.to_s)
     @cred_type == :user ? 'rhel_developer_setup' : 'rhel_setup'
   end
 
@@ -422,7 +450,7 @@ module ElManager
       trigger.warn = 'Attempting to unregister this box before destroying...'
       trigger.on_error = :continue
       trigger.run_remote = {
-        inline: script
+        inline: FileManager::bash(script, self.credentials(vm_name))
       } if script
       trigger.ruby do |env, machine|
         Network::on_destroy(vm_name, env, machine)
@@ -453,12 +481,12 @@ module ElManager
     @el_flavor = nil
     @puppet_version = '6'
 
-    def initialize(hash, puppet = nil)
+    def initialize(hash, puppet = nil) #TODO yuck, clean this up
         p = ElManager::cred_prefix
-        @rhel_user = hash["#{p}user"] if hash&.include?("#{p}user")
-        @rhel_pass = hash["#{p}pass"] if hash&.include?("#{p}pass")
-        @rhel_org = hash["#{p}org"] if hash&.include?("#{p}org")
-        @rhel_key = hash["#{p}key"] if hash&.include?("#{p}key")
+        @rhel_user = hash["#{p}user".to_sym].to_s if hash&.include?("#{p}user".to_sym)
+        @rhel_pass = hash["#{p}pass".to_sym].to_s if hash&.include?("#{p}pass".to_sym)
+        @rhel_org = hash["#{p}org".to_sym].to_s if hash&.include?("#{p}org".to_sym)
+        @rhel_key = hash["#{p}key".to_sym].to_s if hash&.include?("#{p}key".to_sym)
         @key_repo = hash['key_repo'] if hash&.include?('key_repo')
         @rhel_server = hash["#{p}server"] if hash&.include?("#{p}server")
         @dev_tools = Vuppeteer::get_fact('dev_tools') if hash&.include?('dev_tools')

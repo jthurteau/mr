@@ -99,7 +99,7 @@ module VagrantManager
     return if !Mr::enabled?
     @vm_configs.keys().each() do |v|
       Vuppeteer::trace('config VM', v)
-      match = vms.nil? || (vms.class == Array && vms.include?(v)) || (vms.class == Hash && vms.has_key?(v))
+      match = vms.nil? || (vms.is_a?(Array) && vms.include?(v)) || (vms.is_a?(Hash) && vms.has_key?(v))
       self._config(v) if match
       Vuppeteer::say("skipping config of #{v}") if !match
     end
@@ -191,7 +191,7 @@ module VagrantManager
       vb.memory = vm_setup && vm_setup.has_key('memory') ? vm_setup['memory'] : '1024'
     end
 
-    if (vm_setup && vm_setup.class == Hash)
+    if (vm_setup && vm_setup.is_a?(Hash))
       ##
       # config.vm.box_check_update = false
       # config.vm.guest manually set to :windows for windows guest
@@ -214,7 +214,7 @@ module VagrantManager
       shared.each do |s|
         h = Vuppeteer::sym_keys(s[2])
         #TODO warn if there is no explicit type:
-        st = s[1].class == String ? s[1] : self._lookup(s[1], label)
+        st = s[1].is_a?(String) ? s[1] : self._lookup(s[1], label)
         @vm_configs[label].synced_folder s[0], s[1], h 
       end
 
@@ -225,7 +225,7 @@ module VagrantManager
 
   def self._linked_clone?(vm)
     return false if !@features.has_key?(:linked_clones) 
-    return @features[:linked_clones].class == TrueClass || (@features.respond_to?('include?') && @features.include?(vm))
+    return @features[:linked_clones].is_a?(TrueClass) || (@features.respond_to?('include?') && @features.include?(vm))
   end
 
   def self._lookup(sym, vm_name)

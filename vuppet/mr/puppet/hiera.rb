@@ -111,6 +111,7 @@ module Hiera
       Vuppeteer::say('Notice: Hiera support disabled', :prep)
       return nil
     end
+    #Vuppeteer::trace('generating Hiera files', @local_path, @remote_path)
     FileManager::clear!(@local_path)
     data_path = "#{@local_path}/data"
     FileManager::path_ensure(data_path, true)
@@ -145,7 +146,8 @@ module Hiera
       end
     end
     erb_source = FileManager::path(:template, @source_template)
-    if (!File.exist?("#{erb_source}/#{@source_template}")) 
+    if (!erb_source || !File.exist?("#{erb_source}/#{@source_template}")) 
+      #Vuppeteer::trace('hiera error trace', erb_source, @source_template)
       Vuppeteer::say('Error: Could not build Hiera Config, template unavailable!', :prep)
       return
     end

@@ -55,13 +55,22 @@ module Modules
       @commands[:null]['status'].push("echo \"Notice: no group specified for module commands\"")
       return
     end
-    if (!@commands.has_key?(group))
-      @commands[:null]['status'].push("echo \"Warning: no matching group for requested module commands, using default\"")
+    if (!@module_list.has_key?(group))
+      @commands[:null]['status'].push("echo \"Warning: no matching group for requested module commands, using default settings\"")
       group = :default
     end
+    
     group_string = group.to_s #TODO 'Puppet V if numeric/version otherwise VM Group'
     no_info_string = 'no module version information available for Puppet'
-    @commands[group]['status'].push("echo \"#{no_info_string} #{group_string}\"") if !@module_table.has_key?(group)
+    group_version_lookup = group
+    if (!@module_table.has_key?(group))
+      @commands[:null]['status'].push("echo \"Warning: no matching group for requested module versions, using default puppet_version settings\"")
+      group_version_lookup = PuppetManager::version()
+      group_version_string = group_version_lookup
+    end
+    #Vuppeteer::trace('module versions', group_version_lookup)
+    @commands[group]['status'].push("echo \"#{no_info_string} #{group_version_string}\"") if !@module_table.has_key?(group_version_lookup)
+
     modules = @module_list.has_key?(group) ? @module_list[group] : @module_list[:default]
     modules.each do |m|
       m_alias = nil
@@ -99,12 +108,12 @@ module Modules
         self.push_commands(commands,['install', 'dev_sync'], group)
         @commands[group]['remove'].push("rm -Rf #{@puppet_module_path}/#{m_alias}")
       else
-        group_string = group.to_s #TODO 'Puppet V if numeric/version otherwise VM Group'
-        version_available = @module_table.has_key?(group) && @module_table[group].has_key?(m)
-        @commands[group]['status'].push("echo module #{m} version information unavailable for puppet #{group_string}") if !version_available
-        version_flag = version_available ? " --version #{@module_table[group][m]}" : ''
+        version_available = @module_table.has_key?(group_version_lookup) && @module_table[group_version_lookup].has_key?(m)
+        @commands[group]['status'].push("echo module #{m} version information unavailable for puppet #{group_version_string}") if !version_available
+        version_flag = version_available ? " --version #{@module_table[group_version_lookup][m]}" : ''
+        #Vuppeteer::trace('command trace', group, group_version_lookup, m, version_flag)
         @commands[group]['install'].push("puppet module install #{m}#{version_flag}")
-        @commands[group]['remove'].push("puppet module uninstall #{m}")
+        @commands[group]['remove'].push("puppet module uninstall #{m}") #TODO this doesn't handle dependencies also installed, so it needs to be re-written
       end
     end
     @commands[group]['additional'].push("puppet config set strict_variables true --section main")
@@ -167,7 +176,7 @@ module Modules
   end
 
   def self.set_versions(version_data, group = nil)
-    return if version_data.class != Hash
+    return if !version_data.is_a?(Hash)
     @module_table = version_data.merge(@module_table) if group.nil?
     @module_table[group] = version_data if !group.nil?
   end
