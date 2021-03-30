@@ -33,7 +33,7 @@ module VagrantManager
     @vagrant = singleton
     @version = Vagrant::VERSION
     @ruby_version = RUBY_VERSION
-    @setup[:default] = Vuppeteer::load_facts( @conf_source, 'Notice:(Vagrant Configuration)')
+    @setup[:default] = Vuppeteer::load_facts(@conf_source, 'Notice:(Vagrant Configuration)')
     @setup[:default] = @setup[:null].clone if @setup[:default].nil?
     return if !Mr::enabled?
     Vuppeteer::say('')
@@ -180,7 +180,8 @@ module VagrantManager
       vm_string = label.nil? ? 'vm' : "vm:#{label}" 
       Vuppeteer::say("Notice: No custom vagrant configuration for #{vm_string} detected, using default setup")
     end
-    vm_setup = label.nil? || @setup.has_key?(label) ? @setup[:default] : @setup[label]
+    vm_setup = label.nil? || !@setup.has_key?(label) ? @setup[:default] : @setup[label]
+    Vuppeteer::trace('Vagrant config check', label, vm_setup, @setup, @setup[:default])
     ##
     # providers
     @vm_configs[label].provider 'virtualbox' do |vb|
@@ -188,7 +189,7 @@ module VagrantManager
       ##TODO we can probably streamline builds with linked clones
       #vb.linked_clone = true if Gem::Version.new(Vagrant::VERSION) >= Gem::Version.new('1.8.0')
       vb.gui = vm_setup && vm_setup.has_key?('gui') ? vm_setup['gui'] : false
-      vb.memory = vm_setup && vm_setup.has_key('memory') ? vm_setup['memory'] : '1024'
+      vb.memory = vm_setup && vm_setup.has_key?('memory') ? vm_setup['memory'] : '1024'
     end
 
     if (vm_setup && vm_setup.is_a?(Hash))
@@ -204,7 +205,7 @@ module VagrantManager
       # forwarded ports
       network = vm_setup.has_key?('network') ? vm_setup['network'] : []
       network.each do |n|
-        h = Vuppeteer::sym_keys(n[1])
+        h = MrUtils::sym_keys(n[1])
         @vm_configs[label].network n[0], h 
       end
 
@@ -212,7 +213,7 @@ module VagrantManager
       # shared folders
       shared = vm_setup.has_key?('synced_folder') ? vm_setup['synced_folder'] : []
       shared.each do |s|
-        h = Vuppeteer::sym_keys(s[2])
+        h = MrUtils::sym_keys(s[2])
         #TODO warn if there is no explicit type:
         st = s[1].is_a?(String) ? s[1] : self._lookup(s[1], label)
         @vm_configs[label].synced_folder s[0], s[1], h 
