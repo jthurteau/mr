@@ -17,9 +17,10 @@ module Collections
     @collection_source[w] = sc_name if sc_name
   end
 
-  def self.provision(v, source = nil)
+  def self.provision(v, which = nil)
     #TODO add source? even if @collections_added?
-    if (@collections_requested && !@collections_added)
+    which = :default if v.nil? || !@collections_requested.has_key?(which)
+    if (@collections_requested[which] && !@collections_added)
         v.provision "software_collections", type: :shell, run: self.run_when() do |s|
           s.inline = ElManager::is_it?() ? ElManager::sc_commands() : self.commands()
         end

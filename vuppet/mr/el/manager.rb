@@ -21,7 +21,6 @@ module ElManager
   @cred_type = [nil, :org, :user][0] #TODO switch this for multi-vm
   @fallbox = 'generic/fedora28'
   @ident = {default: nil}
-  @sc = {default: nil}  
   @fedora_translate = {'8' => '28', '7' => '24'}
   @scripts = {
     default: {
@@ -119,7 +118,7 @@ module ElManager
     else
       box = "#{@box[:default]}:#{@el_version[:default]}"
       Vuppeteer::say("ElManager pre-setup config reports: #{box} " + @ident[:default].to_s) if Vuppeteer::enabled?(:debug)
-      Collections::request(Vuppeteer::get_fact('software_collection', @sc))
+      Collections::request(Vuppeteer::get_fact('software_collection'))
     end
   end
 
@@ -193,11 +192,12 @@ module ElManager
     @singletons[:default].view()
   end
 
-  def self.is_it?(w = :default)
+  def self.is_it?(w = :default) #TODO this needs work
     #Vuppeteer::trace('testing rhel status', w, @singletons.has_key?(w))
     w = :default if !@singletons.has_key?(w)
-    #Vuppeteer::trace('rhel status', w,  @singletons, @singletons.has_key?(w))
-    @singletons[w] != nil
+    v = @box.has_key?(w) ? w : :default 
+    #Vuppeteer::trace('rhel status', w,  @singletons, @singletons.has_key?(w),@box,v)
+    @box[v] != @fallbox && @singletons[w] != nil
   end
 
   def self.validate_vms(facts)
@@ -237,13 +237,13 @@ module ElManager
     vms = VagrantManager::get_vm_configs(vms) if vms.is_a?(Array)
     #Vuppeteer::trace('registering vms...')
     vms.each() do |n, v|
-      Vuppeteer::trace('processing', n)
+      Vuppeteer::trace('processing', n, self.is_it?(n))
       cors = Vuppeteer::get_fact('org_domain') #TODO this could be different per VM
-      app = ''
-      developer = ''
+      machine_id = ''
+      developer = Vuppeteer::fact?('developer') ? Vuppeteer::get_fact('developer') : ''
       Network::throttle_set(Vuppeteer::get_fact('guest_throttle', nil))
       Network::cors_set(cors) #app = nil, developer = nil
-      Network::passthrough_host(v, VagrantManager::get(:trigger), app, developer)
+      Network::passthrough_host(v, VagrantManager::get(:trigger), machine_id, developer)
       self._box_destroy_prep(n, self.is_it?(n))
       if (self.is_it?(n))
         #Vuppeteer::trace('registering', n, VagrantManager::plugin_managing?(:registration, n))
@@ -288,7 +288,7 @@ module ElManager
         end
       end
 
-      Collections::provision(v) #TODO this may be deprecated since it is tied to RHEL7?
+      Collections::provision(v, n) #TODO this may be deprecated since it is tied to RHEL7?
     end
   end
 
@@ -309,7 +309,7 @@ module ElManager
     when :registration
       ident = MrUtils::sym_keys(@ident.has_key?(which) ? @ident[which] : @ident[:default])
       mode = self.ready_to_register(ident)
-      Vuppeteer::trace('configuring', mode, ident)
+      Vuppeteer::('configuring', mode, ident)
       prefix = ident.has_key?(:prefix) ? ident[:prefix] : ''
       case mode
       when :user
