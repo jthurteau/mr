@@ -283,6 +283,12 @@ module Facts
     return if !user_facts
     Vuppeteer::report('facts', '_main', '~developer')
     self._set(self._filter(user_facts, @local_only_facts + @option_only_facts), '~developer')
+    if (@facts.include?('developer_sensitive'))
+      s = MrUtils::enforce_enumerable(@facts['developer_sensitive'])
+      s.each() do |v|
+        Vuppeteer::mark_sensitive(@facts[v]) if @facts.include?(v)
+      end
+    end
   end
 
   def self._stack_facts()

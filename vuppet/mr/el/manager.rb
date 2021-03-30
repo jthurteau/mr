@@ -17,6 +17,7 @@ module ElManager
   @el_data = nil
   @el_version = {default: '8', null: '8'}
   @box = {default: 'generic/rhel8', null: 'generic/rhel8'}
+  @default_license =  'rhel8-dev'
   @cred_type = [nil, :org, :user][0] #TODO switch this for multi-vm
   @fallbox = 'generic/fedora28'
   @ident = {default: nil}
@@ -346,13 +347,12 @@ module ElManager
   def self._detect_ident()
     @el_data = Vuppeteer::load_facts(@conf_source, 'Notice:(EL Configuration)')
     license = self._negotiate()
+    @box[:default] = @fallbox if !license
     el_license = @el_data && license && @el_data.has_key?(license) ? @el_data[license] : nil
-    # if(!el_license)
-    #   el_data = Vuppeteer::load_facts('::licenses', false)
-    #   el_license = el_data && license && el_data.has_key?(license) el_data[license] ? : nil
-    # end
-    self._sign(el_license)
-    @ident[license] = el_license if !el_license.nil?
+    if el_license
+      self._sign(el_license) if el_license
+      @ident[license] = el_license if el_license
+    end
     el_license
   end 
 
@@ -373,12 +373,15 @@ module ElManager
     # x = Vuppeteer::get_fact('developer_licenses')
     # x = Vuppeteer::get_fact('box_hit')
     # x = Vuppeteer::get_fact('license')
-    s = license_important && l ? l : (d ? d : l)
-    Vuppeteer::say("ElManager: Selected license #{s}", :prep) if Vuppeteer::enabled?(:verbose)
+    s = license_important && l ? l : (d ? d : @default_license)
+    s_string = s.nil? ? 'none' : s
+    Vuppeteer::say("ElManager: Selected license: #{s_string}", :prep) if Vuppeteer::enabled?(:verbose)
     s
   end
 
   def self._sign(l)
+    return if l.nil?
+    Vuppeteer::say('Notice: Mr signing EL License') if Vuppeteer::enabled?(:verbose)
     prefix = l.has_key?('cred_prefix') ? l['cred_prefix'] : @cred_prefix
     custom_keys = l.has_key?('cred_keys') ? MrUtils::enforce_enumerable(l['cred_keys']): nil
     default_keys = custom_keys.nil? ? @cred_keys.map {|k| "#{prefix}#{k}"} : nil;
@@ -459,6 +462,7 @@ module ElManager
   end
 
   def self._suffix(data)
+    #Vuppeteer::trace('building suffix, data:' , data)
     d = data.has_key?('developer') ? "-#{data['developer']}" : ''
     o = data.has_key?('org') ? "-#{data['org']}" : ''
     b = data.has_key?('box_source') ? data['box_source'] : @box[:default]
