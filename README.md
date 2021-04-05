@@ -206,6 +206,17 @@ There are a variety of ways stack tags can be cusomized to futher refine the beh
 
 ### Procedural Facts
 
+Mr supports several types of Procedural build facts, the first is "requirements" which are facts that must be defined and non-nil after all buils facts have been loaded.
+
+The "requirements" option passed to Mr may be a string, or an array of strings. Any non-nil value will satify the requirement.
+
+More robust fact validation is possible using "asserts". The basic syntax of an assert is a hash where the keys match keys in the build facts and the values are literals that match the generated value. If the value is a hash with any symbol keys, it is parsed as a "match config" instead.
+
+Both asserts and requirements support a single string option (for asserts the string is mapped as the required value for the the "project" fact). Aside from that, requirements must be defined as an array (since they accept no value for each required key) and asserts must be defined as a Hash since they expect some match criteria for each key.
+
+Aside from testing requirements and asserts, Mr can also generate facts procedurally using the "generated" option. Generated facts are also passed as a Hash and use the same "match config" syntax to define behavior for procedurally generating facts. The most common example is using generated facts to create a unique random password and other secrets for provisioning applications. Generated facts are stored in the "instance facts" when they are not derived from other project facts in a way that can be reproduced, e.g. random facts are always stored.
+
+
 ## Build Maturity
 
 ## Mr Environment Replication Tools
@@ -314,6 +325,7 @@ By default, Mr expects a single-VM, project or app based build. If neither the '
 
 - disabled, the default Mr behavior in a single VM project is enabled, but it can be disabled (for all VMs) by setting the 'disabled' fact. This allows Mr to spin-up, but it will not run any provisioners, triggers, or helpers. Any provisioners defined in the Vagrantfile will still run as if it were a normal Vagrantfile, this setting prevents Mr from attaching to the vagrant object passed to it in the Mr::vagrant call.
 - bypass_puppet, instructs Mr to run as normal, except the 'puppet' provisioner will not run. (it will perform 'puppet-prep' as normal however.)
+- test_puppet, defaults to false. instructs Mr to build manifests/hiera for puppet when bypass_puppet is true
 - standalone, forces single VM mode and further simplifies the logic for the vm_name
 - project, forces single VM mode and names the project being managed by Mr, see 'Bundling' for how this manages behavior
 - app, forces single VM mode and names the application being managed by Mr, see 'Bundling' for how this manages behavior
@@ -355,6 +367,7 @@ By default, Mr expects a single-VM, project or app based build. If neither the '
 - project_repos, list of host and remote files to mirror into the local provisioner (See "Project Repos")
 - helpers, list of helper provisioners to add automatically, unlike some most other facts, the helpers from different sources are set to "merge"  by default.
 - guest_throttle, bandwidth limit shared across all VMs. this feature only works when load_instance_facts is true (the default value)
+  - note that this can be dicey since since detection of existing throttle settings isn't resolved yet. If the initual `vagrant up` fails before the VM is created you may need to remove "vbox_throttle" from local-dev.instance.yaml since Mr thinks the bandwidth group exists when it does not.
 - puppet_fact_source, source to load facts for PuppetManager to use in puppet_apply, defaults to '::' which is 
 - puppet_config_source, source to load configuration for PuppetManager, defaults to puppet.yaml
 - vagrant_config_source, source to load configuration for VagrantManager, defaults to vagrant.yaml

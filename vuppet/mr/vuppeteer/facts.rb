@@ -82,7 +82,7 @@ module Facts
 
   def self.post_stack_init() #NOTE additional steps that have to happen after stack init
     self._stack_facts() if Vuppeteer::enabled?(:stack)
-    self.ensure_facts(@generate)
+    self.ensure(@generate)
     self._validate_requirements()
   end
 
@@ -126,35 +126,28 @@ module Facts
     return !result.nil? ? result : default
   end
 
-
-
-  def self.asserts(f) #TODO support additional types of asserts (like in/include, not_nil, class etc.)
-    Vuppeteer::shutdown('Error: Non-hash passed as asserts.', -1) if !f&.respond_to?(:to_h)
-    f.each do |k, v|
-      @requirements.push({k => v}) 
-    end
-  end
-
   def self.requirements(r = nil)
-    if (r.class.is_a?(Hash))
-      r.each do |k, v| 
-        @requirements += [[k] + MrUtils::enforce_enumerable(v)]
-      end
-    elsif (r.class.is_a?(Array))
+    Vuppeteer::shutdown('Error: Non-array passed as requirements.', -1) if !r.is_a?(Array)
+    if (!r.nil?) 
       r.each do |v|
         @requirements += [v]
       end
-    elsif !r.nil?
-      @requirements += [r]
     end
     @requirements
+  end
+
+  def self.asserts(f) #TODO support additional types of asserts (like in/include, not_nil, class etc.)
+    Vuppeteer::shutdown('Error: Non-hash passed as asserts.', -1) if !f.is_a?(Hash)
+    f.each do |k, v|
+      @requirements.push({k => v}) 
+    end
   end
 
   def self.register_generated(f)
     @generate = @generate.merge(f)
   end
 
-  def self.ensure_facts(f) #TODO in general
+  def self.ensure(f)
     #Vuppeteer::trace('ensure facts', f)
     missing = {}
     storable = []
@@ -297,7 +290,7 @@ module Facts
     fact_sources.each do |f|
       self._handle(f)
     end
-    Vuppeteer::say(Vuppeteer::report('stack'), :prep)
+    Vuppeteer::say(Vuppeteer::report('stack_facts'), :prep)
   end
 
   def self._validate_requirements()
@@ -305,7 +298,7 @@ module Facts
     begin
       errors = VuppeteerUtils::verify(@requirements, @facts)
     rescue => e
-      Vuppeteer::shutdown(e.is_a(String) ? e : e.to_s, e.is_a?(String) ? 3 : -3)
+      Vuppeteer::shutdown(e.is_a?(String) ? e : e.to_s, e.is_a?(String) ? 3 : -3)
     end
     #Vuppeteer::trace(errors) if errors.length > 0
     error_label = errors.length > 2 ? 'validation errors' : 'valication error'
@@ -326,12 +319,14 @@ module Facts
     if (File.file?(fact_file) && File.readable?(fact_file))
       new_facts = FileManager::load_fact_yaml(fact_file, false)
       if new_facts.nil?
-        Vuppeteer::report('stack', s, "invlid.#{type}")
+        Vuppeteer::report('stack_facts', s, "invalid.#{type}")
         return
       end
       self._set(new_facts, "#{s}.yaml") #TODO #1.1.0 handle stack merge flags before passing?
+    else
+      type = 'absent'
     end
-    Vuppeteer::report('stack', s, type)
+    Vuppeteer::report('stack_facts', s, type)
   end
 
 end

@@ -30,11 +30,12 @@ module Manifests
       Vuppeteer::say("building #{@manifest}", :prep)
       #ldm_file.truncate(ldm_file.pos + 1)
       ldm_file.truncate(ldm_file.pos)
-      ppp_final = Vuppeteer::get_stack() + ["#{FileManager::localize_token()}.instance"]
+      ppp_final = Vuppeteer::get_stack(:manifest) + ["#{FileManager::localize_token()}.instance"]
       required_modules = Hiera::required_modules()
       needed_modules = []     
       ppp_final.each do |pp|
         needed_modules = needed_modules + self._manifest(pp, ldm_file)
+        #Vuppeteer::trace('needed after', pp, needed_modules)
       end
       needed_modules.each do |m|
           required_modules.push(m) if !required_modules.include?(m)
@@ -73,7 +74,7 @@ module Manifests
     @manifest
   end
 
-  def self.select(facet)
+  def self.source(facet)
     l = self.local(facet)
     p = self.project(facet)
     g = self.global(facet)
@@ -81,24 +82,28 @@ module Manifests
     return l if File.exist?(l)
     return p if File.exist?(p)
     return g if !Vuppeteer::external? && File.exist?(g)
-    return e if !Vuppeteer::external? && File.exist?(e)
+    return e if Vuppeteer::external? && File.exist?(e)
     nil
   end
 
-  def self.local(facet)
-    l = "#{Mr::active_path()}/#{FileManager::localize_token()}.manifests/#{facet}.pp"
+  def self.local(facet = nil)
+    file = facet ? "/#{facet}.pp" : ''
+    l = "#{Mr::active_path()}/#{FileManager::localize_token()}.manifests#{file}"
   end
 
-  def self.project(facet)
-    p = "#{Mr::active_path()}/manifests/#{facet}.pp"
+  def self.project(facet = nil)
+    file = facet ? "/#{facet}.pp" : ''
+    p = "#{Mr::active_path()}/manifests#{file}"
   end
 
-  def self.global(facet)
-    g = "#{Mr::active_path()}/global.manifests/#{facet}.pp"
+  def self.global(facet = nil)
+    file = facet ? "/#{facet}.pp" : ''
+    g = "#{Mr::active_path()}/global.manifests#{file}"
   end
 
-  def self.external(facet)
-    e = "#{Vuppeteer::external_path}/manifests/#{facet}.pp" 
+  def self.external(facet = nil)
+    file = facet ? "/#{facet}.pp" : ''
+    e = "#{Vuppeteer::external_path}/manifests#{file}" 
   end
 
 #################################################################
@@ -106,41 +111,35 @@ module Manifests
 #################################################################
 
   def self._manifest(s, ldm_file)
-    needed_modules = []
-    return [] if s.include?('.') && !s.end_with?('.pp')
-    s = s[0..-4] if s.end_with?('.pp')
-    manifest_source = self.select(s)
-    defer_to_hiera = false
-    if (manifest_source)
-      defer_to_hiera = self._defer_to_hiera(s)
-      if (!defer_to_hiera)
-        report_label = self._label(manifest_source)
-        Vuppeteer::report('manifest', s, label)
-        ldm_file.write(source)
-        source = File.read(manifest_source)
-        needed_modules = self.scan_modules(manifest_source)
-        return needed_modules
-      end
-    end
-    if (defer_to_hiera)
-      Vuppeteer::report('hiera', s, 'hiera') #TODO this is moving
-      ldm_file.write("\n\r# #{s} handled in hiera \n\r")
+    needed_modules = [] #TODO push this up a level so we don't look up hiera each time?
+    if (self._defer_to_hiera(s))
+      hiera_exists = Hiera::source(s)
+      Vuppeteer::report('stack_manifest', s, hiera_exists ? 'hiera' : 'skipped')
+      ldm_file.write("\n# #{s} handled in hiera \n") if hiera_exists
       modules = Hiera::scan_modules(s)
       modules.each do |m|
         needed_modules.push(m)
       end
-      Hiera::handle(s)
       return needed_modules
     end
-    Vuppeteer::report('manifest', s, 'absent')
+    manifest_source = self.source(s)
+    if (manifest_source)
+      Vuppeteer::report('stack_manifest', s, self._label(manifest_source))
+      source_contents = File.read(manifest_source)
+      ldm_file.write("\n\#\#\n\# from #{manifest_source}:\n#{source_contents}")
+      needed_modules = self.scan_modules(manifest_source)
+      return needed_modules
+    end
+    #Vuppeteer::trace('testing manifest', s, self._defer_to_hiera(s), self.source(s), self.external(s), File.exist?(self.external(s)), self.global(s), self.project(s),self.local(s))
+    Vuppeteer::report('stack_manifest', s, 'absent')
     return []
   end
 
   def self._label(file)
-    return 'local' if file == self.local(s)
-    return 'project' if file == self.project(s)
-    return 'global' if file == self.global(s)
-    return 'external' if file == self.external(s)
+    return 'local' if file.start_with?(self.local())
+    return 'project' if file.start_with?(self.project())
+    return 'global' if file.start_with?(self.global())
+    return 'external' if file.start_with?(self.external())
     return nil
   end
 
@@ -148,12 +147,18 @@ module Manifests
     l = self.local(s)
     p = self.project(s)
     g = self.global(s)
-    e = self.exernal(s) 
+    e = self.external(s) 
+    # Vuppeteer::trace('testing hiera defer', s, {
+    #   l: [l,File.exist?(l),Hiera::local_override?(s)], 
+    #   p: [p,File.exist?(p),Hiera::project_override?(s)], 
+    #   g: [g,!Vuppeteer::external? && File.exist?(g),Hiera::global_override?(s)], 
+    #   e: [e, Vuppeteer::external? && File.exist?(e),Hiera::external_override?(s)]
+    # })
     return Hiera::local_override?(s) if File.exist?(l)
     return Hiera::project_override?(s) if File.exist?(p)
     return Hiera::global_override?(s) if !Vuppeteer::external? && File.exist?(g)
-    return Hiera::external_override?(s) if !Vuppeteer::external? && File.exist?(e)
-    return false
+    return Hiera::external_override?(s) if Vuppeteer::external? && File.exist?(e)
+    return true
   end
 
 end

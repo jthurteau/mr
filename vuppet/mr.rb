@@ -196,13 +196,13 @@ module Mr
           else
             Vuppeteer::shutdown("Error: Invalid facts option passed in configuration")
           end
-        when :generated
-          Vuppeteer::register_generated(v)
+        when :require
+          Vuppeteer::add_requirements(MrUtils::enforce_enumerable(v))
         when :assert
           Vuppeteer::add_asserts(v) if !v.is_a?(String)
           Vuppeteer::add_asserts({'project' => v}) if v.is_a?(String)
-        when :require
-          Vuppeteer::add_requirements(v)
+        when :generated
+          Vuppeteer::register_generated(v)
         when :load_stack_facts
           Vuppeteer::disable(:stack) if !v
         when :load_local_facts

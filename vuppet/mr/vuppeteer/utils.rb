@@ -116,7 +116,13 @@ module VuppeteerUtils
 
   def self.storable?(method)
     #Vuppeteer::trace(method)
-    return method.is_a?(Hash) || @storable.include?(method)
+    lookup_method = method.is_a?(Hash) && method.include?(:method) ? method[:method] : method
+    return lookup_method.is_a?(Symbol) && @storable.include?(lookup_method)
+  end
+
+  def self.matchable?(method)
+    lookup_method = method.is_a?(Hash) && method.include?(:method) ? method[:method] : method
+    return lookup_method.is_a?(Symbol) && @storable.include?(lookup_method)
   end
 
   def self.verify(list, check, checked = [])
@@ -125,11 +131,15 @@ module VuppeteerUtils
     list.each do |r|
         if (r.is_a?(Hash))
           r.each do |k, v|
-            result = check.has_key?(k) && v == check[k] #Facts::get(k) != v
-            # raise "Error: duplicate conflicting assert for #{k}." if
-            errors.push("Error: missing asserted fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if !result && !check.has_key?(k)
-            errors.push("Error: fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if !result && check.has_key?(k)
-            checked.push(k)
+            if (self.matchable?(v))
+
+            else
+              result = check.has_key?(k) && v == check[k] #Facts::get(k) != v
+              # raise "Error: duplicate conflicting assert for #{k}." if
+              errors.push("Error: missing asserted fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if !result && !check.has_key?(k)
+              errors.push("Error: fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if !result && check.has_key?(k)
+              checked.push(k)
+            end
           end
         elsif (r.is_a?(Array))
           errors += self.verify(r, check, checked)
@@ -152,23 +162,12 @@ module VuppeteerUtils
     return false; #TODO self.validate(value,config) ?
   end
 
-  def self.generate(list, method = nil)
-    return self._generate(list) if method.nil?
-    generated_hash = {}
-    hash.each do |k,v|
-      generated_hash[k] = self._generate(method, v)
+  def self.generate(list)
+    result = {}
+    m.each() do |k, m|
+       result[k] = self._calculate(m, k)
     end
-    generated_hash
-  #   @derived.each() do |d,f|
-  #     if (self.fact?(f) && !self.fact?(d))
-  #       @facts[d] = @facts[f]
-  #       Vuppeteer::say("Setting derived fact #{d} from #{f}", :prep)
-  #     elsif (!self.fact?(f))
-  #       Vuppeteer::say("Cannot set derived fact #{d}, #{f} not set", :prep)
-  #     else
-  #       Vuppeteer::say("Skipping derived fact #{d}, already set", :prep)
-  #     end
-  #   end
+    return result
   end
 
   def self.filter_sensitive(s, f)
@@ -234,22 +233,7 @@ module VuppeteerUtils
   #################################################################
   
     def self._generate(m, c = {})
-      #Vuppeteer::trace('generate', m, c)
-      if (m.is_a?(Hash))
-        result = c
-        m.each() do |k, v|
-           result[k] = self._calculate(v, k)
-        end
-        return result
-      end
-      case m.respond_to?('to_sym') ? m.to_sym : nil
-      when :random, nil
-        self.rand(c)
-      when :derived
-        self._calculate(c)
-      else
-        self.rand(c)
-      end
+
     end
 
     def self._calculate(m, k)

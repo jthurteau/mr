@@ -209,11 +209,11 @@ module FileManager
   end
 
   def self.clean_path?(p)
-    Paths::clean_path?(p)
+    Paths::clean?(p)
   end
 
   def self.repo_path?(p)
-    Repos::repo_path?(p)
+    Repos::path_is?(p)
   end
 
   def self.host_repo_path
@@ -222,6 +222,10 @@ module FileManager
 
   def self.copy_unique(from, to)
     self._copy_unique(from, to) #TODO this has been moved around a lot, so clean up?
+  end
+
+  def self.managed_path?(p)
+    Paths::managed?(p)
   end
 
   #################################################################

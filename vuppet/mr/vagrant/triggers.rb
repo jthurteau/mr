@@ -55,6 +55,7 @@ module Triggers
 
   def self.register!(v)
     return if(@registered)
+    self._common_after(v)
     v.trigger.before [:up] do |trigger|
       trigger.name = 'Mr: Before Up Handler'
       trigger.ruby do |env, machine|
@@ -165,6 +166,20 @@ module Triggers
       end
     end
     Vuppeteer.say(distinct)
+  end
+
+#################################################################
+private
+#################################################################
+
+  def self._common_after(v)
+    return if !Mr::enabled?
+    v.trigger.after [:up, :provision, :reload, :resume, :destroy] do |trigger|
+      trigger.info = 'Checking, are Strings Attached?'
+      trigger.ruby do |env, machine| #TODO this isn't setup for multi-vm yet
+        Vuppeteer::say(Vuppeteer::report('bash'), :prep) if Vuppeteer::enabled?(:verbose)
+      end
+    end
   end
 
 end

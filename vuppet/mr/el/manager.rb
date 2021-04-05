@@ -215,7 +215,7 @@ module ElManager
       vms = MrUtils::enforce_enumerable(self.get('vms'))
       if (vms.is_a?(Array)) 
         vms.each() do |c|
-          c = Vuppeteer::load_facts(c, "VM Config #{c}") if c.is_a(String)
+          c = Vuppeteer::load_facts(c, "VM Config #{c}") if c.is_a?(String)
           v = c.is_a?(Hash) && c.has_key?('vm_name') ? c['vm_name'] : FileManager::facet_split(c)[0].gsub('/', '-')
           if self.has?(v)
             Vuppeteer.say("Warning: duplicate vm build generated for #{v}", :prep)

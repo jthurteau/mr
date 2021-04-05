@@ -143,7 +143,7 @@ module Modules
     #module_source = tokenize parent dirs too for further differentiation when needed
     local_mirror_path = "#{self.host_module_path()}/#{module_name}"
     FileManager::path_ensure(local_mirror_path, FileManager::allow_dir_creation?)
-    if (FileManager::clean_path?(local_mirror_path))
+    if (FileManager::clean_path?(local_mirror_path)) #TODO move this into FileManager? Paths?
       # Vuppeteer::trace("cp -r #{path}/* #{local_mirror_path}")
       # exit
       @commands[vm_group]['local_install'].push("cp -r #{path}/* #{local_mirror_path}")

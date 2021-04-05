@@ -17,6 +17,8 @@ module Stack
       next if !s || s.strip() == ''
       @ppp.push(s);
     end
+    @ppp.unshift("project-#{Vuppeteer::get_fact('project')}") if Vuppeteer::fact?('project')
+    @ppp.unshift("app-#{Vuppeteer::get_fact('app')}") if Vuppeteer::fact?('app')
   end
 
   def self.get(options = false) #TODO the extention
@@ -53,7 +55,7 @@ module Stack
       return extension_free
     end
     if (filter.length > 0)
-      search.filter!() {|s| !s.include?('/') || filter.any() {|f| s.start_with?(f)}}
+      search.filter!() {|s| !s.include?('/') || filter.any?() {|f| s.start_with?(f)}}
     end
     self._base(search)
   end

@@ -85,7 +85,7 @@ module MrUtils
   end
 
   def self.clean_whitespace(a)
-    return if a.is_a(String)
+    return if a.is_a?(String)
     if a.class.include?(Enumerable)
       n = []
       a.each do |l|

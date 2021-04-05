@@ -37,7 +37,7 @@ module VagrantManager
     @setup[:default] = @setup[:null].clone if @setup[:default].nil?
     return if !Mr::enabled?
     Vuppeteer::say('')
-    if (!@features[:vb_middleware])
+    if (!@features[:vb_middleware] && Vagrant.has_plugin?('vbguest'))
       @vagrant.vbguest.auto_update = false
     end
     @vagrant.vagrant.sensitive = Vuppeteer::get_sensitive() 
@@ -116,7 +116,7 @@ module VagrantManager
     Triggers::register!(@vagrant) if Mr::enabled?
   end
   
-  def self.host_pre_puppet_triggers()
+  def self.host_pre_puppet_triggers() #TODO move int into Triggers::?
     return if !Mr::enabled?
     @vagrant.trigger.before [:up, :provision, :reload, :resume] do |trigger|
       trigger.info = 'Checking, are Strings Attached?'
@@ -175,7 +175,7 @@ module VagrantManager
 
   def self._config(label)
     @vm_configs[label].box = ElManager::box(label)
-    Vuppeteer::trace('configuring', label, ElManager::box(label))
+    #Vuppeteer::trace('configuring', label, ElManager::box(label))
     if (label.nil? || !@setup.include?(label))
       vm_string = label.nil? ? 'vm' : "vm:#{label}" 
       Vuppeteer::say("Notice: No custom vagrant configuration for #{vm_string} detected, using default setup")

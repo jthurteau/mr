@@ -54,12 +54,12 @@ module Repos
           {cmd: "cp -r #{r_uri}/* #{project_repo_path}", when: :prep}
         ])
         Vuppeteer::say("#{r_uri} project repo, is not managed by mr_rogers (perform pull, branch, ect. manually).", :prep)
-      elsif (self.clean_path?(project_repo_path))
+      elsif (FileManager::clean_path?(project_repo_path))
         Vuppeteer::perform_host_commands([
           {cmd:"git clone #{self.secure_repo_uri(r_uri)} #{project_repo_path}"}
         ])
         self.branch(project_repo_path, self.repo_uri_branch(r_uri)) if (self.repo_uri_branch(r_uri) != '')
-      elsif (self.repo_path?(project_repo_path)) 
+      elsif (self.path_is?(project_repo_path)) 
         self.branch(project_repo_path, self.repo_uri_branch(r_uri)) if (self.repo_uri_branch(r_uri) != '')
         Vuppeteer::perform_host_commands([{path: project_repo_path, cmd:'git pull', when: :prep}])
       else
@@ -115,7 +115,7 @@ module Repos
     Vuppeteer::perform_host_commands([{path: repo_path, cmd: "git checkout #{branch}", when: :prep}])
   end
 
-  def self.repo_path?(path)
+  def self.path_is?(path)
     File.exist?("#{path}/.git")
   end
 

@@ -39,4 +39,4 @@ module_versions:
 #no compat version
 #  puppet-ruby: '0.0.0'
 derived_facts:
-  app_handle: 'app'
+  app_handle: ['app', 'project']

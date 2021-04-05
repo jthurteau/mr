@@ -11,7 +11,6 @@ module Hiera
   @file = 'vagrant.yaml'
   @source_template = 'hiera.erb'
   @node_target = 'common.yaml'
-  @deferred_manifests = []
   @required_modules = []
   @hiera_data = {default:{},}
 
@@ -38,7 +37,7 @@ module Hiera
 
   def self.local_override?(facet)
     return false if !Vuppeteer::enabled?(:hiera)
-    l = "#{Mr::active_path()}/#{FileManager::localize_token}.facts/#{facet}.hiera"
+    l = "#{Mr::active_path()}/#{FileManager::localize_token}.hiera/#{facet}"
     [l, "#{l}.yaml"].each do |f|
       return true if File.exist?(f)
     end
@@ -47,7 +46,7 @@ module Hiera
 
   def self.project_override?(facet)
     return false if !Vuppeteer::enabled?(:hiera)
-    p = "#{Mr::active_path()}/facts/#{facet}.hiera"
+    p = "#{Mr::active_path()}/hiera/#{facet}"
     [p, "#{p}.yaml"].each do |f|
       return true if File.exist?(f)
     end
@@ -56,7 +55,7 @@ module Hiera
 
   def self.global_override?(facet)
     return false if !Vuppeteer::enabled?(:hiera) || Vuppeteer::external?()
-    g = "#{Mr::active_path()}/global.facts/#{facet}.hiera"
+    g = "#{Mr::active_path()}/global.hiera/#{facet}"
     path = 
     [g, "#{g}.yaml"].each do |f|
       return true if File.exist?(f)
@@ -66,7 +65,7 @@ module Hiera
 
   def self.external_override?(facet)
     return false if !Vuppeteer::enabled?(:hiera) || !Vuppeteer::external?()
-    e = "#{Vuppeteer::external_path}/facts/#{facet}.hiera"
+    e = "#{Vuppeteer::external_path}/hiera/#{facet}"
     [e, "#{e}.yaml"].each do |f|
       #Vuppeteer::say("checking for #{facet}, #{f}")
       return true if File.exist?(f)
@@ -74,12 +73,10 @@ module Hiera
     false
   end
 
-  def self.handle(facet)
-    @deferred_manifests.push(facet)
-  end
-
   def self.scan_modules(facet)
     file = self.source(facet)
+    #TODO handle multiple files as intended...
+    #Vuppeteer::trace('scanning hiera file', facet, file)
     return [] if !file
     lines = FileManager::scan(file, '@requires')
 #    Vuppeteer::say([__FILE__,__LINE__,facet, lines].to_s)
@@ -87,7 +84,7 @@ module Hiera
     lines.each() do |l|
       modules.push(l.split(','))
     end
-    MrUtils::clean_whitespace(modules.flatten()) #TODO file utils maybe?
+    MrUtils::clean_whitespace(modules.flatten())
   end
 
   def self.required_modules()
@@ -95,14 +92,14 @@ module Hiera
   end
 
   def self.source(facet)
-    l = "#{Mr::active_path()}/#{FileManager::localize_token}.facts/#{facet}.hiera"
-    p = "#{Mr::active_path()}/facts/#{facet}.hiera"
-    g = "#{Mr::active_path()}/global.facts/#{facet}.hiera"
-    e = "#{Vuppeteer::external_path}/facts/#{facet}.hiera"
-    return FileManager::first_match([p, "#{p}.yaml"]) if self.project_override?(facet) #TODO these should be refactorable...
+    l = self.local(facet)
+    p = self.project(facet)
+    g = self.global(facet)
+    e = self.external(facet)
+    return FileManager::first_match([p, "#{p}.yaml"]) if self.project_override?(facet)
     return FileManager::first_match([l, "#{l}.yaml"]) if self.local_override?(facet)
-    return FileManager::first_match([g, "#{g}.yaml"]) if self.global_override?(facet)
-    return FileManager::first_match([e, "#{e}.yaml"]) if self.external_override?(facet)
+    return FileManager::first_match([g, "#{g}.yaml"]) if !Vuppeteer::external? && self.global_override?(facet)
+    return FileManager::first_match([e, "#{e}.yaml"]) if Vuppeteer::external? && self.external_override?(facet)
     nil
   end
 
@@ -111,19 +108,20 @@ module Hiera
       Vuppeteer::say('Notice: Hiera support disabled', :prep)
       return nil
     end
-    #Vuppeteer::trace('generating Hiera files', @local_path, @remote_path)
+    stack = Vuppeteer::get_stack(:hiera) + ["#{FileManager::localize_token()}.instance"]
     FileManager::clear!(@local_path)
     data_path = "#{@local_path}/data"
     FileManager::path_ensure(data_path, true)
     files = self._generate()
     handled_f = []
-    @deferred_manifests.each do |f|
+    stack.each do |f|
       next if handled_f.include?(f)
       handled_f.push(f)
       file = self.source(f)
-      #Vuppeteer::say("Notice : Hiera #{file} #{self.local_override?(facet).to_s }for #{f}")
-      Vuppeteer::say("Warning: unable to source Hiera data for #{f}") if !file
-      
+      if (!file)
+        Vuppeteer::report('stack_hiera', f, 'unavailable')
+        next
+      end
       copied_files = FileManager::copy_unique(file, "#{data_path}/#{f}")
       # print copied_files.to_s + "\n"
       copied_files.each() do |c|
@@ -136,14 +134,17 @@ module Hiera
               files.push("#{c_base}")
             else
               Vuppeteer::say("Notice: no facts in hiera file \"#{c}\", skipping")
+              Vuppeteer::report('stack_hiera', f, "empty.#{self._label(file)}")
             end
           rescue SystemCallError => e #TODO handle yaml parse errors
             malformed = "unable to load facts in hiera file \"#{c}\",#{e.to_s}, skipping"
             # print e.to_s + " \n\r"
             Vuppeteer::say("Notice: #{malformed}")
+            Vuppeteer::report('stack_hiera', f, "invalid.#{self._label(file)}")
           end
         end
       end
+      Vuppeteer::report('stack_hiera', f, self._label(file))
     end
     erb_source = FileManager::path(:template, @source_template)
     if (!erb_source || !File.exist?("#{erb_source}/#{@source_template}")) 
@@ -163,11 +164,29 @@ module Hiera
     #TODO write a merged summary YAML of all data in hierarchy files (template to got o production puppet)
   end
 
+  def self.local(facet = nil)
+    file = facet ? "/#{facet}" : ''
+    l = "#{Mr::active_path()}/#{FileManager::localize_token()}.hiera#{file}"
+  end
+
+  def self.project(facet = nil)
+    file = facet ? "/#{facet}" : ''
+    p = "#{Mr::active_path()}/hiera#{file}"
+  end
+
+  def self.global(facet = nil)
+    file = facet ? "/#{facet}" : ''
+    g = "#{Mr::active_path()}/global.hiera#{file}"
+  end
+
+  def self.external(facet = nil)
+    file = facet ? "/#{facet}" : ''
+    e = "#{Vuppeteer::external_path}/hiera#{file}" 
+  end
+
   def self.view(files)
     Hiera.new(@remote_path, files).view()
   end
-
-
 
 #################################################################
   private
@@ -184,6 +203,14 @@ module Hiera
         end
     end
     files
+  end
+
+  def self._label(file)
+    return 'local' if file.start_with?(self.local())
+    return 'project' if file.start_with?(self.project())
+    return 'global' if file.start_with?(self.global())
+    return 'external' if file.start_with?(self.external())
+    return nil
   end
 
   class Hiera 

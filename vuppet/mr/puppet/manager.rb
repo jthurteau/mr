@@ -5,6 +5,8 @@
 module PuppetManager
   extend self
 
+  require 'date'
+
   require_relative 'manifests'
   require_relative 'modules'
   require_relative 'hiera'
@@ -28,7 +30,16 @@ module PuppetManager
       end
       mv = @conf.has_key?('module_versions') && @conf['module_versions'].is_a?(Hash)
       Modules::set_versions(@conf['module_versions']) if mv
-      Vuppeteer::add_derived(@conf['derived_facts']) if @conf['derived_facts']
+      if (@conf['derived_facts'])
+        if (@conf['derived_facts'].is_a?(Hash)) 
+          @conf['derived_facts'].each() do |f, m|
+            Vuppeteer::trace('puppet derived', f, m)
+            Vuppeteer::ensure_facts({f => {method: :derived, m})
+          end
+        else
+          Vuppeteer::say('Warning: Derived Facts configured for Puppet was not a Hash', :prep)
+        end
+      end
     else
       @conf = {}
       Vuppeteer::say("Notice: No puppet config provided (default version/options etc. are in place)", :prep)
@@ -36,7 +47,7 @@ module PuppetManager
     Vuppeteer.disable(:puppet) if Vuppeteer::fact?('bypass_puppet')
     Modules::init(Vuppeteer::get_fact('puppet_modules'))
     Manifests::init()
-    Hiera::init(@guest_path) if (Vuppeteer::enabled?(:hiera))
+    Hiera::init("#{@guest_root[:default]}/#{@guest_path}") if (Vuppeteer::enabled?(:hiera)) #TODO this has to be handled per VM too...
   end
 
   def self.apply(vm_names = :all, options = nil)
@@ -91,7 +102,9 @@ module PuppetManager
 
   def self.pre_puppet()
     Manifests::generate()
+    Vuppeteer::say(Vuppeteer::report('stack_manifest'), :prep)
     Hiera::generate()
+    Vuppeteer::say(Vuppeteer::report('stack_hiera'), :prep)
   end
 
   def self.get_host_commands(which)

@@ -13,7 +13,10 @@ module Plugins
 
   @plugins = {
     registration: {
-      name: 'vagrant-registration'
+      name: 'vagrant-registration' #NOTE optional unless you use vbguest plugin with RHEL8, Mr can handle registration otherwise
+    },
+    vbguest: {
+      name: 'vbguest' #NOTE for RHEL8 you must have vagrant-registration (and let it register) for the vbguest plugin to work
     },
   }
 #  @x = ['never', 'always'][1]
