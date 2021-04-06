@@ -83,6 +83,7 @@ module Facts
   def self.post_stack_init() #NOTE additional steps that have to happen after stack init
     self._stack_facts() if Vuppeteer::enabled?(:stack)
     self.ensure(@generate)
+    @generate = nil
     self._validate_requirements()
   end
 
@@ -136,14 +137,16 @@ module Facts
     @requirements
   end
 
-  def self.asserts(f) #TODO support additional types of asserts (like in/include, not_nil, class etc.)
+  def self.asserts(f)
     Vuppeteer::shutdown('Error: Non-hash passed as asserts.', -1) if !f.is_a?(Hash)
     f.each do |k, v|
       @requirements.push({k => v}) 
     end
   end
 
-  def self.register_generated(f)
+  def self.register(f)
+    Vuppeteer::shutdown('Error: Attempting to register generated values after init', -3) if @generate.nil?
+    Vuppeteer::shutdown('Error: Attempting to register generated values with a non-Hash', -3) if !f.is_a?(Hash)
     @generate = @generate.merge(f)
   end
 

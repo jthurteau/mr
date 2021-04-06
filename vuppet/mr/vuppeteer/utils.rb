@@ -52,6 +52,9 @@ module VuppeteerUtils
   ]
 
   @storable = [:random]
+  @default_match_method = :not_nil
+  @default_calc_method = :random
+
   
   def self.rand(conf = {})
     length = conf&.dig('length')
@@ -110,64 +113,90 @@ module VuppeteerUtils
     Vuppeteer::say("#{label}: #{message}", trigger)
   end
 
-  def self.valid?(v, criteria = nil)
-    return false
-  end
+  # def self.valid?(v, criteria = nil)
+  #   return false
+  # end
 
   def self.storable?(method)
     #Vuppeteer::trace(method)
-    lookup_method = method.is_a?(Hash) && method.include?(:method) ? method[:method] : method
-    return lookup_method.is_a?(Symbol) && @storable.include?(lookup_method)
+    method[:method] = @default_calc_method if method.is_a?(Hash) && !method.include?(:method) 
+    lookup_method = method.is_a?(Hash) ? method[:method] : method
+    lookup_method.is_a?(Symbol) && @storable.include?(lookup_method)
   end
 
   def self.matchable?(method)
-    lookup_method = method.is_a?(Hash) && method.include?(:method) ? method[:method] : method
-    return lookup_method.is_a?(Symbol) && @storable.include?(lookup_method)
+    return method.is_a?(Hash) && method.any?() {|k| k.is_a?(String)}
   end
 
-  def self.verify(list, check, checked = [])
+  def self.verify(list, check, checked = []) #TODO use checked to detect conflicts
     #Vuppeteer::trace(list, list.class, check, checked)
     errors = []
     list.each do |r|
-        if (r.is_a?(Hash))
-          r.each do |k, v|
-            if (self.matchable?(v))
-
-            else
-              result = check.has_key?(k) && v == check[k] #Facts::get(k) != v
-              # raise "Error: duplicate conflicting assert for #{k}." if
-              errors.push("Error: missing asserted fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if !result && !check.has_key?(k)
-              errors.push("Error: fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if !result && check.has_key?(k)
-              checked.push(k)
-            end
+      if (r.is_a?(Hash))
+        r.each do |k, v|
+          if (self.matchable?(v))
+            result = check.has_key?(k) && self.matches?(v, check[k])
+          else
+            result = check.has_key?(k) && v == check[k] #Facts::get(k) != v
+            # raise "Error: duplicate conflicting assert for #{k}." if
           end
-        elsif (r.is_a?(Array))
-          errors += self.verify(r, check, checked)
-        elsif ([String, Symbol].include? r.class)
-          errors.push("Error: missing asserted fact: \"#{r}\" during boxing") if !check.has_key?(r)
-          checked.push(r)
-        else
-          r_string = r.to_s
-          r_class = r.class.to_s
-          errors.push("Error: misconfigured requirement: (#{r_class})#{r_string}")
+          description = !check.has_key?(k) ? 'missing asserted ' : '';
+          errors.push("Error: #{description}fact \"#{k}\" does not match expected value \"#{v}\" during boxing") if !result
+          checked.push(k)
         end
+      elsif (r.is_a?(Array))
+        current = r.shift()
+        stack = checked + [current]
+        if (check.has_key?(current) && r.length() > 1)
+          errors += self.verify(r, check[current], stack)
+        elsif (r.length() > 0 && [Hash, Symbol].include?(r[0].class))
+          match = r[0].is_a?(Symbol) ? {method: r[0]} : r[0] #TODO we don't currently accept symbol matches on root, otherwise we might generalise this recursion a different way
+          errors += self.verify({current => match}, check, stack)
+        elsif(!check.has_key?(current))
+          joined = (stack + r).join(':')
+          errors.push("Error: missing asserted fact: \"#{joined}\" during boxing")
+        end
+        checked.push(stack.join(':'))        
+      elsif ([String].include? r.class)
+        errors.push("Error: missing asserted fact: \"#{r}\" during boxing") if !check.has_key?(r)
+        checked.push(r)
+      else
+        r_string = r.to_s
+        r_class = r.class.to_s
+        errors.push("Error: misconfigured requirement: (#{r_class})#{r_string}")
+      end
     end
     errors
   end
 
-  def self.match(key, config, list = nil)
-    nil_allowed = false #TODO allow if conig matches :nil :nillable, etc
-    return false if !list.nil? && !list.key_exists?(key) && !nil_allowed
-    value = list.nil? ? key : list[key]
-    return false; #TODO self.validate(value,config) ?
+  def self.matches?(config, value)
+    case(config.is_a?(Hash) && config.has_key?(:match) ? config[:match] : @default_match_method)
+    when :calculate
+      self.calculate(config) == value
+    else
+      false
+    end
+  end
+
+  def self.calculate(config, k = nil)
+    #Vuppeteer::trace('calculate', config, k)
+    return Vuppeteer::get_fact(config) if config.is_a?(String)
+    if (config.is_a?(Array)) 
+      config.each() do |v|
+        return Vuppeteer::get_fact(v) if v.is_a?(String) && Vuppeteer::fact?(v)
+      end
+    end
+    config[:method] = @default_calc_method if config.is_a?(Hash) && !config.has_key?(:method)
+    self._calculate(config.is_a?(Symbol) ? {method: config} : config, k)
   end
 
   def self.generate(list)
+    #Vuppeteer::trace('generating', list)
     result = {}
-    m.each() do |k, m|
-       result[k] = self._calculate(m, k)
+    list.each() do |k, m|
+       result[k] = self.calculate(m, k)
     end
-    return result
+    result
   end
 
   def self.filter_sensitive(s, f)
@@ -198,7 +227,7 @@ module VuppeteerUtils
   def self.filter_sentitive_string(s, f)
     r = s.clone
     f.each do |m|
-      r = r.gsub(m, '__REDACTED_AS_SENSITIVE__')
+      r = (r ? r.gsub(m, '__REDACTED_AS_SENSITIVE__') : '')
     end
     r
   end
@@ -231,21 +260,17 @@ module VuppeteerUtils
   #################################################################
   private
   #################################################################
-  
-    def self._generate(m, c = {})
 
-    end
-
-    def self._calculate(m, k)
-      #Vuppeteer::trace('calculate', m, k)
-      return Vuppeteer::get_fact(m) if m.is_a?(String)
-      return self._generate(m) if m.is_a?(Symbol)
-      return self._generate(m[0], m[1..-1]) if m.is_a?(Array)
-      if (m.is_a?(Hash))
-        n = MrUtils::sym_keys(m)
-        return self._generate(n.has_key?(:method) ? n[:method] : :random, m)
-      end
+  def self._calculate(config, seed = nil)
+    #Vuppeteer::trace('actually calculate', config, seed)
+    case config[:method]
+    when :derived
+      self.calculate(config[:source])
+    when :random
+      self.rand(config)
+    else
       nil
     end
+  end
 
 end

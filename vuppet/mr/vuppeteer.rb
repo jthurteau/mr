@@ -185,15 +185,7 @@ module Vuppeteer
   end
 
   def self.register_generated(v)
-    Facts::register_generated(v)
-  end
-
-  def self.add_derived(d)
-    if (!d.is_a?(Hash)) 
-      Report::say("Warning: invalid derived facts sent during Puppet initialization", :prep)
-      return
-    end
-    Facts::register_generated(d)
+    Facts::register(v)
   end
 
   def self.ensure_facts(f)

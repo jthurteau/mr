@@ -100,21 +100,20 @@ Other options can be passed in the Vagrantfile, or set during the initialization
    - These values will be directly available to both Mr and Puppet ('puppet_fact_source' changes this behavior)
    - If the value is a hash, the default configuration file (\[active_path]/vuppeteer.yaml) is still loaded if it exists
    - additional values from other .yaml files in the active path are also be merged into the facts depending on configuration
- - generated
-   - Hash of facts to be generated (e.g. by randomized methods)
-   - See "Procedural Facts" for the configuration of these values
- - assert
-   - Hash of facts and exact matching values that the build must generate, otherwise it will be halted during validation
-   - Values associated with each hash key may be a scalar for exact matches or a VuppeteerUtils::match config hash (See "Procedural Facts")
-   - Also accepts a single String as shorthand for {'project_name' => '"string"'}
-   - Asserts are a shorthand for configuration merged into 'require'
  - require
-   - Array of facts that must exist or match an algorithm, otherwise the build to be halted during validation
+   - Array of facts that must be defined (non-nil), otherwise the build to be halted during validation
    - Each item may be 
      - a String, indicating the fact must not be 'nil' (undefined/null) or 
-     - a Hash evaluated as if passed to 'assert' above, or 
-     - an array in the format: \['"fact"', :match_type, \[optional_match_param]]
-   - See "Build Validity" for information on match_types  
+     - a Hash evaluated as if passed to 'assert' below, or 
+     - an array of one or more strings "dig" through facts, followed by an optional hash or symbol for value testing (similar to assert below), otherwise the normal non-nil test is applied
+   - See "Build Validity" for information on match_types 
+ - assert
+   - Hash of facts and matching values that the build must generate, otherwise it will be halted during validation
+   - Values associated with each key may be a scalar for exact matching, if the value is a symbol or hash with any symbol keys, Mr will test the value against a "matching" algorithm (See "Build Validity").
+   - Shorthand for a common case of the above "require" option
+ - generated
+   - Hash describing facts to be generated (e.g. by randomized methods)
+   - See "Procedural Facts" for the configuration of these values
  - stack
    - List of token strings indicating what recipes Mr should look for in the active path. This informs both the process of building a sandbox VM and the process of installing a self-provisioning copy of Mr into a project
    - It is generally recommended to publish the stack for your project in the Vagrantfile options, but it may be declared in the project build configurationanywhere in the fact building process

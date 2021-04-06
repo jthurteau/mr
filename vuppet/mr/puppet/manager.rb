@@ -33,8 +33,8 @@ module PuppetManager
       if (@conf['derived_facts'])
         if (@conf['derived_facts'].is_a?(Hash)) 
           @conf['derived_facts'].each() do |f, m|
-            Vuppeteer::trace('puppet derived', f, m)
-            Vuppeteer::ensure_facts({f => {method: :derived, m})
+            #Vuppeteer::trace('puppet derived', f, m)
+            Vuppeteer::ensure_facts({f => {method: :derived, source: m}})
           end
         else
           Vuppeteer::say('Warning: Derived Facts configured for Puppet was not a Hash', :prep)
