@@ -19,9 +19,11 @@ module ElManager
   @box = {default: 'generic/rhel8', null: 'generic/rhel8'}
   @default_license =  'rhel8-dev'
   @cred_type = [nil, :org, :user][0] #TODO switch this for multi-vm
-  @fallbox = 'generic/fedora28'
+  #@fallbox = 'generic/fedora28'
+  @fallbox = 'generic/fedora30'
   @ident = {default: nil}
-  @fedora_translate = {'8' => '28', '7' => '24'}
+  #@fedora_translate = {'8' => '28', '7' => '24'} #TODO 28 and 29 won't work withough the vbguest plugin
+  @fedora_translate = {'8' => '30', '7' => '24'}
   @scripts = {
     default: {
       sc: nil,

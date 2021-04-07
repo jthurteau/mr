@@ -44,6 +44,7 @@ module Modules
       Vuppeteer::say('Notice: Using default Puppet Modules', :prep)
     end
     Vuppeteer::say('Notice: No Puppet Modules configured', :prep) if @module_list[:default].length == 0
+    @puppet_module_path = '/etc/puppet/modules' if !ElManager::is_it?()
   end
 
   def self.processCommands(group = :default) 
