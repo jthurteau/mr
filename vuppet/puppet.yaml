@@ -38,5 +38,18 @@ module_versions:
     puppet-firewalld: '4.3.0' #TODO
 #no compat version
 #  puppet-ruby: '0.0.0'
+  '7':
+    puppetlabs-postgresql: '6.4.0' #TODO
+    puppetlabs-apache: '5.1.0' #TODO
+    puppetlabs-mysql: '10.2.0' #TODO
+    puppetlabs-vcsrepo: '2.4.0' #TODO
+    puppetlabs-rsync: '1.1.1' #TODO
+    puppet-python: '4.1.1' #TODO
+    puppet-nginx: '1.1.0' #TODO
+    puppet-selinux: '3.2.0' #TODO
+    puppetlabs-firewall: '2.4.0' #TODO
+    puppet-firewalld: '!4.3.0' #TODO
+#no compat version
+#  puppet-ruby: '0.0.0'
 derived_facts:
   app_handle: ['app', 'project']

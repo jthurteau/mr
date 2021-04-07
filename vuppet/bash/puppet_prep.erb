@@ -1,9 +1,9 @@
 yum install git -y
 <% if @el_flavor -%>
-rpm -Uvh https://yum.puppetlabs.com/puppet<%= @puppet_version %>/puppet<%= @puppet_version %>-release-<%= @el_flavor %>-<%= @el_version %>.noarch.rpm
+rpm -Uvh https://yum.puppetlabs.com/puppet<%= puppet_version() %>/puppet<%= puppet_version() %>-release-<%= @el_flavor %>-<%= @flavor_version %>.noarch.rpm
 yum install puppet -y
 <% else -%>
-rpm -Uvh https://yum.puppetlabs.com/puppet<%= @puppet_version %>/puppet<%= @puppet_version %>-release-el-<%= @el_version %>.noarch.rpm
+rpm -Uvh https://yum.puppetlabs.com/puppet<%= puppet_version() %>/puppet<%= puppet_version() %>-release-el-<%= @el_version %>.noarch.rpm
 yum install epel-release puppet -y
 <% end -%>
 yum update -y <% if (@el_version == '8' ||  @el_flavor ) %> --nobest <% end %>

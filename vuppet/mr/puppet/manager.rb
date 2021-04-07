@@ -24,7 +24,12 @@ module PuppetManager
     @conf = Vuppeteer::load_facts(@conf_source, 'Notice:(Puppet Configuration)')
     if @conf
       @guest_path = @conf['guest_path'] if @conf['guest_path']
-      @version[:default] = @conf['version'] if @conf['version']
+      if !ElManager::is_it?()
+        @version[:default] = '7'
+        Vuppeteer::say('PuppetManager: Switching to Puppet 7 which is the only version viable for Fedora', :prep) 
+      else
+        @version[:default] = @conf['version'] if @conf['version']
+      end
       ['verbose', 'debug', 'output', 'log_format'].each do |o|
         @opt[o] = @conf[o] if @conf.has_key?(o)
       end
@@ -157,10 +162,16 @@ module PuppetManager
     prep_command_string = self.translate_guest_commands(Modules::get_commands(['status', 'install', 'additional']))
     sync_command_string = self.translate_guest_commands(Modules::get_commands(['dev_sync']))
     reset_command_string = self.translate_guest_commands(Modules::get_commands(['remove']))
+    module_path = "#{Modules::guest_path()}/*"
+    hard_reset_command_string = "rm -Rf #{module_path}"
     install_puppet_string = ElManager::puppet_install_script(vm_name)
 
     vm.provision 'puppet-reset', type: :shell, run: 'never' do |s|
       s.inline = "#{reset_command_string}"
+    end
+
+    vm.provision 'puppet-hard-reset', type: :shell, run: 'never' do |s|
+      s.inline = "#{hard_reset_command_string}"
     end
 
     vm.provision 'puppet-prep', type: :shell do |s|

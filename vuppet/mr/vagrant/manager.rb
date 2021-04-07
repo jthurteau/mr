@@ -72,7 +72,8 @@ module VagrantManager
     multi_vm = false
     if (current_vm)
       #Vuppeteer::trace('build VMs', current_vm, vms)
-      @vagrant.vm.box = ElManager::box(:default)
+      #@vagrant.vm.box = ElManager::box(:default) #NOTE this was a duplicate for a call in config_vms -> _config
+      #TODO config.vm.box_download_options = {"limit-rate": "423K"}
       self._build(@vagrant.vm, current_vm)
       loop do
         @vagrant.vm.define current_vm do |c|
@@ -175,6 +176,8 @@ module VagrantManager
 
   def self._config(label)
     @vm_configs[label].box = ElManager::box(label)
+    throttle = Network::throttle() #NOTE this isn't handled per vm yet
+    @vm_configs[label].box_download_options = {"limit-rate": throttle} if throttle 
     #Vuppeteer::trace('configuring', label, ElManager::box(label))
     if (label.nil? || !@setup.include?(label))
       vm_string = label.nil? ? 'vm' : "vm:#{label}" 

@@ -1,0 +1,15 @@
+# @requires rhlamp
+# @requires rhlamp::mysql
+# @requires rhlamp::php
+# @requires rhlamp::apache
+rhlamp::web_root: "%{::web_root}"
+rhlamp::default_stor_parent: "%{::app_repo}"
+rhlamp::default_stor: ''
+#rhlamp::el_version: '8'
+rhlamp::fedora_mode: true
+rhlamp::manage_apache: true
+rhlamp::manage_app_root: true
+rhlamp::php_version: "%{::rh8_php_version}"
+rhlamp::manage_php: true
+rhlamp::php_modules: true
+#rhlamp::apache::force_mod_php: true #NOTE this stack if for mod_php nor fcgi

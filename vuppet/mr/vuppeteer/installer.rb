@@ -150,13 +150,13 @@ module Installer
         Dir.foreach(source) do |s| #TODO each_child not supported yet
           #TODO need to ignore .git, .gitignore, local-dev.* files...
           if (!['.','..'].include?(s))
-            FileUtils.cp_r("#{source}/#{s}", to_path, {:remove_destination => true})
+            FileUtils.cp_r("#{source}/#{s}", "#{import_path}/#{to_path}", {:remove_destination => true})
           end
         end
       else 
         if (File.exist?(source))
           #TODO need to ignore .git, .gitignore, local-dev.* files...
-          FileUtils.cp_r(source, to_path, {:remove_destination => true})
+          FileUtils.cp_r(source, "#{import_path}/#{to_path}", {:remove_destination => true})
         else
           Vuppeteer::say("Notice: #{source} unavailable for import", :prep) #TODO detect if it has been imported and indicate that
         end 

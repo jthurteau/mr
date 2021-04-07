@@ -101,7 +101,7 @@ module Paths
     path
   end
 
-  def self.ensure(path, create = false, verbose = true)
+  def self.ensure(path, create = false, verbose = false)
     if (!self.may_write?(path) && create)
       can_write = @paths[:write][:match].to_s
       where = verbose ? ": #{path} not in #{can_write}" : ''
@@ -115,7 +115,7 @@ module Paths
       if (!initial_skip && !File.directory?(current_path))
         if (create && self.may_write?(current_path))
           verbose_string = "attempting to create directory #{p} in #{confirmed_path}"
-          Vuppeteer::say(verbose.is_a?(TrueClass) ? verbose_string : verbose, :prep) if verbose
+          Vuppeteer::say(verbose.is_a?(TrueClass) ? verbose_string : verbose, :prep) if verbose && Vuppeteer::enabled?(:verbose)
           Dir.mkdir(current_path, 0755)
           confirmed_path += initial_skip ? p : "/#{p}"
         else

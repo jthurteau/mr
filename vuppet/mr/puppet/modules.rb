@@ -111,9 +111,13 @@ module Modules
       else
         version_available = @module_table.has_key?(group_version_lookup) && @module_table[group_version_lookup].has_key?(m)
         @commands[group]['status'].push("echo module #{m} version information unavailable for puppet #{group_version_string}") if !version_available
-        version_flag = version_available ? " --version #{@module_table[group_version_lookup][m]}" : ''
+        version_string = version_available ? @module_table[group_version_lookup][m] : nil
+        force = version_string && version_string.start_with?('!')
+        version_string = version_string[1..-1] if force
+        version_flag = version_available ? " --version #{version_string}" : ''
+        options = force ? ' --ignore-dependencies' : ''
         #Vuppeteer::trace('command trace', group, group_version_lookup, m, version_flag)
-        @commands[group]['install'].push("puppet module install #{m}#{version_flag}")
+        @commands[group]['install'].push("puppet module install #{m}#{version_flag}#{options}")
         @commands[group]['remove'].push("puppet module uninstall #{m}") #TODO this doesn't handle dependencies also installed, so it needs to be re-written
       end
     end
@@ -142,7 +146,7 @@ module Modules
     @commands[vm_group]['local_install'].push({say:"  mirroring module at #{path}"})
     module_name = File.basename(path) #TODO #issue-18
     #module_source = tokenize parent dirs too for further differentiation when needed
-    local_mirror_path = "#{self.host_module_path()}/#{module_name}"
+    local_mirror_path = "#{self.host_path()}/#{module_name}"
     FileManager::path_ensure(local_mirror_path, FileManager::allow_dir_creation?)
     if (FileManager::clean_path?(local_mirror_path)) #TODO move this into FileManager? Paths?
       # Vuppeteer::trace("cp -r #{path}/* #{local_mirror_path}")
@@ -164,7 +168,7 @@ module Modules
     @commands[vm_group]['local_install'].push({say:"retreiving #{uri}"})
     module_name = uri[(uri.index('/', 8) + 1)..-5].gsub('/','-') #TODO #issue-18
     #module_source = tokenize host name too for further differentiation when needed
-    module_repo_path = "#{self.host_module_path()}/#{module_name}"
+    module_repo_path = "#{self.host_path()}/#{module_name}"
     FileManager::path_ensure(module_repo_path, FileManager::allow_dir_creation?)
     if (FileManager::clean_path?(module_repo_path))
       @commands[vm_group]['local_install'].push("git clone #{auth_uri} #{module_repo_path}")
@@ -182,8 +186,12 @@ module Modules
     @module_table[group] = version_data if !group.nil?
   end
 
-  def self.host_module_path()
+  def self.host_path()
     "#{Mr::active_path()}/#{FileManager::host_repo_path}/puppet_modules"
+  end
+
+  def self.guest_path()
+    @puppet_module_path
   end
 
   def self.list()

@@ -35,8 +35,9 @@ module Network
   #   @host_passed
   # end
 
-  def self.throttle_set(bandwidth)
-    @throttle = bandwidth
+  def self.throttle(bandwidth = nil)
+    @throttle = bandwidth if !bandwidth.nil?
+    @throttle
   end
 
   def self.parseBytes(byteCount)

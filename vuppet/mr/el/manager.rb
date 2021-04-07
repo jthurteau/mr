@@ -19,11 +19,11 @@ module ElManager
   @box = {default: 'generic/rhel8', null: 'generic/rhel8'}
   @default_license =  'rhel8-dev'
   @cred_type = [nil, :org, :user][0] #TODO switch this for multi-vm
-  #@fallbox = 'generic/fedora28'
-  @fallbox = 'generic/fedora30'
   @ident = {default: nil}
   #@fedora_translate = {'8' => '28', '7' => '24'} #TODO 28 and 29 won't work withough the vbguest plugin
-  @fedora_translate = {'8' => '30', '7' => '24'}
+  #@fedora_translate = {'8' => '30', '7' => '24'} #NOTE 30 is out of support and doesn't come with PHP7.4  
+  @fedora_translate = {'8' => '32', '7' => '24'}  
+  #@fedora_translate = {'8' => '33', '7' => '24'} #NOTE 33 doesn't have puppet support...
   @scripts = {
     default: {
       sc: nil,
@@ -59,10 +59,12 @@ module ElManager
     self._detect_version()
     @ident[:default]['el_version'] = @el_version[:default]
     @ident[:default]['box'] = @box[:default]
-    @ident[:default]['flavor'] = 'fedora' if @ident[:default]['box'] == @fallbox
+    flavor = self._flavor(@ident[:default]['box'])
+    @ident[:default]['flavor'] = flavor if flavor
+    @ident[:default]['flavor_version'] = @fedora_translate[@ident[:default]['el_version']] if flavor
     @ident[:default][:prefix] = @cred_prefix
 #    @ident[:default]['plugin_registration'] = 
-    @singletons[:default] = Realm.new(@ident[:default], PuppetManager::version())
+    @singletons[:default] = Realm.new(@ident[:default])
     self._load_credentials(:default)
     #TODO Vuppeteer::mark_sensitive([sensitive ident keys])
     VagrantManager::halt_vb_guest() if @el_version[:default] == '8' #TODO this should be in plugin-manager? right now it's vb middle ware, so not a "plugin"?
@@ -199,7 +201,7 @@ module ElManager
     w = :default if !@singletons.has_key?(w)
     v = @box.has_key?(w) ? w : :default 
     #Vuppeteer::trace('rhel status', w,  @singletons, @singletons.has_key?(w),@box,v)
-    @box[v] != @fallbox && @singletons[w] != nil
+    !self._flavor(@box[v]) && @singletons[w] != nil
   end
 
   def self.validate_vms(facts)
@@ -239,11 +241,11 @@ module ElManager
     vms = VagrantManager::get_vm_configs(vms) if vms.is_a?(Array)
     #Vuppeteer::trace('registering vms...')
     vms.each() do |n, v|
-      Vuppeteer::trace('processing', n, self.is_it?(n))
+      Vuppeteer::trace('processing', n, 'is it RHEL?', self.is_it?(n))
       cors = Vuppeteer::get_fact('org_domain') #TODO this could be different per VM
       machine_id = ''
       developer = Vuppeteer::fact?('developer') ? Vuppeteer::get_fact('developer') : ''
-      Network::throttle_set(Vuppeteer::get_fact('guest_throttle', nil))
+      Network::throttle(Vuppeteer::get_fact('guest_throttle', nil))
       Network::cors_set(cors) #app = nil, developer = nil
       Network::passthrough_host(v, VagrantManager::get(:trigger), machine_id, developer)
       self._box_destroy_prep(n, self.is_it?(n))
@@ -349,7 +351,7 @@ module ElManager
   def self._detect_ident()
     @el_data = Vuppeteer::load_facts(@conf_source, 'Notice:(EL Configuration)')
     license = self._negotiate()
-    @box[:default] = @fallbox if !license
+    @box[:default] = self._fallbox() if !license
     el_license = @el_data && license && @el_data.has_key?(license) ? @el_data[license] : nil
     if el_license
       self._sign(el_license) if el_license
@@ -393,16 +395,28 @@ module ElManager
     #Vuppeteer::trace("checking signature", l.to_s)
   end
 
+  def self._flavor(box)
+    return nil if box.start_with?('genric/rhel')
+    'fedora'
+  end
+
   def self._detect_box()
     d = Vuppeteer::get_fact('default_to_rhel', true)
     s = Vuppeteer::get_fact('box_source')
     #Vuppeteer::trace('detect box', d, s, s ? s : @fallbox, s || !d )
-    @box[:default] = s ? s : @fallbox if s || !d
+    @box[:default] = s ? s : self._fallbox() if s || !d
   end
 
   def self._detect_version()
     @el_version[:default] = Vuppeteer::get_fact('el_version') if Vuppeteer::fact?('el_version')
-    @el_version[:default] = @fedora_translate[@el_version[:default]] if @box[:default] == @fallbox
+    #TODO fix this properly
+    #@el_version[:default] = @fedora_translate[@el_version[:default]] if @box[:default] == @fallbox
+  end
+
+  def self._fallbox(el = nil)
+    el = @el_version[:default] if el.nil?
+    t = @fedora_translate[el]
+    "generic/fedora#{t}"
   end
 
   def self._load_credentials(w)
@@ -414,7 +428,7 @@ module ElManager
   end
 
   def self._validate(ident)
-    return {} if @box[:default] == @fallbox
+    return {} if @box[:default] = self._fallbox() #@box[:default] == @fallbox
     if !ident
       Vuppeteer::say('Warning: No license detected...', :prep) 
       return {}
@@ -451,14 +465,24 @@ module ElManager
   def self._box_destroy_prep(vm_name = nil, is_rhel) #TODO #1.0.0 multi-vm support
     return if !Mr::enabled?
     script = self.script(:destroy)
-    trigger = VagrantManager::get(:trigger).before [:destroy] do |trigger|
-      trigger.warn = 'Attempting to unregister this box before destroying...'
-      trigger.on_error = :continue
-      trigger.run_remote = {
-        inline: FileManager::bash(script, self.credentials(vm_name))
-      } if script
-      trigger.ruby do |env, machine|
-        Network::on_destroy(vm_name, env, machine)
+    if (is_rhel)
+      trigger = VagrantManager::get(:trigger).before [:destroy] do |trigger|
+        trigger.warn = 'Attempting to unregister this box and clear the instance facts before destroying...'
+        trigger.on_error = :continue
+        trigger.run_remote = {
+          inline: FileManager::bash(script, self.credentials(vm_name))
+        } if script
+        trigger.ruby do |env, machine|
+          Network::on_destroy(vm_name, env, machine)
+        end
+      end
+    else
+      trigger = VagrantManager::get(:trigger).before [:destroy] do |trigger|
+        trigger.warn = 'Attempting to clear instance facts before destroying...'
+        trigger.on_error = :continue
+        trigger.ruby do |env, machine|
+          Network::on_destroy(vm_name, env, machine)
+        end
       end
     end
   end
@@ -485,9 +509,9 @@ module ElManager
     @man_attach = false
     @el_version = '7'
     @el_flavor = nil
-    @puppet_version = '6'
+    @flavor_version = nil
 
-    def initialize(hash, puppet = nil) #TODO yuck, clean this up
+    def initialize(hash) #TODO yuck, clean this up
         p = ElManager::cred_prefix
         @rhel_user = hash["#{p}user".to_sym].to_s if hash&.include?("#{p}user".to_sym)
         @rhel_pass = hash["#{p}pass".to_sym].to_s if hash&.include?("#{p}pass".to_sym)
@@ -498,8 +522,8 @@ module ElManager
         @dev_tools = Vuppeteer::get_fact('dev_tools') if hash&.include?('dev_tools')
         @man_attach = hash['manual_attach'] if hash&.include?('manual_attach')
         @el_version = hash['el_version'] if hash&.include?('el_version')
-        @el_flavor = 'fedora' if hash.has_key?('flavor')
-        @puppet_version = puppet if puppet
+        @el_flavor = hash['flavor'] if hash&.include?('flavor')
+        @flavor_version = hash['flavor_version'] if hash&.include?('flavor_version')
     end
 
     def view()
@@ -547,6 +571,15 @@ module ElManager
     def rhel_sc_repos_enabled()
       Collections::enabled(:repos)
     end
+
+    def fact(f, default = nil)
+      Vuppeteer::get_fact(f, default)
+    end
+
+    def puppet_version()
+      PuppetManager::version()
+    end
+
   end
 
 end
