@@ -55,11 +55,11 @@ module ElManager
     @multibuild = false if @multibuild.nil?
     detected = self._detect_ident()
     @ident[:default] = detected ? self._validate(detected) : {}
-    self._detect_box()
-    self._detect_version()
-    @ident[:default]['el_version'] = @el_version[:default]
-    @ident[:default]['box'] = @box[:default]
+    #Vuppeteer::trace('EL Init validated', detected)
+    self._detect_defaults()
+    #Vuppeteer::trace('EL Init defaults', @box, @el_version, @ident[:default])
     flavor = self._flavor(@ident[:default]['box'])
+    #Vuppeteer::trace('EL Init flavor', @ident[:default]['box'], self._flavor(@ident[:default]['box']))
     @ident[:default]['flavor'] = flavor if flavor
     @ident[:default]['flavor_version'] = @fedora_translate[@ident[:default]['el_version']] if flavor
     @ident[:default][:prefix] = @cred_prefix
@@ -197,10 +197,9 @@ module ElManager
   end
 
   def self.is_it?(w = :default) #TODO this needs work
-    #Vuppeteer::trace('testing rhel status', w, @singletons.has_key?(w))
     w = :default if !@singletons.has_key?(w)
     v = @box.has_key?(w) ? w : :default 
-    #Vuppeteer::trace('rhel status', w,  @singletons, @singletons.has_key?(w),@box,v)
+    # Vuppeteer::trace('rhel status', w,  @singletons, @singletons.has_key?(w), @box, v, 'flavor', self._flavor(@box[v]),@box[v])
     !self._flavor(@box[v]) && @singletons[w] != nil
   end
 
@@ -352,6 +351,7 @@ module ElManager
     @el_data = Vuppeteer::load_facts(@conf_source, 'Notice:(EL Configuration)')
     license = self._negotiate()
     @box[:default] = self._fallbox() if !license
+    #Vuppeteer::trace('detect_ident', license, @box)
     el_license = @el_data && license && @el_data.has_key?(license) ? @el_data[license] : nil
     if el_license
       self._sign(el_license) if el_license
@@ -396,21 +396,23 @@ module ElManager
   end
 
   def self._flavor(box)
-    return nil if box.start_with?('genric/rhel')
+    return nil if box.start_with?('generic/rhel')
     'fedora'
   end
 
-  def self._detect_box()
-    d = Vuppeteer::get_fact('default_to_rhel', true)
+  def self._detect_defaults()
     s = Vuppeteer::get_fact('box_source')
-    #Vuppeteer::trace('detect box', d, s, s ? s : @fallbox, s || !d )
+    d = Vuppeteer::get_fact('default_to_rhel', true)
+    #Vuppeteer::trace('detection', s, d, Vuppeteer::get_fact('default_to_rhel'))
     @box[:default] = s ? s : self._fallbox() if s || !d
-  end
-
-  def self._detect_version()
+    # if (s)
+    #   @box[:default] = s
+    # elsif (!d) 
+    #   @box[:default] = self._fallbox()
+    # end
     @el_version[:default] = Vuppeteer::get_fact('el_version') if Vuppeteer::fact?('el_version')
-    #TODO fix this properly
-    #@el_version[:default] = @fedora_translate[@el_version[:default]] if @box[:default] == @fallbox
+    @ident[:default]['el_version'] = @el_version[:default]
+    @ident[:default]['box'] = @box[:default]
   end
 
   def self._fallbox(el = nil)
@@ -428,7 +430,7 @@ module ElManager
   end
 
   def self._validate(ident)
-    return {} if @box[:default] = self._fallbox() #@box[:default] == @fallbox
+    return {} if @box[:default] == self._fallbox() #@box[:default] == @fallbox
     if !ident
       Vuppeteer::say('Warning: No license detected...', :prep) 
       return {}

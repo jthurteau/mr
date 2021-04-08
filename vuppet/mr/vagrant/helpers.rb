@@ -5,17 +5,18 @@
 module Helpers
   extend self
 
-  @default_helpers = []
+  @default_helpers = ['chill','no-chill',]
   @default_helpers_added = false
 
   @when_to_chill = ['never', 'always'][1]
   @when_to_nano_enforce = 'once'
 
   def self.setup(helpers = nil, vm = nil)
-    helpers = Vuppeteer::get_fact('helpers') if helpers.nil?
-    helpers = MrUtils::enforce_enumerable(helpers, false)
+    requested_helpers = helpers
+    configured_helpers = Vuppeteer::get_fact('helpers', []) if helpers.nil?
+    helpers = (helpers.nil? ? [] : MrUtils::enforce_enumerable(helpers)) + configured_helpers
     default = !Vuppeteer::get_fact('disable_default_helpers', false)
-    self._add(vm, helpers, !helpers && default) if helpers || default
+    self._add(vm, helpers, !requested_helpers && default) if helpers.length > 0 || default
   end
 
   #################################################################
@@ -23,7 +24,7 @@ module Helpers
   #################################################################
 
   def self._add(vm, additional = [], default = false)
-    Vuppeteer::trace('Setting up helpers', additional, default)
+    #Vuppeteer::trace('Setting up helpers', additional, default)
     if (!additional.nil?)
       additional.each do |a|
   #       if a.start_with?('scl+')
@@ -48,6 +49,12 @@ module Helpers
     end
     if (default && !@default_helpers_added)
       @default_helpers.each do |d|
+        case d
+        when 'chill'
+          self.chill(vm)
+        when 'no-chill'
+          self.no_chill(vm)
+        end
   #     notices = Vuppeteer::pull_notices()
   #     vm.provision "reminders", type: :shell, run: 'always' do |s|
   #       s.inline = <<-SHELL
@@ -56,13 +63,6 @@ module Helpers
   #       SHELL
   #     end
   #     #TODO loop these from an array
-        vm.provision "chill", type: :shell, run: @when_to_chill do |s|
-          s.inline = FileManager::bash('helper_chill')
-        end
-
-        vm.provision "no-chill", type: :shell, run: @when_to_chill do |s|
-          s.inline = FileManager::bash('helper_nochill')
-        end
 
   #     vm.provision "start", type: :shell, run: 'never' do |s|
   #       s.inline = FileManager::bash('helper_start')
@@ -106,6 +106,8 @@ module Helpers
     end
   end
 
+  #TODO method to add/remove default helpers
+
   def self.nano_please(vm)
     vm.provision "nano_setup", type: :shell do |s|
       s.inline = 'yum install nano -y'
@@ -145,6 +147,18 @@ module Helpers
     vm.provision "windows_support", type: :shell do |s|
       s.inline = FileManager::bash('windows_support')
       s.privileged = false
+    end
+  end
+
+  def self.chill(vm)
+    vm.provision "chill", type: :shell, run: @when_to_chill do |s|
+      s.inline = FileManager::bash('helper_chill')
+    end
+  end
+
+  def self.no_chill(vm)
+    vm.provision "no-chill", type: :shell, run: @when_to_chill do |s|
+      s.inline = FileManager::bash('helper_nochill')
     end
   end
 
