@@ -158,7 +158,7 @@ module FileManager
     begin
       f.truncate(0)
       o = YAML.dump(data)
-      tag = "# MrRogers managed config file (manual editing not recommended)"
+      tag = "# Mr managed config file (manual editing not recommended)"
       wrapped = (o.start_with?('---') ? '' : "---\n") + o + (o.end_with?('...') ? '' : "\n...")
       f.write("#{tag}\n#{wrapped}")
       f.close

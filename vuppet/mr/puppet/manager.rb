@@ -16,7 +16,7 @@ module PuppetManager
 
   @guest_path = 'vuppet'
   @guest_root = {default: '/vagrant', null: '/vagrant'}
-  @version = {default: '5'}
+  @version = {default: '6'}
   @groups = {}
   @opt = {}
 

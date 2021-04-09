@@ -2,6 +2,7 @@
 # @requires rhlamp::mysql
 # @requires rhlamp::php
 # @requires rhlamp::apache
+# @requires php
 rhlamp::web_root: "%{::web_root}"
 rhlamp::default_stor_parent: "%{::app_repo}"
 rhlamp::default_stor: ''
@@ -13,3 +14,15 @@ rhlamp::php_version: "%{::rh8_php_version}"
 rhlamp::manage_php: true
 rhlamp::php_modules: true
 #rhlamp::apache::force_mod_php: true #NOTE this stack if for mod_php nor fcgi
+rhlamp::php::manage_fpm: false
+#NOTE these and the @requires php in the header are temporary because of a module bug, should be declared in rhlamp::php
+php::fpm::pools: 
+  www:
+    #security_limit_extensions : []
+    listen: '/run/php-fpm/www.sock'
+    listen_owner: apache
+    php_admin_value:
+      error_log: '/var/log/php-fpm/www-error.log'
+      log_level: 'debug'
+    php_admin_flag: {log_errors: 'on'}
+    catch_workers_output: 'yes'

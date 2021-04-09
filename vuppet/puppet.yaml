@@ -5,6 +5,7 @@ module_versions:
     puppetlabs-mysql: '3.11.0'
     puppetlabs-vcsrepo: '1.5.0'
     puppetlabs-rsync: '0.4.0' #?
+    puppet-php: '4.0.0' #?
     puppet-ruby: '0.6.0'
     puppet-selinux: '0.8.0'
     puppetlabs-firewall: '1.9.0'
@@ -19,6 +20,7 @@ module_versions:
     puppetlabs-vcsrepo: '2.4.0'
     puppetlabs-rsync: '1.1.1'
     puppet-python: '4.1.1'
+    puppet-php: '6.0.2'
     puppet-nginx: '1.1.0'
     puppet-selinux: '3.2.0'
     puppetlabs-firewall: '2.4.0'
@@ -32,6 +34,7 @@ module_versions:
     puppetlabs-vcsrepo: '2.4.0' #TODO
     puppetlabs-rsync: '1.1.1' #TODO
     puppet-python: '4.1.1' #TODO
+    puppet-php: '7.1.0'
     puppet-nginx: '1.1.0' #TODO
     puppet-selinux: '3.2.0' #TODO
     puppetlabs-firewall: '2.4.0' #TODO
@@ -45,10 +48,11 @@ module_versions:
     puppetlabs-vcsrepo: '2.4.0' #TODO
     puppetlabs-rsync: '1.1.1' #TODO
     puppet-python: '4.1.1' #TODO
+    puppet-php: '7.1.0'
     puppet-nginx: '1.1.0' #TODO
     puppet-selinux: '3.2.0' #TODO
     puppetlabs-firewall: '2.4.0' #TODO
-    puppet-firewalld: '!4.3.0' #TODO
+    puppet-firewalld: '!4.3.0'
 #no compat version
 #  puppet-ruby: '0.0.0'
 derived_facts:

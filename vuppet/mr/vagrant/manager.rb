@@ -1,5 +1,5 @@
 ## 
-# Encapsulates Vagrant management for MrRogers
+# Encapsulates Vagrant management for Mr
 #
 
 module VagrantManager

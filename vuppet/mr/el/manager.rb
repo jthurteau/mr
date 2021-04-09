@@ -1,5 +1,5 @@
 ## 
-# Encapsulates RHEL specifics for for MrRogers
+# Encapsulates RHEL specifics for for Mr
 # https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/ 
 # https://www.linux.ncsu.edu/rhel-unc-system/
 #
@@ -7,7 +7,9 @@
 module ElManager
   extend self
 
+  require_relative 'license'
   require_relative 'boxes'
+  require_relative 'machines'
   require_relative 'network'
   require_relative 'collections'
   
@@ -65,7 +67,7 @@ module ElManager
     @ident[:default][:prefix] = @cred_prefix
 #    @ident[:default]['plugin_registration'] = 
     @singletons[:default] = Realm.new(@ident[:default])
-    self._load_credentials(:default)
+    self._load_credentials(:default) #TODO I assume these are used by the plug-in based registration... but seems like this should happen before instantiating the view
     #TODO Vuppeteer::mark_sensitive([sensitive ident keys])
     VagrantManager::halt_vb_guest() if @el_version[:default] == '8' #TODO this should be in plugin-manager? right now it's vb middle ware, so not a "plugin"?
     @scripts[:default][:destroy] = 'rhel_destroy' #if self.is_it? #TODO this whouldn't be set when in Centos/Nomad mode...
@@ -76,6 +78,10 @@ module ElManager
       k ="custom_#{s.to_s}"
       @scripts[:default][s] = @ident[:default][k] if @ident[:default].has_key?(k)
     end
+    host = Network::host_host().shift.downcase
+    guest = Network::base_guest(Vuppeteer::facts(),self._suffix(Vuppeteer::facts()))
+    vm_label = "#{host}_#{guest}"
+    @singletons[:default].set('vm_name', vm_label) if Vuppeteer::get_fact('descriptive_registration')
   end
 
   def self.el_version(w = :default)
@@ -205,15 +211,10 @@ module ElManager
 
   def self.validate_vms(facts)
     vm_suffix = facts.fetch('standalone', false) ? '' : '#{s}'
-    if facts.has_key?('project')
-      p = facts['project']
-      self.add("#{p}#{vm_suffix}")
-    elsif facts.has_key?('app')
-      a = facts['app']
-      self.add("#{a}#{vm_suffix}")
-    elseif self.fact?('vm_name')
-      self.add(self.get('vm_name'))
-    elseif self.fact?('vms') && !self.get('standalone', false)
+    base_vm = Network::base_guest(facts, vm_suffix)
+    if base_vm
+      self.add(base_vm)
+    elsif facts.has_key?('vms') && (!facts.has_key?('standalone') || !facts['standalone'])
       @multibuild = true if @multibuild.nil?
       vms = MrUtils::enforce_enumerable(self.get('vms'))
       if (vms.is_a?(Array)) 
@@ -512,6 +513,7 @@ module ElManager
     @el_version = '7'
     @el_flavor = nil
     @flavor_version = nil
+    @data = {}
 
     def initialize(hash) #TODO yuck, clean this up
         p = ElManager::cred_prefix
@@ -526,6 +528,7 @@ module ElManager
         @el_version = hash['el_version'] if hash&.include?('el_version')
         @el_flavor = hash['flavor'] if hash&.include?('flavor')
         @flavor_version = hash['flavor_version'] if hash&.include?('flavor_version')
+        @data = {}
     end
 
     def view()
@@ -533,7 +536,9 @@ module ElManager
     end
 
     def register_options()
-      return @rhel_server ? " --serverurl=\"#{@rhel_server}\"" : ''
+      s = @rhel_server ? " --serverurl=\"#{@rhel_server}\"" : ''
+      n = @data.has_key?('vm_name') ? " --name=\"#{@data['vm_name']}\"" : ''
+      return "#{s}#{n}"
     end
 
     def attach_needed()
@@ -580,6 +585,18 @@ module ElManager
 
     def puppet_version()
       PuppetManager::version()
+    end
+
+    def set(k, v)
+      @data[k] = v
+    end
+
+    def get(k)
+      @data[k]
+    end
+
+    def set?(k)
+      @data.has_key?(k)
     end
 
   end

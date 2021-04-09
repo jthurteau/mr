@@ -19,7 +19,7 @@ This documentation covers using Mr to:
 
  If you are looking for common troubleshooting steps, also consult: [Common Issues](https://github.com/jthurteau/mr/wiki/Common-Provisioning-Issues-\(and-solutions\))
 
-### Building a project that uses MrRogers
+### Building a project that uses Mr
 
 *under construction*
 

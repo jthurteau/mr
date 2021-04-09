@@ -1,5 +1,5 @@
 ## 
-# Encapsulates host side Git repo management for MrRogers
+# Encapsulates host side Git repo management for Mr
 #
 
 module Repos

@@ -1,9 +1,9 @@
-echo "Installing MrRogers..."
+echo "Installing Mr..."
 if [ ! -d <%= puppet_guest_path %>/<%= localize_token %>.tmp/ext ] || [ ! "$(ls -A <%= puppet_guest_path %>/<%= localize_token %>.tmp/ext)" ]
 then
     echo "No source files for install"
 else
-    echo "Replacing MrRogers Files"
+    echo "Replacing Mr Files"
     cp -R <%= puppet_guest_path %>/<%= localize_token %>.tmp/ext/* <%= puppet_guest_path %>/
     cp -R <%= puppet_guest_path %>/<%= localize_token %>.tmp/imp/* <%= puppet_guest_path %>/import
     find <%= puppet_guest_path %>/import -name ".git" -exec rm -rf {} \;

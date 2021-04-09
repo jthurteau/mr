@@ -1,5 +1,5 @@
 ## 
-# Manages Host and Guest networking for MrRogers
+# Manages Host and Guest networking for Mr
 # 1) inject host network identity in the guest to resolve various "containery" issues
 # 2) setup the host so it can get around CORS when appropriate
 
@@ -133,6 +133,27 @@ module Network
     return Hostspec.new(@hostname, @domain, @public_ip).view()
   end
 
+  def self.host_host()
+    begin
+      fqdn = Socket.gethostbyname(Socket.gethostname).first.split('.')
+    rescue
+      fqdn = Socket.gethostname.split('.') #Sierra Mac bug, but may not work in some cases like VPN
+    #TODO resque with fallback to org_domain?
+    end
+  end
+
+  def self.base_guest(facts, suffix = '')
+    base = nil
+    if facts.has_key?('project')
+      base = "#{facts['project']}#{suffix}"
+    elsif facts.has_key?('app')
+      base = "#{facts['app']}#{suffix}"
+    elsif Vuppeteer::fact?('vm_name')
+      base = facts['vm_name']
+    end
+    base
+  end
+
   #################################################################
   private
   #################################################################
@@ -167,12 +188,7 @@ module Network
   end
 
   def self._detect()
-    begin
-      fqdn = Socket.gethostbyname(Socket.gethostname).first.split('.')
-    rescue
-      fqdn = Socket.gethostname.split('.') #Sierra Mac bug, but may not work in some cases like VPN
-    #TODO resque with fallback to org_domain?
-    end
+    fqdn = self.host_host()
     hostname = fqdn.shift.downcase
     domain = fqdn.join('.').downcase
     public_ips = Socket.ip_address_list.reject{|i| !i.ipv4? || i.ipv4_loopback? || i.ipv4_multicast? || i.ipv4_private? }

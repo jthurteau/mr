@@ -1,5 +1,5 @@
 ## 
-# Encapsulates software collection management for MrRogers
+# Encapsulates software collection management for Mr
 # NOTE: SCL seems to be deprecated with RHEL8? so this module may be replaces with one more focuses on Yum Modules?
 #
 

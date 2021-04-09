@@ -8,7 +8,7 @@ vuppeteer_order.each {|v| require_relative v if !defined?(Mr) && File.exist?("#{
 raise 'Unable to build Local Development Environment. Vuppeteer unavailable.' if !defined?(Mr)
 
 #options = nil 
-options = { # https://github.com/jthurteau/mr/wiki/Managing-MrRogers-from-the-Vagrantfile
+options = { # https://github.com/jthurteau/mr/wiki/Managing-Mr-from-the-Vagrantfile
   assert: {'project' => 'daniel',}, # see also /vuppet/vuppeteer.yaml
   stack: [
     'app-test', 
