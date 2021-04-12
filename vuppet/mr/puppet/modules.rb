@@ -34,7 +34,7 @@ module Modules
       'local_install' => []
     }
   }
-  @module_shared_path = 'vuppet/#{ldr}/puppet_modules'
+  @module_shared_path = '#{ldr}/puppet_modules'
   @puppet_module_path = '/etc/puppetlabs/code/environments/production/modules'
 
   def self.init(modules = nil)

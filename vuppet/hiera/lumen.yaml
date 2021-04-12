@@ -1,0 +1,3 @@
+# @requires rhlamp::php
+rhlamp::php::manage_composer: true 
+rhlamp::php::add_dist_support: true

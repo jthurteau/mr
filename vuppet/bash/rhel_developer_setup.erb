@@ -5,7 +5,8 @@ if [[ $(subscription-manager identity) =~ "system identity:" ]]
 then
    echo "RHEL already registered"
 else
-   subscription-manager register <%=register_developer_options%>
+   echo "with options: <%=register_options%>"
+   subscription-manager register <%=register_developer_options%><%=register_options%>
    <% if attach_needed %><%= attach_command %><% end %>
 fi
 <% if !sc_pending && dev_tools_needed %><%= dev_tools_command %><% end %>

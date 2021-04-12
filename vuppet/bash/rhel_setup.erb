@@ -4,6 +4,7 @@ if [[ $(subscription-manager identity) =~ "system identity:" ]]
 then
     echo "RHEL already registered"
 else
+    echo "with options: <%=register_options%>"
     subscription-manager register --org="<%=@rhel_org%>" --activationkey="<%=@rhel_key%>"<%=register_options%>
 fi
 <% if @attach_needed %><%= @attach_command %><% end %>

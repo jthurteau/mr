@@ -40,7 +40,7 @@ module FileManager
     return @allow_host_dir_creation
   end
 
-  def self.path_ensure(path, create = false, verbose = true)
+  def self.path_ensure(path, create = false, verbose = false)
     Paths::ensure(path, create, verbose)
   end
 
@@ -281,16 +281,16 @@ module FileManager
       return binding()
     end
 
-    def shared_file_path(p, v = nil)
-      PuppetManager::guest_path(p, v)
-    end
-
     def localize_token()
       return FileManager::localize_token()
     end
 
-    def puppet_guest_path()
-      PuppetManager::guest_path()
+    def puppet_guest_path(p = nil, v = nil)
+      PuppetManager::guest_path(p, v)
+    end
+
+    def shared_guest_path(v = nil)
+      PuppetManager::guest_root(v)
     end
 
   end

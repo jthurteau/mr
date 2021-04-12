@@ -64,9 +64,11 @@ module PuppetManager
     end
   end
 
-  def self.guest_path(p = nil, v = nil)
+  def self.guest_path(p = '', v = nil)
     #guest_path(@module_shared_path, group)
-    return "#{self.guest_root(v)}/#{p}"
+    p = "/#{p}" if p != ''
+    #Vuppeteer::trace('guest_path', p, v, "#{self.guest_root(v)}/#{@guest_path}#{p}")
+    return "#{self.guest_root(v)}/#{@guest_path}#{p}"
   end
 
   def self.guest_root(vm_name = nil)

@@ -175,7 +175,7 @@ module ElManager
     end
   end
 
-  def self.update_script(w = :default)
+  def self.update_script(w = :default) #TODO this isn't setup for developer registration support
     begin
       return FileManager::bash(self.script(:update), self.credentials()) if self.script(:update)
       FileManager::bash('rhel_update', self.credentials(w))

@@ -4,6 +4,7 @@ then
     echo "Unregistering RHEL"
     subscription-manager unregister
 else
+    echo "with options: <%=register_options%>"
     echo "RHEL not registered"
 fi
 subscription-manager register --org="<%=@rhel_org%>" --activationkey="<%=@rhel_key%>"<%=register_options%>

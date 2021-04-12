@@ -21,17 +21,17 @@ module Stack
     @ppp.unshift("app-#{Vuppeteer::get_fact('app')}") if Vuppeteer::fact?('app')
   end
 
-  def self.get(options = false) #TODO the extention
+  def self.get(options = nil) #TODO the extention
     filter = []
-    if (options && !options.is_a?(Symbol) && !options.is_a?(Array))
-      extension_free = options.is_a?(TrueClass) || options.include?('-extensions')
-      mixin_optional = !options.is_a?(TrueClass) && options.include?('+optional')
-    elsif (options.is_a?(Symbol) || options.is_a?(Array))
+    if (options.is_a?(Symbol) || options.is_a?(Array))
       options = MrUtils::enforce_enumerable(options)
-      extension_free = false
+      ignore_type = false
       mixin_optional = false
+      base_name = true
       options.each() do |o|
         case o
+        when :greedy
+          ignore_type = true
         when :optional
           mixin_optional = true
         when :fact
@@ -40,24 +40,26 @@ module Stack
           filter += ['manifest/']
         when :hiera
           filter += ['hiera/']
+        when :full
+          base_name = false
         end
       end
     else
-      extension_free = true
+      ignore_type = true
       mixin_optional = false
     end
     search = mixin_optional ? (@ppp + self.optional()) : (@ppp)
-    if (extension_free)
-      extension_free = []
-      search.each do |p|
-        extension_free.push(p.split('.').first())
-      end
-      return extension_free
-    end
     if (filter.length > 0)
       search.filter!() {|s| !s.include?('/') || filter.any?() {|f| s.start_with?(f)}}
     end
-    self._base(search)
+    if (ignore_type)
+      expanded = []
+      search.each do |p|
+        expanded.push(p.split('/', 2).last())
+      end
+      return expanded
+    end
+    base_name ? self._base(search) : search #TODO this may need cleanup w/expanded
   end
 
   def self.add(items, after = true)

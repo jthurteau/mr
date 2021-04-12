@@ -114,7 +114,7 @@ module Manifests
     needed_modules = [] #TODO push this up a level so we don't look up hiera each time?
     if (self._defer_to_hiera(s))
       hiera_exists = Hiera::source(s)
-      Vuppeteer::report('stack_manifest', s, hiera_exists ? 'hiera' : 'skipped')
+      Vuppeteer::report('stack_manifest', s, hiera_exists ? 'hiera' : 'absent')
       ldm_file.write("\n# #{s} handled in hiera \n") if hiera_exists
       modules = Hiera::scan_modules(s)
       modules.each do |m|

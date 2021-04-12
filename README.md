@@ -91,6 +91,11 @@ Options that can only be set in this way ("Vagrantfile Options"), include:
    - String or Boolean indicating whether or not to use a "local facts file" as part of the build process.
    - Defaults to './vuppet/local-dev.vuppeteer.yaml', assuming the localize_token is 'local-dev.' and active_path is './vuppet'
    - must be in allowed_read_path
+ - *future support*
+   - vuppeteers
+     - list of paths to recognized Mr scripts (e.g. this can be the vuppeteer_order used to find Mr), useful for detecting updates in recipe sources
+   - sym_friendly
+     - set v.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/v-root", "1"]
 
 Other options can be passed in the Vagrantfile, or set during the initialization process from configuration files. Generally the consideration behind where they should be set hinges on making it clear how the project is built without an overwhelming level of detail up-front. 
 
