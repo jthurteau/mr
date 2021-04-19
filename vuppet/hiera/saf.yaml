@@ -2,4 +2,4 @@
 rhlamp::repos:
   saf:
     source: 'git://github.com/jthurteau/saf.git'
-    target: "%{::app_lib_root}/Saf"
+    target: "%{::app_vendor_root}/Saf"

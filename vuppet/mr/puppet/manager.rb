@@ -28,7 +28,7 @@ module PuppetManager
         @version[:default] = '7'
         Vuppeteer::say('PuppetManager: Switching to Puppet 7 which is the only version viable for Fedora', :prep) 
       else
-        @version[:default] = @conf['version'] if @conf['version']
+        @version[:default] = @conf['default_version'] if @conf['default_version']
       end
       ['verbose', 'debug', 'output', 'log_format'].each do |o|
         @opt[o] = @conf[o] if @conf.has_key?(o)
@@ -92,6 +92,7 @@ module PuppetManager
   end
 
   def self.version(w = nil)
+    #Vuppeteer::trace('looking up puppet version for', w, @version)
     @version[w.nil? || !@version.has_key?(w) ? :default : w]
   end
 

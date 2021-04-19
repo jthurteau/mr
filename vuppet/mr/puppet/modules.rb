@@ -66,7 +66,7 @@ module Modules
     group_version_lookup = group
     if (!@module_table.has_key?(group))
       @commands[:null]['status'].push("echo \"Warning: no matching group for requested module versions, using default puppet_version settings\"")
-      group_version_lookup = PuppetManager::version()
+      group_version_lookup = PuppetManager::version(group)
       group_version_string = group_version_lookup
     end
     #Vuppeteer::trace('module versions', group_version_lookup)

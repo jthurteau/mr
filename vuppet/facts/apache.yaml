@@ -9,4 +9,4 @@ static_root: /var/www/static
 www_group: web
 
 ##
-# anything in the apache group should be apache specific
+# anything in the apache stack should be apache specific

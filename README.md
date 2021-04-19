@@ -3,9 +3,9 @@ Developer tool for Environment Replication leveraging a Vagrant/Puppet/Fedora st
 
 ## Current Status
 
-Mr is being ported from a private 0.x development build to a public open-source 1.x build. 0.x began as a git-gist a bit over two years ago (https://gist.github.com/jthurteau/3c3d8e15208d93c0cf28cc2148c91b0b), it's undergone heavy development as a practical tool since then but needs drastic refactoring (because I'm really not a Ruby developer).
+Mr is being ported from a private 0.x development build to a public open-source 1.x build. 0.x began as a git-gist in early 2019 (https://gist.github.com/jthurteau/3c3d8e15208d93c0cf28cc2148c91b0b), it's undergone heavy development as a practical tool since then but needed drastic refactoring (because I'm really not a Ruby developer).
 
-I'm hoping to complete the initial refactor (meaning the public code will be a usable tool again) by the end of March 2021.
+As of 1.0 (#ef8595a) both RHEL and a fallback strategy to Fedora should be working. Lots of work is still needed but it should be a viable replacement for 0.X provisioners at this point.
 
 ## Getting Started
 

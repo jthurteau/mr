@@ -56,11 +56,11 @@ module VuppeteerUtils
   @default_calc_method = :random
 
   
-  def self.rand(conf = {})
+  def self.rand(conf = {}) #TODO sym to string handling, accept Array handling
     length = conf&.dig('length')
     length = 16 if length.nil? || length < 1
     set = conf&.has_key?('set') ? conf['set'] : :alnum
-    if (set.is_a?(Symbol))
+    if (set.is_a?(Symbol) && set != :full)
       set_string = set.to_s
       set = ''
       sets = @char_sets.clone
@@ -80,7 +80,7 @@ module VuppeteerUtils
         set += sets['dec'] if sets['dec']
       end
     end
-    set = @char_sets.join() if (set == '')
+    set = @char_sets.values().join() if (set == '' || set == :full)
     value = self.random_string(set, length)
     Vuppeteer::mark_sensitive(value) if conf&.dig('sensitive') && conf['sensitive']
     value

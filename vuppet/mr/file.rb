@@ -124,7 +124,9 @@ module FileManager
 
   ##
   # loads a yaml file, if it exists and has hash keys
-  def self.load_fact_yaml(path, critical = true)
+  def self.load_fact_yaml(path, flag = :critical)
+    critical = flag.is_a?(TrueClass) || flag == :critical || (flag.is_a?(Array) && flag.include?(:critical))
+    #preserve_sym_keys = flag == :preserve_keys || (flag.is_a?(Array) && flag.include?(:preserve_keys))
     parts = self.facet_split(path)
     path = parts[0].end_with?('.yaml') ? parts[0] : "#{parts[0]}.yaml"
     #Vuppeteer::trace('FileManager::load_fact_yaml', path)
@@ -143,6 +145,8 @@ module FileManager
     end
     VuppeteerUtils::meditate("Empty facts in \"#{path}\"", critical, :prep) if (y.nil?)
     VuppeteerUtils::meditate("Invalid facts in \"#{path}\"", critical, :prep) if (!y.nil? && !y.is_a?(Hash))
+    # print([y.to_s])
+    # x = MrUtils::string_keys(y) if !preserve_sym_keys && y.is_a?(Hash)
     y.is_a?(Hash) ? (facet.nil? ? y : (y.has_key?(facet) ? y[facet] : nil) ) : nil
   end
 

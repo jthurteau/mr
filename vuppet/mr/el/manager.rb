@@ -513,6 +513,7 @@ module ElManager
     @el_version = '7'
     @el_flavor = nil
     @flavor_version = nil
+    @vm = nil
     @data = {}
 
     def initialize(hash) #TODO yuck, clean this up
@@ -584,7 +585,7 @@ module ElManager
     end
 
     def puppet_version()
-      PuppetManager::version()
+      PuppetManager::version(@vm)
     end
 
     def set(k, v)

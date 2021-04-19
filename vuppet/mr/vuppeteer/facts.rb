@@ -61,7 +61,7 @@ module Facts
   def self.roots(f)
     Vuppeteer::shutdown('Error: Cannot define root facts once any are set.', -1) if !@facts.nil?
     Vuppeteer::shutdown('Error: Non-hash passed as root facts.' -1) if !f.respond_to?(:to_h)
-    @facts = f.to_h
+    @facts = MrUtils::string_keys(f.to_h)
     @root_facts = @facts.keys()
   end
 
@@ -73,6 +73,7 @@ module Facts
     else
       @facts = {}
     end
+    Vuppeteer::trace('roots', @facts)
     FileManager::path_ensure("#{Mr::active_path}/facts", FileManager::allow_dir_creation?)
     self._instance_facts() if Vuppeteer::enabled?(:instance)
     self._local_facts() if Vuppeteer::enabled?(:local)
@@ -125,6 +126,31 @@ module Facts
     result = MrUtils::search(match, @facts, critical)
     #Vuppeteer::trace(result,@facts,match)
     return !result.nil? ? result : default
+  end
+
+  def self.load(source, flag = nil)
+    if (source.is_a?(Array)) 
+      source.each() do |s|
+        f = self.load(s, flag)
+        return f if f
+      end
+      return nil
+    end
+    begin
+      return self.get(source[2..-1], nil, true) if source.start_with?(MrUtils::splitter)
+      parts = FileManager::facet_split(source)
+      path = parts[0].end_with?('.yaml') ? parts[0] : "#{parts[0]}.yaml"
+      if (File.exist?("#{Mr::active_path}/#{path}"))
+        internal_override = "External Mr using internal source for '#{source}' facts."
+        Vuppeteer::say(internal_override) if Vuppeteer::external? && Vuppeteer::enabled?(:verbose)
+        return FileManager::load_fact_yaml("#{Mr::active_path}/#{source}", flag)
+      else
+        return FileManager::load_fact_yaml(source, flag)
+      end
+    rescue => e
+      VuppeteerUtils::meditate("#{e} for \"#{source}\"", flag, :prep)
+      false
+    end
   end
 
   def self.requirements(r = nil)

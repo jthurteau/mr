@@ -18,6 +18,10 @@ module MrUtils
     h.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
   end
 
+  def self.string_keys(h)
+    h.inject({}){|memo,(k,v)| memo[k.to_s] = v; memo}
+  end
+
   def self.enforce_enumerable(a, even_nil = true)
     return a.class.include?(Enumerable) ? a : (!even_nil && a.nil? ? a : [a])
   end
