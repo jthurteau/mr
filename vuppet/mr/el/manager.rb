@@ -405,6 +405,7 @@ module ElManager
     s = Vuppeteer::get_fact('box_source')
     d = Vuppeteer::get_fact('default_to_rhel', true)
     #Vuppeteer::trace('detection', s, d, Vuppeteer::get_fact('default_to_rhel'))
+    #TODO use Ubuntu for non-rhel if Fedora support doesn't pick back up with 34 https://apt.puppetlabs.com/
     @box[:default] = s ? s : self._fallbox() if s || !d
     # if (s)
     #   @box[:default] = s
