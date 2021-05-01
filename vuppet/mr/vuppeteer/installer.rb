@@ -61,6 +61,7 @@ module Installer
     self_reference = File.absolute_path(Mr::active_path()) == File.absolute_path(to_path)
     Vuppeteer::shutdown("Error: Attempting to mirror self", -3) if self_reference
     p = "#{to_path}/#{prefix}"
+    full_stack = Vuppeteer::get_stack([:optional,:greedy])
     MrUtils::enforce_enumerable(file_list).each do |f| 
       non_recursive = f.end_with?('/.')
       conditional = f.end_with?('/?')
@@ -86,7 +87,7 @@ module Installer
                 #Vuppeteer::say("shallow file #{source}#{c} #{target}#{c}", :prep)
                 FileUtils.cp("#{source}#{c}", "#{target}#{c}")
                 #Vuppeteer::shutdown("copy to #{target}#{c} failed") if !File.exist?("#{target}#{c}")
-              elsif (conditional && Vuppeteer::get_stack([:optional,:greedy]).include?(condition))
+              elsif (conditional && full_stack.include?(condition))
                 c_dir_mode = File.directory?("#{source}#{c}")
                 #Vuppeteer::say("conditional #{condition} #{source}#{c} #{target}#{c}", :prep) if !c_dir_mode
                 #Vuppeteer::say("conditional dir #{condition} #{source}#{c} #{target}", :prep) if c_dir_mode

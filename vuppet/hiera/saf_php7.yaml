@@ -1,0 +1,6 @@
+# @requires rhlamp::repo
+rhlamp::repos:
+  saf:
+    source: 'git://github.com/jthurteau/saf.git'
+    target: "%{::app_vendor_root}/Saf"
+    branch: 'php7'

@@ -37,7 +37,7 @@ module Stack
         when :fact
           filter += ['facts/']
         when :manifest
-          filter += ['manifest/']
+          filter += ['manifests/']
         when :hiera
           filter += ['hiera/']
         when :full
@@ -48,7 +48,7 @@ module Stack
       ignore_type = true
       mixin_optional = false
     end
-    search = mixin_optional ? (@ppp + self.optional()) : (@ppp)
+    search = mixin_optional ? (@ppp + self.optional()) : (@ppp.clone())
     if (filter.length > 0)
       search.filter!() {|s| !s.include?('/') || filter.any?() {|f| s.start_with?(f)}}
     end
@@ -80,6 +80,10 @@ module Stack
 
   def self.optional()
     Vuppeteer.get_fact('stack_optional', [])
+  end
+
+  def self.hiera_enabled(item)
+    return self.get(:hiera).include?(item)
   end
 
 #################################################################

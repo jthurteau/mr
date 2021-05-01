@@ -1,0 +1,6 @@
+#NOTE use the manifest for now since hiera can't layer
+# # @requires rhlamp
+# rhlamp::manage_files:
+#   "%{::app_vendor_root}/Saf":
+#     ensure: link
+#     target: '/saf'

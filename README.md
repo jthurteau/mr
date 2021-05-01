@@ -187,10 +187,10 @@ For facts, manifests, and hiera (puppet files) stacks matches are on the direct 
 e.g. 
 \[active_path]/local-dev.hiera/apache.yaml would block
 
-\[active_path]/manifest/apache.pp
+\[active_path]/manifests/apache.pp
 
 but not 
-\[active_path]/manifest/apache/certs.pp
+\[active_path]/manifests/apache/certs.pp
 
 The rationale and applications of this "blocking" behavior are detailed in "Build Maturity"
 

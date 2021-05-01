@@ -53,7 +53,7 @@ module FileManager
     when :hiera
       return Paths::x_path('hiera', p)
     when :manifest
-      return Paths::x_path('manifest', p)
+      return Paths::x_path('manifests', p)
     when :bash
       return Paths::x_path('bash', p)
     when :template

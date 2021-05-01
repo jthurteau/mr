@@ -130,7 +130,6 @@ module Manifests
       needed_modules = self.scan_modules(manifest_source)
       return needed_modules
     end
-    #Vuppeteer::trace('testing manifest', s, self._defer_to_hiera(s), self.source(s), self.external(s), File.exist?(self.external(s)), self.global(s), self.project(s),self.local(s))
     Vuppeteer::report('stack_manifest', s, 'absent')
     return []
   end
@@ -144,6 +143,8 @@ module Manifests
   end
 
   def self._defer_to_hiera(s)
+    # Vuppeteer::trace('testing hiera defer', s)
+    return false if !Stack::hiera_enabled(s)
     l = self.local(s)
     p = self.project(s)
     g = self.global(s)
