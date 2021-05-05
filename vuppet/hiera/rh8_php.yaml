@@ -11,4 +11,4 @@ rhlamp::manage_app_root: true
 rhlamp::php_version: "%{::rh8_php_version}"
 rhlamp::manage_php: true
 rhlamp::php_modules: true
-rhlamp::apache::force_mod_php: true #NOTE this stack if for mod_php nor fcgi
+#rhlamp::apache::force_mod_php: true #NOTE this stack if for mod_php nor fcgi

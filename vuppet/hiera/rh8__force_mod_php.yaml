@@ -1,0 +1,3 @@
+# @requires rhlamp
+# @requires rhlamp::apache
+rhlamp::apache::force_mod_php: true #NOTE this stack if for mod_php nor fcgi
