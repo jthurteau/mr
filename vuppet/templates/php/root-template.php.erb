@@ -1,0 +1,38 @@
+<?php
+/**
+ * #SCOPE_OS_PUBLIC #LIC_FULL
+ * 
+ * sample environment root for SAF, reads data from execution environment
+ * 
+ * @author Troy Hurteau <jthurtea@ncsu.edu>
+ * 
+ */
+ 
+<%- if (@root_custom) %>
+declare(strict_types=1);
+
+return (static function(){
+<%= @root_custom %>
+<%- end %>
+<%- if (@root_envs) %>
+    return [
+    <%- @root_envs.each() do |k,v| %>
+        <%- 
+        #NOTE Numeric can pass as literal
+        if(v.is_a(String))
+            v ="'#{v}'"
+        elsif (v.is_a(TrueClass))
+            v = 'true'
+        elsif (v.is_a(FalseClass))
+            v = 'false'
+        elsif (v.is_a(NilClass))
+            v = 'null'
+        end #TODO handle Hashes/Arrays
+        %> 
+        '<%= k %>' => <%= v %>,
+    <%- end %>
+    ];
+<%- end %>
+<%- if (@root_custom) %>
+})();
+<%- end %>
