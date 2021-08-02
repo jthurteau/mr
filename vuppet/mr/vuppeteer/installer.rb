@@ -36,7 +36,7 @@ module Installer
   def self.prep()
     temp_writable = FileManager.may?(:write, self.temp_path())
     Vuppeteer::shutdown('Error: temp_path is not configured as a writable path', -2) if !temp_writable
-    FileUtils.rm_r(self.mirror_path, {:force => true})
+    FileUtils.rm_r(self.mirror_path, :force => true)
     FileManager::path_ensure(self.mirror_path, FileManager::allow_dir_creation?)
     FileManager::path_ensure(self.import_target, FileManager::allow_dir_creation?)
     self.import_files().each do |i|
@@ -91,7 +91,7 @@ module Installer
                 c_dir_mode = File.directory?("#{source}#{c}")
                 #Vuppeteer::say("conditional #{condition} #{source}#{c} #{target}#{c}", :prep) if !c_dir_mode
                 #Vuppeteer::say("conditional dir #{condition} #{source}#{c} #{target}", :prep) if c_dir_mode
-                FileUtils.cp_r("#{source}#{c}", (c_dir_mode ? ("#{target}") : ("#{target}#{c}")), {:remove_destination => true})
+                FileUtils.cp_r("#{source}#{c}", (c_dir_mode ? ("#{target}") : ("#{target}#{c}")), :remove_destination => true)
               end
             end
           end
@@ -101,7 +101,7 @@ module Installer
           #FileUtils.cp_r(source, (dir_mode ? ("#{target_parent}") : (target)), {:remove_destination => true})
         else
           #Vuppeteer::say("reset copy #{source} #{target} #{finaltarget}", :prep)
-          FileUtils.cp_r(source, (dir_mode ? ("#{target_parent}") : (target)), {:remove_destination => true})
+          FileUtils.cp_r(source, (dir_mode ? ("#{target_parent}") : (target)), :remove_destination => true)
         end
       else
         Vuppeteer::say("Notice: unable to mirror install file #{prefix}#{f}", :prep)
@@ -151,18 +151,18 @@ module Installer
         Dir.foreach(source) do |s| #TODO each_child not supported yet
           #TODO need to ignore .git, .gitignore, local-dev.* files...
           if (!['.','..'].include?(s))
-            FileUtils.cp_r("#{source}/#{s}", "#{import_path}/#{to_path}", {:remove_destination => true})
+            FileUtils.cp_r("#{source}/#{s}", "#{import_path}/#{to_path}", :remove_destination => true)
           end
         end
       else 
         if (File.exist?(source))
           #TODO need to ignore .git, .gitignore, local-dev.* files...
-          FileUtils.cp_r(source, "#{import_path}/#{to_path}", {:remove_destination => true})
+          FileUtils.cp_r(source, "#{import_path}/#{to_path}", :remove_destination => true)
         else
           Vuppeteer::say("Notice: #{source} unavailable for import", :prep) #TODO detect if it has been imported and indicate that
         end 
       end
-      #FileUtils.cp_r(source, (dir_mode ? ("#{to_parent}") : (to_path)), {:remove_destination => true})
+      #FileUtils.cp_r(source, (dir_mode ? ("#{to_parent}") : (to_path)), :remove_destination => true)
     end
   end
 

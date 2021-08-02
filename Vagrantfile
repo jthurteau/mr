@@ -3,7 +3,7 @@
 ##
 # find the vuppeteer script
 vuppeteer = 'vuppet/mr' # default path
-vuppeteer_order = [vuppeteer, '../mr/' + vuppeteer] # where to look, i.e. internal then external
+vuppeteer_order = [vuppeteer, "../mr/#{vuppeteer}"] # where to look, i.e. internal then external
 vuppeteer_order.each {|v| require_relative v if !defined?(Mr) && File.exist?("#{v}.rb")}
 raise 'Unable to build Local Development Environment. Vuppeteer unavailable.' if !defined?(Mr)
 

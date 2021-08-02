@@ -99,7 +99,10 @@ module Vuppeteer
   end
 
   def self.get(what, which = nil) #TODO trim down some delegations #TODO support getting vagrant configs
-
+    case what
+    when :vm
+      VagrantManager::get_vm(which)
+    end
   end
 
   def self.add() #TODO trim down some delegations

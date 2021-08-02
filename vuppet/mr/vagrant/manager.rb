@@ -53,6 +53,12 @@ module VagrantManager
       @vagrant
   end
 
+  def self.get_vm(w = nil)
+    return @vm_configs[@vm_configs.keys().first()] if w.nil? and @vm_configs.keys().length() > 0
+    @vm_configs[w] if @vm_configs.has_key?(w)
+    nil
+end
+
   def self.get_vm_configs(names)
     return @vm_configs if names == :all
     results = {}
@@ -208,8 +214,9 @@ module VagrantManager
       # forwarded ports
       network = vm_setup.has_key?('network') ? vm_setup['network'] : []
       network.each do |n|
-        h = MrUtils::sym_keys(n[1])
-        @vm_configs[label].network n[0], h 
+        h = n[1].is_a?(Hash) ? MrUtils::sym_keys(n[1]) : n[1]
+        Vuppeteer::trace('vagrant network', n[0],h)
+        @vm_configs[label].network n[0], **h
       end
 
       ##
@@ -235,7 +242,7 @@ module VagrantManager
   def self._lookup(sym, vm_name)
     case sym
     when :guest_root
-      return PuppetManager.guest_root(vm_name)
+      return PuppetManager.guest_root(vm_name) #TODO ?? should be ::guest_root(...?
     end
     Vuppeteer::shutdown("Error: Unrecognized Puppet binding #{sym.to_s} called on #{vm_name}", -5)
   end

@@ -93,8 +93,6 @@ module Mr
     Vuppeteer::helpers(which_vms, helpers)
   end
 
-
-
   ##
   # Gets vagrant config object
   def self.get(name, which_vms = nil)

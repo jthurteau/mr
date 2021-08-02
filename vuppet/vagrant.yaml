@@ -1,5 +1,6 @@
 #TODO remname or move this to avoid confusion with /facts/vagrant.yaml (box.yaml?)
-#  memory: '1024'
+# memory: '1024'
+# communication back to the host computer is through 10.0.2.2
 network: [
   ['forwarded_port', {guest: 80, host: 8080, host_ip: '127.0.0.1'}]
 ]
