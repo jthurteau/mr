@@ -1,5 +1,5 @@
 ## 
-# Helps Manage Evironment Replication for Puppetized Fedora based Vagrants, Primarily RHEL
+# Helps Manage Environment Replication for Puppetized Fedora based Vagrants, Primarily RHEL
 # https://puppet.com/docs/puppet/5.5 https://puppet.com/docs/puppet/6.20
 # https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/ 
 # https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/ 
