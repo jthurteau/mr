@@ -1,5 +1,5 @@
 ## 
-# Base Interface Mr provides to provisioners
+# Util functions for Mr
 #
 
 module MrUtils
