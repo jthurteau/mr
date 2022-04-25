@@ -7,6 +7,8 @@ Mr is being ported from a private 0.x development build to a public open-source 
 
 As of 1.0 (#ef8595a) both RHEL and a fallback strategy to Fedora should be working. Lots of work is still needed but it should be a viable replacement for 0.X provisioners at this point.
 
+For a lighterwight, container based approach check out the [Tm](https://github.com/jthurteau/jthurteau.github.io) Pod VM provisioner (Vagrant/Podman/Alpine stack) bundled in my personal website.
+
 ## Getting Started
 
 This documentation covers using Mr to:
