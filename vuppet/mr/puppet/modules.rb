@@ -147,7 +147,7 @@ module Modules
     module_name = File.basename(path) #TODO #issue-18
     #module_source = tokenize parent dirs too for further differentiation when needed
     local_mirror_path = "#{self.host_path()}/#{module_name}"
-    FileManager::path_ensure(local_mirror_path, FileManager::allow_dir_creation?)
+    FileManager::path_ensure(local_mirror_path, FileManager::allow_dir_creation?) #TODO shouldn't be created unless cloning... should halt if unavailable
     if (FileManager::clean_path?(local_mirror_path)) #TODO move this into FileManager? Paths?
       # Vuppeteer::trace("cp -r #{path}/* #{local_mirror_path}")
       # exit

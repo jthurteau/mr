@@ -4,7 +4,8 @@
 
 module FileManager
   extend self
-
+  
+  require 'yaml'
   require_relative 'file/paths'
   require_relative 'file/repos'
   #TODO require_relative 'file/cache'

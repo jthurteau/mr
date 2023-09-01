@@ -5,6 +5,8 @@
 module Hiera
   extend self
 
+  require 'yaml'
+
   @conf_source = ['puppet.yaml::hiera','::hiera'][1]
   @local_path = ''
   @remote_path = ''

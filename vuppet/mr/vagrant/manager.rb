@@ -18,7 +18,7 @@ module VagrantManager
         ['forwarded_port', {guest: 80, host: 8080, host_ip: '127.0.0.1'}],
       ],
       synced_folder: [
-        ['.', :guest_root, owner: 'vagrant', group: 'vagrant', type: 'virtualbox'],
+        ['.', :guest_root, owner: 'vagrant', group: 'vagrant', type: 'virtualbox'],  #NOTE, turn off virtualbox share type unless enabled
       ],
     }
   }
