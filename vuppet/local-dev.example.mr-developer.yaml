@@ -1,0 +1,36 @@
+# This YAML file is a sample for developer facts (~/.mr)
+---
+##
+# common settings - remove the initial hash character from the line to uncomment
+#helpers: ['nano','os','net'] # list any helpers you want to run automatically in all provisions (see mr/vagrant/helpers.rb)
+#guest_throttle: 1M # experimental, attempts to set a virtualbox throttle that will prevent VMs from hogging the host (and upstream network)
+##
+# networking
+#org_domain: lib.ncsu.edu - sets the VM's networking domain
+##
+# os
+#license_ident: rhel7-dev # explicitly set the license to use, overrides any repo/project settings
+#pref_license_ident: rhel7-dev # set the default license to use if none is set in the repo/project
+#rhsm_user: <username> # uncomment these to set RH Developer Network crentials used in "dev" (rhdn) license_idents
+#rhsm_pass: <password>
+#pref_license_ident: rhel7 # set the default license to use if none is set in the repo/project
+#rhsm_org: 7939109 # uncomment these to set RH Developer Network crentials used in "org/cls" based license_idents
+#rhsm_key: CLS
+##
+# developer
+#developer: <username> # sets the default username for most/all external personal access 
+#ghc_pat: <github.com personal authencation token>
+#ghe_host: <hostname to use for enterprise github>
+#ghe_pat: <enterprise github personal authencation token>
+developer_sensitive: ['ncsu_campus_id','eyaml_pub_key','eyaml_priv_key'] #intentionally uncommented by default - list of facts to explicitly redact from terminal output
+#eyaml_pub_key: '-----BEGIN CERTIFICATE----- # default eyaml "public" key to use (decrypt)
+#...<multiple lines>
+#-----END CERTIFICATE-----' #<name>.pem
+#eyaml_priv_key: '-----BEGIN RSA PRIVATE KEY----- # default eyaml "private" key to use (encrypt)
+#...<multiple lines>
+#-----END CERTIFICATE-----' #<name_private>.pem
+##
+# application specific, sensitive params - use these to pass/store data behind the scenes and not in the repos
+#your_local_id: <data>
+#your_api_key: <data>
+...

@@ -308,9 +308,23 @@ puppet_modules:
 
 would attempt to load the module first from a copy on the local file_system (outside of the project folder), and if it didn't exist, would look for a copy in the default active_path that had been imported by an installer.
 
+Entries in the puppet_modules can reference github (public or authenticated via PAT), and gitub enterprise repos. These are handled by Mr by placing them into a gitignored path in the repo (in /vuppet) and then auto-imported along with other repos so there is no need to include them in the 'import' fact, and the 'import' fact does not support URIs directly at this time, only local paths.
 
 ## Enterprise Linux Management
 
+Using RHEL as a VM effectively requires access to a software repository for package management and updates. This can be especially important for VirtualBox Guest Plugins, and installing Puppet. Mr can be configured to use a RedHat Developer account, or a local CLS to register the RHEL operating system. For the former, those settings can be baked into the repository if everyone using the code is part of the same organization. For shared (open) code, you'll want to create a RedHat Developer account and store that data in a "developer facts" file which is stored in your user files and not in the repo.
+
+The default setup allows Mr to read from two paths: the relative "../" path from mr.rb which should be the root of your repository, and "~/.mr/" which is an optional folder in your user files. If you don't have this folder, Mr should run fine but many operations including
+
+A sample for this file is available in /vuppet/local-dev.example.mr-developer.yaml
+
+You can create the .mr folder in your "home" directory (e.g. /home/\[username] or C:users\\\[username]) and use the sample to start your 'developer.yaml' file.
+
+To use a RedHat Developer account, uncomment the:
+
+'license_ident: rhel7-dev' line and then also provide 'rhsm_user' and 'rhsm_pass'
+
+For security reasons, a number of the values intended to be stored in the developer facts (developer.yaml) file can ONLY be retrieved from the developer facts file. You can set where a project will look for the developer facts by setting a non-binary value for 'load_developer_facts', but access is still subject to normal restrictions, so it must be in an allowed (read) path(s).
 
 
 ## Project Configuration
