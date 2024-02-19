@@ -312,7 +312,7 @@ Entries in the puppet_modules can reference github (public or authenticated via 
 
 ## Enterprise Linux Management
 
-Using RHEL as a VM effectively requires access to a software repository for package management and updates. This can be especially important for VirtualBox Guest Plugins, and installing Puppet. Mr can be configured to use a RedHat Developer account, or a local CLS to register the RHEL operating system. For the former, those settings can be baked into the repository if everyone using the code is part of the same organization. For shared (open) code, you'll want to create a RedHat Developer account and store that data in a "developer facts" file which is stored in your user files and not in the repo.
+Using RHEL as a VM effectively requires access to a software repository for package management and updates. This can be especially important for VirtualBox Guest Plugins, and installing Puppet. Mr can be configured to use a RedHat Developer account (https://developers.redhat.com/), or a local CLS to register the RHEL operating system. For the former, those settings can be baked into the repository if everyone using the code is part of the same organization. For shared (open) code, you'll want to create a RedHat Developer account and store that data in a "developer facts" file which is stored in your user files and not in the repo.
 
 The default setup allows Mr to read from two paths: the relative "../" path from mr.rb which should be the root of your repository, and "~/.mr/" which is an optional folder in your user files. If you don't have this folder, Mr should run fine but many operations including
 
